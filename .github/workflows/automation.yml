@@ -1,4 +1,4 @@
-name: Viral Trend Scanner
+name: Viral Video Automation
 
 on:
   workflow_dispatch:
@@ -6,33 +6,34 @@ on:
     - cron: "0 * * * *"
 
 jobs:
-  scan-trends:
+  create-videos:
     runs-on: ubuntu-latest
-
     steps:
       - name: Get the code
         uses: actions/checkout@v5
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Install requirements
         run: pip install -r requirements.txt
-
-      - name: Scan trends
+      - name: Run viral video pipeline
         env:
           DRY_RUN: "true"
           MAX_TRENDS: "10"
+          VIDEO_COUNT: "3"
+          VIDEO_SECONDS: "15"
+          AI_MODE: "template"
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python main.py
-
-      - name: Save run output
+      - name: Save generated videos and metadata
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viral-scan-output-${{ github.run_number }}
+          name: viral-videos-${{ github.run_number }}
           path: output/
-          if-no-files-found: ignore
+          if-no-files-found: warn
+          retention-days: 7
