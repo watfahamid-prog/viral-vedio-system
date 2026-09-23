@@ -25,6 +25,7 @@ jobs:
         env:
           DRY_RUN: "true"
           MAX_TRENDS: "10"
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python main.py
 
