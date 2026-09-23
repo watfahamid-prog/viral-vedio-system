@@ -3,54 +3,51 @@ import xml.etree.ElementTree as ET
 
 
 def get_trends():
-    url = "https://trends.google.com/trending/rss?geo=SE"
+    sources = [
+        "https://news.google.com/rss?hl=sv&gl=SE&ceid=SE:sv",
+        "https://trends.google.com/trending/rss?geo=SE"
+    ]
 
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; ViralVideoSystem/1.0)"
-        }
+    trends = []
 
-        response = requests.get(url, headers=headers, timeout=20)
-        response.raise_for_status()
+    for url in sources:
+        try:
+            response = requests.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=20
+            )
+            response.raise_for_status()
 
-        root = ET.fromstring(response.content)
-        trends = []
+            root = ET.fromstring(response.content)
 
-        for item in root.findall(".//item"):
-            title = item.find("title")
+            for item in root.findall(".//item"):
+                title = item.find("title")
 
-            if title is not None and title.text:
-                value = title.text.strip()
+                if title is not None and title.text:
+                    value = title.text.strip()
 
-                if value and value != "...":
-                    trends.append(value)
+                    if value and value != "...":
+                        # Remove Google News source names after " - "
+                        if " - " in value:
+                            value = value.rsplit(" - ", 1)[0]
 
-        trends = list(dict.fromkeys(trends))
+                        if value not in trends:
+                            trends.append(value)
 
-        if not trends:
-            print("No real Google Trends topics were returned.")
-            return []
+        except Exception as error:
+            print(f"Source failed: {error}")
 
-        return trends[:10]
-
-    except ET.ParseError as error:
-        print(f"Google Trends returned data that could not be read: {error}")
-        return []
-
-    except requests.RequestException as error:
-        print(f"Could not connect to Google Trends: {error}")
-        return []
-
-    except Exception as error:
-        print(f"Could not get trends: {error}")
-        return []
+    return trends[:10]
 
 
 if __name__ == "__main__":
     trends = get_trends()
 
+    print("\n🔥 TOP 10 CURRENT TOPICS IN SWEDEN\n")
+
     if not trends:
-        print("No trends found.")
+        print("No topics found.")
     else:
-        for number, trend in enumerate(trends, start=1):
+        for number, trend in enumerate(trends, 1):
             print(f"{number}. {trend}")
