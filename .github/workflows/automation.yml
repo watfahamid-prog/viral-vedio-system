@@ -3,7 +3,7 @@ name: Viral Trend Scanner
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 * * * *"
 
 jobs:
   scan-trends:
@@ -22,4 +22,16 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Scan trends
+        env:
+          DRY_RUN: "true"
+          MAX_TRENDS: "10"
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python main.py
+
+      - name: Save run output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viral-scan-output-${{ github.run_number }}
+          path: output/
+          if-no-files-found: ignore
