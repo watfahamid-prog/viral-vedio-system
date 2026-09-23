@@ -2,15 +2,18 @@ import json
 import requests
 from config import OPENAI_API_KEY
 
+def _fallback(trend, hook):
+    return {
+        "title": hook,
+        "hook": hook,
+        "script": f"Here is what is happening with {trend}. Follow for more quick updates.",
+        "scenes": [hook, f"Here is what is happening with {trend}.", "Follow for more quick updates."],
+        "generation_mode": "template",
+    }
+
 def generate_script(trend: str, hook: str) -> dict:
-    """Generate an original short-form script. It does not copy source creators."""
     if not OPENAI_API_KEY:
-        return {
-            "title": hook,
-            "hook": hook,
-            "script": f"Here is what is happening with {trend}. Follow for more quick updates.",
-            "scenes": [hook, f"Here is what is happening with {trend}.", "Follow for more quick updates."],
-        }
+        return _fallback(trend, hook)
 
     prompt = f"""Create an original 15-second vertical short about this trend.
 TREND: {trend}
@@ -25,6 +28,13 @@ scenes must contain exactly 3 short visual/text scene descriptions."""
         json={"model": "gpt-5.6-luna", "input": prompt, "max_output_tokens": 500},
         timeout=60,
     )
+    if response.status_code == 429:
+        detail = response.json() if response.content else {}
+        error = detail.get("error", {})
+        raise RuntimeError(
+            f"OpenAI API 429 ({error.get('code', 'rate_limit_or_quota')}): "
+            f"{error.get('message', 'quota or rate limit reached')}"
+        )
     response.raise_for_status()
     data = response.json()
     text = data.get("output_text", "")
@@ -33,4 +43,6 @@ scenes must contain exactly 3 short visual/text scene descriptions."""
             for part in item.get("content", []):
                 if part.get("type") == "output_text":
                     text += part.get("text", "")
-    return json.loads(text)
+    result = json.loads(text)
+    result["generation_mode"] = "openai"
+    return result
