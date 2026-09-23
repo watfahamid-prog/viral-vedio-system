@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from config import DRY_RUN, MAX_TRENDS
+from config import DRY_RUN, MAX_TRENDS, VIDEO_COUNT
 from trends import get_trends
 
 
@@ -12,7 +12,7 @@ def build_opportunities(trends):
             "format": "short_explainer",
             "status": "draft",
         })
-    return opportunities
+    return opportunities[:VIDEO_COUNT]
 
 
 def run_pipeline():
