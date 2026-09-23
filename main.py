@@ -1,25 +1,31 @@
-from datetime import datetime
-from trends import get_trends
+import json
+from pipeline import run_pipeline
+from discord import notify
+from video import create_placeholder_video
+from publish import publish
 
 
 def main():
-    print("=" * 50)
-    print("🚀 VIRAL VIDEO SYSTEM")
-    print("=" * 50)
+    result = run_pipeline()
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
-    print(f"Scan time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("\n🔥 Current trend topics:\n")
+    if result["opportunities"]:
+        opportunity = result["opportunities"][0]
+        video_path = create_placeholder_video(opportunity)
+        result["video"] = video_path
+        result["publishing"] = publish(video_path)
 
-    trends = get_trends()
+    trends = [item["trend"] for item in result["opportunities"]]
+    message = "🚀 Viral Video System scan complete.\\nFound {} trend topics.\\n{}".format(
+        result["trend_count"], "\\n".join("• " + t for t in trends[:5])
+    )
+    try:
+        if notify(message):
+            print("📨 Discord notification sent.")
+    except Exception as error:
+        print(f"Discord notification failed: {error}")
 
-    if not trends:
-        print("No trends found.")
-        return
-
-    for number, trend in enumerate(trends, start=1):
-        print(f"{number}. {trend}")
-
-    print("\n✅ Trend scan completed!")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
