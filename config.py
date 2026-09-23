@@ -8,3 +8,6 @@ VIDEO_SECONDS = int(os.getenv("VIDEO_SECONDS", "15"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 YOUTUBE_ENABLED = os.getenv("YOUTUBE_ENABLED", "false").lower() == "true"
 TIKTOK_ENABLED = os.getenv("TIKTOK_ENABLED", "false").lower() == "true"
+
+AI_MODE = os.getenv("AI_MODE", "template").lower()
+VIDEO_COUNT = int(os.getenv("VIDEO_COUNT", "3"))
