@@ -65,8 +65,10 @@ def create_video(opportunity, script_data, index=1):
             draw.ellipse((x+drift, 360+n*70, x+drift+size, 360+n*70+size),
                          fill=(18+n%5, 25+n%7, 52+n%9))
 
-        draw.rounded_rectangle((55, 70, 440, 150), radius=28, fill=(245,245,245))
-        draw.text((83, 92), "TRENDING NOW", font=small_font, fill=(7,9,18))
+        format_label = str(opportunity.get("format", "quick_explainer")).replace("_", " ").upper()
+        badge_width = min(760, 80 + len(format_label) * 22)
+        draw.rounded_rectangle((55, 70, badge_width, 150), radius=28, fill=(245,245,245))
+        draw.text((83, 92), format_label, font=small_font, fill=(7,9,18))
 
         title = script_data.get("title") or opportunity.get("trend", "Trending now")
         y = 235 - min(25, int((1-min(progress*5,1))*25))
