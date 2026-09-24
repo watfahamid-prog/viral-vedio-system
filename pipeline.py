@@ -14,26 +14,30 @@ def _category(text):
     return "general"
 
 
-def _format_for_source(source):
-    return {
-        "youtube": "youtube_ranked_breakdown",
-        "tiktok": "tiktok_cantina_story",
-        "google": "youtube_quick_explainer",
-        "unknown": "short_explainer",
-    }.get(source, "short_explainer")
+def _format_for_run(index, source):
+    # Make every run produce a mix of platform-native formats instead of
+    # waiting for a specific trend source to be available.
+    if index == 0:
+        return "youtube_ranked_breakdown"
+    if index == 1:
+        return "tiktok_cantina_story"
+    if source == "google":
+        return "youtube_quick_explainer"
+    return "short_explainer"
 
 
 def build_opportunities(trends):
     hooks = {
-        "youtube": "YouTube-style breakdown: {trend}",
-        "tiktok": "TikTok-style story: {trend}",
-        "google": "Here is the quick update on {trend}.",
-        "unknown": "Here is the quick breakdown of {trend}.",
+        "youtube_ranked_breakdown": "Here are the key things to know about {trend}.",
+        "tiktok_cantina_story": "Wait, this is what is happening with {trend}.",
+        "youtube_quick_explainer": "Here is the quick update on {trend}.",
+        "short_explainer": "Here is the quick breakdown of {trend}.",
     }
     opportunities = []
-    for item in trends[:MAX_TRENDS]:
+    for index, item in enumerate(trends[:MAX_TRENDS]):
         trend = item["trend"] if isinstance(item, dict) else item
         source = item.get("source", "unknown") if isinstance(item, dict) else "unknown"
+        format_name = _format_for_run(index, source)
         opportunities.append({
             "trend": trend,
             "source": source,
@@ -41,8 +45,8 @@ def build_opportunities(trends):
             "sources": item.get("sources", [source]) if isinstance(item, dict) else [source],
             "metrics": item.get("metrics", {}) if isinstance(item, dict) else {},
             "category": _category(trend),
-            "hook": hooks.get(source, hooks["unknown"]).format(trend=trend),
-            "format": _format_for_source(source),
+            "hook": hooks[format_name].format(trend=trend),
+            "format": format_name,
             "status": "draft",
         })
     return opportunities[:VIDEO_COUNT]
