@@ -15,8 +15,7 @@ def _category(text):
 
 
 def _format_for_run(index, source):
-    # Make every run produce a mix of platform-native formats instead of
-    # waiting for a specific trend source to be available.
+    # Always produce a deliberate platform mix in one run.
     if index == 0:
         return "youtube_ranked_breakdown"
     if index == 1:
@@ -24,6 +23,14 @@ def _format_for_run(index, source):
     if source == "google":
         return "youtube_quick_explainer"
     return "short_explainer"
+
+
+def _platform_for_format(format_name):
+    if format_name.startswith("youtube_"):
+        return "youtube"
+    if format_name.startswith("tiktok_"):
+        return "tiktok"
+    return "shorts"
 
 
 def build_opportunities(trends):
@@ -47,6 +54,8 @@ def build_opportunities(trends):
             "category": _category(trend),
             "hook": hooks[format_name].format(trend=trend),
             "format": format_name,
+            "platform": _platform_for_format(format_name),
+            "confidence": item.get("confidence", 0) if isinstance(item, dict) else 0,
             "status": "draft",
         })
     return opportunities[:VIDEO_COUNT]
