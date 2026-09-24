@@ -43,6 +43,8 @@ def create_video(opportunity, script_data, index=1):
     scenes = script_data.get("scenes") or [script_data.get("hook", opportunity["hook"])]
     frames = max(1, int(VIDEO_SECONDS * FPS))
     title_font, body_font = _font(76), _font(50)
+    category = str(opportunity.get("category", "general"))
+    style = {"sports": "SPORTS PULSE", "technology": "TECH PULSE", "entertainment": "TREND ALERT", "general": "QUICK EXPLAINER"}.get(category, "QUICK EXPLAINER")
     small_font, tiny_font = _font(34), _font(28)
 
     for i in range(frames):
@@ -65,7 +67,7 @@ def create_video(opportunity, script_data, index=1):
             draw.ellipse((x+drift, 360+n*70, x+drift+size, 360+n*70+size),
                          fill=(18+n%5, 25+n%7, 52+n%9))
 
-        format_label = str(opportunity.get("format", "quick_explainer")).replace("_", " ").upper()
+        format_label = style + " • " + str(opportunity.get("format", "quick_explainer")).replace("_", " ").upper()
         badge_width = min(760, 80 + len(format_label) * 22)
         draw.rounded_rectangle((55, 70, badge_width, 150), radius=28, fill=(245,245,245))
         draw.text((83, 92), format_label, font=small_font, fill=(7,9,18))
@@ -85,11 +87,12 @@ def create_video(opportunity, script_data, index=1):
             draw.text((90, y), line, font=hook_font, fill=(10,12,20))
             y += 52
 
-        shift = int(12 * math.sin(t * 2.2))
+        shift = int(18 * math.sin(t * 2.2) + 8 * math.sin(t * 4.7))
         top = 875 + shift
         bottom = 1485 + shift
-        draw.rounded_rectangle((55, top, WIDTH-55, bottom), radius=42, fill=(6,8,16))
-        draw.text((90, top+55), f"SCENE {scene_index+1}", font=tiny_font, fill="white")
+        card_x = int(55 + 10 * math.sin(t * 2.5))
+        draw.rounded_rectangle((card_x, top, WIDTH-55, bottom), radius=42, fill=(6,8,16))
+        draw.text((90, top+55), f"SCENE {scene_index+1}  •  {category.upper()}", font=tiny_font, fill="white")
         y = top + 125
         for line in _wrap(draw, scenes[scene_index], body_font, WIDTH-180)[:6]:
             draw.text((90, y), line, font=body_font, fill="white")
