@@ -30,7 +30,14 @@ def _add(trends, value, source, score=0.0, metrics=None):
     for item in trends:
         if _similar(value, item["trend"]):
             item["score"] = max(item.get("score", 0.0), score)
-            item.setdefault("sources", []).append(source)
+            item.setdefault("sources", [])
+            if source not in item["sources"]:
+                item["sources"].append(source)
+            for key, metric in metrics.items():
+                if isinstance(metric, (int, float)):
+                    item.setdefault("metrics", {})[key] = max(item.get("metrics", {}).get(key, 0), metric)
+                elif metric:
+                    item.setdefault("metrics", {})[key] = metric
             return
     trends.append({
         "trend": value,
@@ -162,8 +169,12 @@ def get_trends():
 
     # Reward cross-platform confirmation, then keep source diversity.
     for item in combined:
-        item["score"] += max(0, len(set(item.get("sources", []))) - 1) * 8
-        item["score"] = round(min(100.0, item["score"]), 3)
+        sources = set(item.get("sources", []))
+        metrics = item.get("metrics", {})
+        cross_platform_bonus = max(0, len(sources) - 1) * 8
+        engagement_bonus = min(8.0, metrics.get("shares", 0) / 50000 + metrics.get("likes", 0) / 500000 + metrics.get("views", 0) / 5000000)
+        item["score"] = round(min(100.0, item.get("score", 0.0) + cross_platform_bonus + engagement_bonus), 3)
+        item["confidence"] = round(min(1.0, 0.45 + 0.15 * len(sources) + min(0.4, item["score"] / 250)), 3)
 
     ranked = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)
     selected = []
@@ -183,4 +194,4 @@ if __name__ == "__main__":
     trends = get_trends()
     print("\n🔥 TOP 10 CURRENT TOPICS IN SWEDEN\n")
     for number, item in enumerate(trends, 1):
-        print(f"{number}. [{item['source']}] score={item['score']}: {item['trend']}")
+        print(f"{number}. [{item['source']}] score={item['score']} confidence={item.get('confidence', 0)}: {item['trend']}")
