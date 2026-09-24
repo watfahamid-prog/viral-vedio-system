@@ -34,11 +34,11 @@ def _fallback(trend, hook, format_name="short_explainer"):
     base_title = _short_title(trend)
 
     if format_name == "youtube_ranked_breakdown":
-        title = f"Top Takeaways: {base_title}"
+        title = f"3 Things To Know: {base_title}"
         openers = [
-            "Here are the key takeaways from this trend.",
-            "Here is the fast ranking-style breakdown.",
-            "These are the biggest points to know right now.",
+            "Here are three things to know about this trend.",
+            "Three quick points — then you can decide what matters.",
+            "Let's break this trend down in three fast steps.",
         ]
         bridges = [
             "First, the trend itself is driving the conversation.",
@@ -46,7 +46,7 @@ def _fallback(trend, hook, format_name="short_explainer"):
             "And the biggest question is what happens next.",
         ]
         ending = "Follow for the next ranked breakdown."
-        hashtags = ["#shorts", "#trending", "#top5", "#viral"]
+        hashtags = ["#shorts", "#trending", "#top3", "#viral"]
     elif format_name == "tiktok_cantina_story":
         title = base_title
         openers = [
@@ -105,6 +105,7 @@ def _fallback(trend, hook, format_name="short_explainer"):
         "hook": clean_hook,
         "script": script,
         "scenes": scenes,
+        "word_count": len(script.split()),
         "caption": f"{title} — {format_name.replace('_', ' ')}.",
         "hashtags": hashtags,
         "format": format_name,
