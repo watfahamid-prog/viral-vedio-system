@@ -6,6 +6,7 @@ from script_generator import generate_script
 from publish import publish
 from discord import notify
 from config import OUTPUT_DIR, VIDEO_COUNT
+from performance import record_run
 
 def main():
     result = run_pipeline()
@@ -25,8 +26,12 @@ def main():
             "publishing": publish(video_path),
         })
         notify(
-            f"Viral video ready #{index}: {script.get('title', opportunity['trend'])}\n"
+            f"🎬 Video #{index} ready\n"
+            f"Title: {script.get('title', opportunity['trend'])}\n"
             f"Trend: {opportunity['trend']}\n"
+            f"Score: {opportunity.get('score', 0)}\n"
+            f"Category: {opportunity.get('category', 'general')}\n"
+            f"Style: {opportunity.get('format', 'quick_explainer')}\n"
             f"Mode: {script.get('generation_mode', 'template')}"
         )
 
@@ -40,6 +45,11 @@ def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(OUTPUT_DIR, "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
+    record_run(result)
+    notify(
+        f"📊 Run complete: {len(result['videos'])} videos created from {result['trend_count']} scored trends.\n"
+        "Publishing: API adapters ready; credentials are still required to publish."
+    )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
