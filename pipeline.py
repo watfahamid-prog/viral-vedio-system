@@ -8,11 +8,18 @@ def build_opportunities(trends):
     for item in trends[:MAX_TRENDS]:
         trend = item["trend"] if isinstance(item, dict) else item
         source = item.get("source", "unknown") if isinstance(item, dict) else "unknown"
+        formats = {"youtube": "fast_breakdown", "tiktok": "commentary", "google": "news_explainer", "unknown": "quick_explainer"}
+        hooks = {
+            "youtube": f"This is trending on YouTube right now: {trend}",
+            "tiktok": f"People are talking about {trend} right now.",
+            "google": f"Here is the quick update on {trend}.",
+            "unknown": f"Here is the quick breakdown of {trend}.",
+        }
         opportunities.append({
             "trend": trend,
             "source": source,
-            "hook": f"What you need to know about {trend}",
-            "format": "short_explainer",
+            "hook": hooks.get(source, hooks["unknown"]),
+            "format": formats.get(source, formats["unknown"]),
             "status": "draft",
         })
     return opportunities[:VIDEO_COUNT]
