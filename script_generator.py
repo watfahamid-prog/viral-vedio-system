@@ -1,6 +1,6 @@
 import json
 import requests
-from config import OPENAI_API_KEY
+from config import OPENAI_API_KEY, AI_MODE
 
 def _fallback(trend, hook):
     return {
@@ -12,6 +12,10 @@ def _fallback(trend, hook):
     }
 
 def generate_script(trend: str, hook: str) -> dict:
+    # Template mode is the default and works without OpenAI API credits.
+    if AI_MODE != "openai":
+        return _fallback(trend, hook)
+
     if not OPENAI_API_KEY:
         return _fallback(trend, hook)
 
