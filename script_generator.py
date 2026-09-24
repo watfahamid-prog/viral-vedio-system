@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import requests
 from config import OPENAI_API_KEY, AI_MODE
 
@@ -8,51 +9,90 @@ def _pick(options, seed):
     return options[int(seed, 16) % len(options)]
 
 
+def _category(trend):
+    lower = trend.lower()
+    if any(w in lower for w in ["football", "soccer", "match", "goal", "sport", "nba", "nfl", "fifa"]):
+        return "sports"
+    if any(w in lower for w in ["iphone", "ai", "tech", "app", "google", "microsoft", "apple", "robot"]):
+        return "technology"
+    if any(w in lower for w in ["movie", "film", "series", "actor", "music", "song", "celebrity", "show"]):
+        return "entertainment"
+    return "general"
+
+
+def _short_title(trend):
+    words = trend.strip().split()
+    title = " ".join(words[:9]).title()
+    return title if len(title) <= 52 else title[:49].rstrip() + "..."
+
+
 def _fallback(trend, hook):
     seed = hashlib.sha256(trend.encode("utf-8")).hexdigest()
-    lower = trend.lower()
-    category = "sports" if any(w in lower for w in ["football", "soccer", "match", "goal", "sport"]) else "technology" if any(w in lower for w in ["iphone", "ai", "tech", "app", "google", "microsoft"]) else "entertainment" if any(w in lower for w in ["movie", "film", "series", "actor", "music", "song"]) else "general"
+    category = _category(trend)
 
     openers = [
-        "Stop scrolling — this is the part people are talking about.",
-        "This trend is moving fast, and here is the key detail.",
-        "You have probably seen this everywhere. Here is the quick version.",
-        "Here is the 15-second breakdown of what is happening.",
+        "Here is the quick breakdown.",
+        "This is what everyone is watching right now.",
+        "Here is the part you need to know.",
+        "This trend is getting attention fast.",
     ]
-    bridges = [
-        "The main thing to know is that this is getting attention right now.",
-        "The reason it stands out is how quickly people are reacting to it.",
-        "In simple terms, this is the detail worth watching.",
-        "The interesting part is what happens next.",
-    ]
+    bridges = {
+        "sports": [
+            "The key detail is the latest action and what it could mean next.",
+            "The big talking point is the latest result and the reaction around it.",
+            "What matters most is the moment that changed the conversation.",
+        ],
+        "technology": [
+            "The key detail is what changed and why people are paying attention.",
+            "What stands out is the new feature, idea, or reaction around it.",
+            "The interesting part is how quickly this technology is getting attention.",
+        ],
+        "entertainment": [
+            "The key detail is the reaction and why people keep talking about it.",
+            "What stands out is the moment that pushed this story into the spotlight.",
+            "The interesting part is how quickly the conversation is growing.",
+        ],
+        "general": [
+            "The key detail is why this suddenly started getting so much attention.",
+            "What stands out is how quickly people started reacting to it.",
+            "The interesting part is what happens next as the trend keeps moving.",
+        ],
+    }
     endings = [
-        "Follow for more fast trend breakdowns.",
-        "Save this and follow for the next update.",
-        "Want more quick explainers? Follow for more.",
-        "Check back for the next trend before it blows up.",
+        "Follow for more quick trend breakdowns.",
+        "Save this for the next update.",
+        "Follow for the next trend.",
     ]
 
     opening = _pick(openers, seed[:8])
-    bridge = _pick(bridges, seed[8:16])
+    bridge = _pick(bridges[category], seed[8:16])
     ending = _pick(endings, seed[16:24])
 
-    title = trend.strip().title()
-    if len(title) > 52:
-        title = title[:49].rstrip() + "..."
+    clean_hook = re.sub(r"^(HOOK|WHY IT MATTERS|TAKEAWAY):\s*", "", str(hook)).strip()
+    title = _short_title(trend)
 
     scenes = [
-        f"HOOK: {hook}",
-        f"WHY IT MATTERS: {trend} — {bridge}",
-        f"TAKEAWAY: {ending}",
+        clean_hook,
+        bridge,
+        ending,
     ]
+
+    hashtags = {
+        "sports": ["#sports", "#football", "#shorts", "#trending"],
+        "technology": ["#tech", "#ai", "#shorts", "#trending"],
+        "entertainment": ["#entertainment", "#news", "#shorts", "#trending"],
+        "general": ["#trending", "#news", "#shorts"],
+    }[category]
+
+    script = f"{opening} {clean_hook} {bridge} {ending}"
 
     return {
         "title": title,
-        "hook": hook,
-        "script": f"{opening} {hook} {bridge} {ending}",
+        "hook": clean_hook,
+        "script": script,
         "scenes": scenes,
         "caption": f"{title} — quick breakdown.",
-        "hashtags": [f"#{category}", "#shorts", "#trending"],
+        "hashtags": hashtags,
         "generation_mode": "template",
     }
 
@@ -70,6 +110,8 @@ TREND: {trend}
 HOOK: {hook}
 Do not copy any creator's wording, footage, watermark, or script.
 Keep claims factual and avoid inventing details.
+Make the narration natural, punchy, and easy to speak aloud.
+Target roughly 35-50 spoken words.
 Return ONLY valid JSON with keys: title, hook, script, scenes, caption, hashtags.
 scenes must contain exactly 3 short visual/text scene descriptions.
 hashtags must contain 3-5 short hashtags."""
