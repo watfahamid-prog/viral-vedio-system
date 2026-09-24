@@ -22,6 +22,8 @@ def record_run(result):
             {
                 "trend": item.get("trend"),
                 "video": item.get("video"),
+                "platform": item.get("platform"),
+                "confidence": item.get("confidence"),
                 "publishing": item.get("publishing"),
             }
             for item in result.get("videos", [])
