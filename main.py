@@ -8,12 +8,17 @@ from discord import notify
 from config import OUTPUT_DIR, VIDEO_COUNT
 from performance import record_run
 
+
 def main():
     result = run_pipeline()
     result["videos"] = []
 
     for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
-        script = generate_script(opportunity["trend"], opportunity["hook"])
+        script = generate_script(
+            opportunity["trend"],
+            opportunity["hook"],
+            opportunity.get("format", "short_explainer"),
+        )
         video_path = create_video(opportunity, script, index)
         manifest_path = write_manifest(opportunity, script, video_path)
         if not os.path.exists(video_path) or not os.path.exists(manifest_path):
@@ -31,7 +36,7 @@ def main():
             f"Trend: {opportunity['trend']}\n"
             f"Score: {opportunity.get('score', 0)}\n"
             f"Category: {opportunity.get('category', 'general')}\n"
-            f"Style: {opportunity.get('format', 'quick_explainer')}\n"
+            f"Style: {opportunity.get('format', 'short_explainer')}\n"
             f"Mode: {script.get('generation_mode', 'template')}"
         )
 
@@ -51,6 +56,7 @@ def main():
         "Publishing: API adapters ready; credentials are still required to publish."
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
+
 
 if __name__ == "__main__":
     main()
