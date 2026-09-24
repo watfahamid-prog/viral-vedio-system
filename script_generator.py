@@ -10,6 +10,8 @@ def _pick(options, seed):
 
 def _fallback(trend, hook):
     seed = hashlib.sha256(trend.encode("utf-8")).hexdigest()
+    lower = trend.lower()
+    category = "sports" if any(w in lower for w in ["football", "soccer", "match", "goal", "sport"]) else "technology" if any(w in lower for w in ["iphone", "ai", "tech", "app", "google", "microsoft"]) else "entertainment" if any(w in lower for w in ["movie", "film", "series", "actor", "music", "song"]) else "general"
 
     openers = [
         "Stop scrolling — this is the part people are talking about.",
@@ -40,7 +42,7 @@ def _fallback(trend, hook):
 
     scenes = [
         f"HOOK: {hook}",
-        f"CONTEXT: {trend} — {bridge}",
+        f"WHY IT MATTERS: {trend} — {bridge}",
         f"TAKEAWAY: {ending}",
     ]
 
@@ -50,7 +52,7 @@ def _fallback(trend, hook):
         "script": f"{opening} {hook} {bridge} {ending}",
         "scenes": scenes,
         "caption": f"{title} — quick breakdown.",
-        "hashtags": ["#trending", "#shorts", "#viral"],
+        "hashtags": [f"#{category}", "#shorts", "#trending"],
         "generation_mode": "template",
     }
 
