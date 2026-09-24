@@ -98,6 +98,7 @@ def create_video(opportunity, script_data, index=1):
     title_font, body_font = _font(76), _font(50)
     category = str(opportunity.get("category", "general"))
     format_name = str(opportunity.get("format", "short_explainer"))
+    platform = str(opportunity.get("platform", "shorts"))
     style = {
         "youtube_ranked_breakdown": "YOUTUBE RANKED",
         "tiktok_cantina_story": "TIKTOK STORY",
@@ -262,6 +263,8 @@ def create_video(opportunity, script_data, index=1):
         "trend": opportunity["trend"],
         "hook": opportunity["hook"],
         "format": opportunity["format"],
+        "platform": platform,
+        "confidence": opportunity.get("confidence", 0),
         "duration_seconds": VIDEO_SECONDS,
         "audio": bool(audio),
         "original_content": True,
