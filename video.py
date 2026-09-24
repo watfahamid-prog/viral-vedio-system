@@ -2,6 +2,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
 from config import OUTPUT_DIR, VIDEO_SECONDS
@@ -113,6 +114,13 @@ def create_video(opportunity, script_data, index=1):
                     os.path.join(work,"frame_%05d.png"),"-c:v","libx264",
                     "-pix_fmt","yuv420p","-movflags","+faststart",output],
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Keep artifacts small: PNG frames are only build intermediates.
+    shutil.rmtree(work, ignore_errors=True)
+
+    # Basic output gate: never report a video that was not actually created.
+    if not os.path.exists(output) or os.path.getsize(output) < 50_000:
+        raise RuntimeError(f"Video quality gate failed: missing or tiny output: {output}")
 
     manifest = {"trend":opportunity["trend"],"hook":opportunity["hook"],
                 "format":opportunity["format"],"duration_seconds":VIDEO_SECONDS,
