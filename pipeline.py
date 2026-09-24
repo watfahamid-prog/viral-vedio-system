@@ -14,11 +14,19 @@ def _category(text):
     return "general"
 
 
+def _format_for_source(source):
+    return {
+        "youtube": "youtube_ranked_breakdown",
+        "tiktok": "tiktok_cantina_story",
+        "google": "youtube_quick_explainer",
+        "unknown": "short_explainer",
+    }.get(source, "short_explainer")
+
+
 def build_opportunities(trends):
-    formats = {"youtube": "fast_breakdown", "tiktok": "commentary", "google": "news_explainer", "unknown": "quick_explainer"}
     hooks = {
-        "youtube": "This is trending on YouTube right now: {trend}",
-        "tiktok": "People are talking about {trend} right now.",
+        "youtube": "YouTube-style breakdown: {trend}",
+        "tiktok": "TikTok-style story: {trend}",
         "google": "Here is the quick update on {trend}.",
         "unknown": "Here is the quick breakdown of {trend}.",
     }
@@ -34,7 +42,7 @@ def build_opportunities(trends):
             "metrics": item.get("metrics", {}) if isinstance(item, dict) else {},
             "category": _category(trend),
             "hook": hooks.get(source, hooks["unknown"]).format(trend=trend),
-            "format": formats.get(source, formats["unknown"]),
+            "format": _format_for_source(source),
             "status": "draft",
         })
     return opportunities[:VIDEO_COUNT]
