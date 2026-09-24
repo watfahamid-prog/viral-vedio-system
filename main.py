@@ -13,10 +13,7 @@ def main():
 
     for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
         script = generate_script(opportunity["trend"], opportunity["hook"])
-        video_path = create_video(
-            opportunity, script,
-            os.path.join(OUTPUT_DIR, f"viral_short_{index:02d}.mp4")
-        )
+        video_path = create_video(opportunity, script)
         manifest_path = write_manifest(opportunity, script, video_path)
         result["videos"].append({
             "trend": opportunity["trend"],
