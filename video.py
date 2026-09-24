@@ -71,3 +71,23 @@ def create_video(opportunity, script_data):
     with open(os.path.join(OUTPUT_DIR, "latest_video.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
     return output
+
+
+def write_manifest(opportunity, script_data, video_path):
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    manifest_path = os.path.join(
+        OUTPUT_DIR,
+        f"{os.path.splitext(os.path.basename(video_path))[0]}.json"
+    )
+    manifest = {
+        "trend": opportunity["trend"],
+        "hook": opportunity["hook"],
+        "format": opportunity["format"],
+        "duration_seconds": VIDEO_SECONDS,
+        "original_content": True,
+        "script": script_data,
+        "video_file": video_path,
+    }
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+    return manifest_path
