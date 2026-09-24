@@ -97,12 +97,13 @@ def create_video(opportunity, script_data, index=1):
     frames = max(1, int(VIDEO_SECONDS * FPS))
     title_font, body_font = _font(76), _font(50)
     category = str(opportunity.get("category", "general"))
+    format_name = str(opportunity.get("format", "short_explainer"))
     style = {
-        "sports": "SPORTS PULSE",
-        "technology": "TECH PULSE",
-        "entertainment": "TREND ALERT",
-        "general": "QUICK EXPLAINER",
-    }.get(category, "QUICK EXPLAINER")
+        "youtube_ranked_breakdown": "YOUTUBE RANKED",
+        "tiktok_cantina_story": "TIKTOK STORY",
+        "youtube_quick_explainer": "YOUTUBE EXPLAINER",
+        "short_explainer": "QUICK EXPLAINER",
+    }.get(format_name, "QUICK EXPLAINER")
     small_font, tiny_font = _font(34), _font(28)
     caption_font = _font(38)
 
@@ -125,6 +126,19 @@ def create_video(opportunity, script_data, index=1):
                     int(24 + 28 * wave + 16 * pulse),
                 ),
             )
+
+        # Platform-specific visual language: lists feel structured, TikTok stories feel more kinetic.
+        if format_name == "youtube_ranked_breakdown":
+            for n in range(5):
+                yy = 300 + n * 285
+                draw.rounded_rectangle((870, yy, 1005, yy + 92), radius=24, fill=(245, 245, 245))
+                draw.text((910, yy + 20), str(n + 1), font=small_font, fill=(7, 9, 18))
+        elif format_name == "tiktok_cantina_story":
+            for n in range(3):
+                x = int(70 + n * 300 + 35 * math.sin(t * 4 + n))
+                draw.ellipse((x, 320 + n * 130, x + 70, 390 + n * 130), fill=(245, 245, 245))
+        else:
+            draw.line((80, 360, WIDTH - 80, 360), fill=(245, 245, 245), width=5)
 
         # Moving light bands give each scene a more dynamic transition.
         band_x = int((t / VIDEO_SECONDS) * (WIDTH + 500)) - 500
@@ -198,7 +212,8 @@ def create_video(opportunity, script_data, index=1):
             fill="white",
         )
         draw.text((70, 1790), f"{int(progress * 100):02d}%", font=tiny_font, fill="white")
-        draw.text((WIDTH - 350, 1790), "WATCH TO THE END", font=tiny_font, fill="white")
+        cta = "WATCH TO THE END" if format_name != "tiktok_cantina_story" else "WAIT FOR THE TWIST"
+        draw.text((WIDTH - 350, 1790), cta, font=tiny_font, fill="white")
         draw.text(
             (70, 1850),
             "Follow for more quick trend breakdowns",
