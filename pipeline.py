@@ -5,9 +5,12 @@ from trends import get_trends
 
 def build_opportunities(trends):
     opportunities = []
-    for trend in trends[:MAX_TRENDS]:
+    for item in trends[:MAX_TRENDS]:
+        trend = item["trend"] if isinstance(item, dict) else item
+        source = item.get("source", "unknown") if isinstance(item, dict) else "unknown"
         opportunities.append({
             "trend": trend,
+            "source": source,
             "hook": f"What you need to know about {trend}",
             "format": "short_explainer",
             "status": "draft",
