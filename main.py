@@ -28,6 +28,8 @@ def main():
             "video": video_path,
             "manifest": manifest_path,
             "generation_mode": script.get("generation_mode", "template"),
+            "platform": opportunity.get("platform", "shorts"),
+            "confidence": opportunity.get("confidence", 0),
             "publishing": publish(video_path),
         })
         notify(
@@ -36,7 +38,10 @@ def main():
             f"Trend: {opportunity['trend']}\n"
             f"Score: {opportunity.get('score', 0)}\n"
             f"Category: {opportunity.get('category', 'general')}\n"
+            f"Platform: {opportunity.get('platform', 'shorts')}\n"
+            f"Confidence: {opportunity.get('confidence', 0)}\n"
             f"Style: {opportunity.get('format', 'short_explainer')}\n"
+            f"Words: {script.get('word_count', len(script.get('script', '').split()))}\n"
             f"Mode: {script.get('generation_mode', 'template')}"
         )
 
@@ -53,7 +58,8 @@ def main():
     record_run(result)
     notify(
         f"📊 Run complete: {len(result['videos'])} videos created from {result['trend_count']} scored trends.\n"
-        "Publishing: API adapters ready; credentials are still required to publish."
+        "Formats: YouTube ranked + TikTok story + explainer mix.\n"
+        "Publishing: official API credentials are still required."
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
