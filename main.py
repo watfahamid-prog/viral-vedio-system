@@ -15,6 +15,8 @@ def main():
         script = generate_script(opportunity["trend"], opportunity["hook"])
         video_path = create_video(opportunity, script, index)
         manifest_path = write_manifest(opportunity, script, video_path)
+        if not os.path.exists(video_path) or not os.path.exists(manifest_path):
+            raise RuntimeError(f"Output quality gate failed for video #{index}")
         result["videos"].append({
             "trend": opportunity["trend"],
             "video": video_path,
@@ -26,6 +28,13 @@ def main():
             f"Viral video ready #{index}: {script.get('title', opportunity['trend'])}\n"
             f"Trend: {opportunity['trend']}\n"
             f"Mode: {script.get('generation_mode', 'template')}"
+        )
+
+    expected = min(VIDEO_COUNT, len(result["opportunities"]))
+    if len(result["videos"]) != expected:
+        raise RuntimeError(
+            f"Pipeline quality gate failed: expected {expected} videos, "
+            f"created {len(result['videos'])}"
         )
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
