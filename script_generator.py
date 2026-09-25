@@ -38,81 +38,60 @@ def _fallback(trend, hook, format_name="short_explainer"):
     category = _category(trend)
     clean_hook = _clean(hook)
     title = _short_title(trend)
+    topic_words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", trend) if len(w) > 2]
+    topic_phrase = " ".join(topic_words[:7]) or "this topic"
 
     if format_name == "youtube_ranked_breakdown":
         title = f"3 Things About {title}"
-        openings = [
-            "Here are three quick things worth knowing.",
-            "Let's break this down in three fast points.",
-            "Three details explain why this is getting attention.",
-        ]
+        openings = ["Three things stand out here.", "Here is the fast version, without the fluff.", "Three details explain why this is getting attention."]
         scenes = [
             clean_hook,
-            "First: the trend itself is driving the conversation.",
-            "Second: the reaction is helping it spread quickly.",
-            "Third: the next development is what people will be watching.",
-            "That is the quick breakdown. Follow for the next one.",
+            f"First: {topic_phrase} is gaining attention right now.",
+            "Second: the useful context is what changed, happened, or was reported.",
+            "Third: the next confirmed update is the part worth watching.",
+            "That is the quick breakdown.",
         ]
-        hashtags = ["#shorts", "#trending", "#top3", "#explainer"]
+        hashtags = ["#shorts", "#trending", "#explainer", "#news"]
     elif format_name == "tiktok_cantina_story":
-        openings = [
-            "Okay, this one moved fast.",
-            "Wait — this is getting interesting.",
-            "This trend suddenly started showing up everywhere.",
-        ]
+        openings = ["Okay, this moved fast.", "Wait — this one changed quickly.", "Here is the part that makes this interesting."]
         scenes = [
             clean_hook,
-            "At first, it looked like just another topic.",
-            "Then the reactions started stacking up.",
-            "Now people are watching to see what happens next.",
-            "Follow for another fast story breakdown.",
+            "At first, it looked like just another update.",
+            "Then the reactions started moving the story faster.",
+            "Now the interesting part is what happens next.",
+            "That is the story so far.",
         ]
-        hashtags = ["#fyp", "#tiktok", "#trending", "#storytime"]
+        hashtags = ["#fyp", "#trending", "#story", "#explained"]
     elif format_name == "youtube_quick_explainer":
-        openings = [
-            "Here is the simple version.",
-            "Let's make this easy to understand.",
-            "Here is what this trend is about in a few seconds.",
-        ]
+        openings = ["Here is the simple version.", "Let us make this easy to understand.", "Here is what matters in a few seconds."]
         scenes = [
             clean_hook,
-            f"The topic is getting attention in the {category} space.",
-            "The important part is the change or reaction behind the headline.",
-            "The conversation is still developing, so the next update matters.",
-            "That is the short version. Follow for more explainers.",
+            f"This is getting attention in the {category} space.",
+            "The key point is the change or event behind the headline.",
+            "The context matters because the story is still developing.",
+            "That is the short version.",
         ]
         hashtags = ["#shorts", "#explained", "#trending", "#news"]
     else:
-        openings = [
-            "Here is the quick breakdown.",
-            "This is the part you need to know.",
-            "Here is why people are talking about this.",
-        ]
+        openings = ["Here is the quick breakdown.", "This is the part you need to know.", "Here is why this is getting attention."]
         scenes = [
             clean_hook,
-            "The first thing to understand is why the topic suddenly matters.",
-            "The reaction is helping the story move beyond its original audience.",
-            "More context will become clear as the story develops.",
-            "Follow for more quick trend breakdowns.",
+            "First, understand what actually changed.",
+            "Next, look at the reaction and why people are paying attention.",
+            "Then watch for the next confirmed update.",
+            "That is the core of the story.",
         ]
         hashtags = ["#trending", "#shorts", "#explainer"]
 
     opening = _pick(openings, seed[:8])
-    # Keep the fallback useful even without paid AI: extract meaningful words from the
-    # live headline so the narration does not sound identical for every topic.
-    topic_words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", trend) if len(w) > 2]
-    topic_phrase = " ".join(topic_words[:6]) or "this topic"
-    scenes[1] = scenes[1].replace("the trend itself", f"the topic {topic_phrase}")
-    scenes[2] = scenes[2].replace("the reaction", f"the reaction around {topic_phrase}")
-    scenes[3] = scenes[3].replace("the next development", f"what happens next with {topic_phrase}")
-    script = " ".join([opening] + scenes)
     visual_scenes = [
-        f"eye-catching real-world scene representing {topic_phrase}, colorful environment and continuous movement",
-        f"close-up action connected to {topic_phrase}, dynamic camera tracking and strong depth",
-        f"surprising visual moment related to {topic_phrase}, energetic movement and cinematic lighting",
-        f"wide cinematic scene showing the world around {topic_phrase}, vibrant colors and changing perspective",
-        f"strong final visual representing {topic_phrase}, memorable action and satisfying payoff",
+        f"Opening: a striking real-world establishing shot that instantly communicates {topic_phrase}; the main subject enters frame, fast push-in camera, natural lighting, shallow depth of field.",
+        f"Context: a close-up of the key subject or object connected to {topic_phrase} performing a clear action; handheld tracking, realistic motion, layered background.",
+        f"Reaction: a visually surprising but plausible moment showing the human or environmental reaction around {topic_phrase}; quick camera move, expressive movement, cinematic contrast.",
+        f"Detail: a different location or angle that explains the next important part of {topic_phrase}; smooth orbit or dolly movement, strong foreground/background separation.",
+        f"Payoff: a memorable final visual tied directly to {topic_phrase}; camera pulls back or reveals the wider scene, energetic movement, polished cinematic finish.",
     ]
+    script = " ".join([opening] + scenes)
     return {
         "title": title,
         "hook": clean_hook,
@@ -131,25 +110,28 @@ def generate_script(trend: str, hook: str, format_name: str = "short_explainer")
     if AI_MODE != "openai" or not OPENAI_API_KEY:
         return _fallback(trend, hook, format_name)
 
-    prompt = f"""Create an original vertical short about this current topic. Choose pacing appropriate for the requested format and keep it concise enough for a 15-90 second video.
+    prompt = f"""Create an original vertical short about this current topic.
 TREND: {trend}
 FORMAT: {format_name}
 HOOK: {hook}
 PREVIOUS SYSTEM LESSONS: {learning_context()}
 
-Use only information contained in the topic and hook. Do not invent names, numbers, quotes,
-events, or causes. Do not copy any creator's wording, footage, watermark, or script.
-Make it natural, fast, and easy to speak aloud. Target roughly 35-180 spoken words depending on the format and story depth.
+Use only information contained in the topic and hook. Do not invent names, numbers, quotes, events, or causes. Do not copy any creator's wording, footage, watermark, or script.
+Make it natural, fast, specific, and easy to speak aloud. Use a strong first-second hook, escalating information, and a clean payoff. Avoid generic filler.
+Target roughly 35-150 spoken words.
+If the topic is political, describe documented information neutrally: do not persuade, endorse, attack, rank, or predict election outcomes.
+
 Return ONLY valid JSON with keys: title, hook, script, scenes, visual_scenes, caption, hashtags.
-scenes must contain exactly 5 short narration/caption scene lines.
-visual_scenes must contain exactly 5 detailed visual directions for AI video generation. Each must describe visible action, setting, camera movement, lighting, and subject; never request readable text on screen.
+scenes must contain exactly 5 short narration/caption lines with distinct information or visual purpose.
+visual_scenes must contain exactly 5 production-ready visual directions. Each must specify visible subject/action, setting, camera movement, lighting, and continuity. Never request readable text, logos, watermarks, copied footage, or a recognizable creator's style.
+The five visual scenes must be meaningfully different so the finished short does not look like the same shot repeated.
 hashtags must contain 3-5 short hashtags."""
 
     try:
         response = requests.post(
             "https://api.openai.com/v1/responses",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={"model": OPENAI_MODEL, "input": prompt, "max_output_tokens": 700},
+            json={"model": OPENAI_MODEL, "input": prompt, "max_output_tokens": 900},
             timeout=60,
         )
     except requests.RequestException as error:
@@ -161,16 +143,21 @@ hashtags must contain 3-5 short hashtags."""
     if not response.ok:
         print(f"OpenAI API error {response.status_code}; using template fallback.")
         return _fallback(trend, hook, format_name)
-    response.raise_for_status()
-    data = response.json()
-    text = data.get("output_text", "")
-    if not text:
-        for item in data.get("output", []):
-            for part in item.get("content", []):
-                if part.get("type") == "output_text":
-                    text += part.get("text", "")
-    result = json.loads(text)
-    result["format"] = format_name
-    result["learning_context_used"] = True
-    result["generation_mode"] = "openai"
-    return result
+    try:
+        data = response.json()
+        text = data.get("output_text", "")
+        if not text:
+            for item in data.get("output", []):
+                for part in item.get("content", []):
+                    if part.get("type") == "output_text":
+                        text += part.get("text", "")
+        result = json.loads(text)
+        if len(result.get("scenes", [])) != 5 or len(result.get("visual_scenes", [])) != 5:
+            raise ValueError("AI returned the wrong scene count")
+        result["format"] = format_name
+        result["learning_context_used"] = True
+        result["generation_mode"] = "openai"
+        return result
+    except Exception as error:
+        print(f"Invalid OpenAI script output, using fallback: {error}")
+        return _fallback(trend, hook, format_name)
