@@ -31,7 +31,7 @@ def _youtube(video_path, title, description, tags):
         init = requests.post(
             "https://www.googleapis.com/upload/youtube/v3/videos",
             params={"part": "snippet,status", "uploadType": "resumable"},
-            headers={"Authorization": f"Bearer {YOUTUBE_ACCESS_TOKEN}", "Content-Type": "application/json; charset=UTF-8"},
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=UTF-8"},
             json=metadata, timeout=30,
         )
         init.raise_for_status()
