@@ -302,7 +302,20 @@ def create_video(opportunity, script_data, index=1):
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     ai_visuals = _make_ai_visuals(opportunity, script_data, duration, run_id)
+    subtitle_file = _make_srt(script_data, duration, run_id) if ai_visuals else None
     visual_source = ai_visuals or silent
+    captioned = None
+    if ai_visuals and subtitle_file:
+        captioned = os.path.join(OUTPUT_DIR, f"captioned_{run_id}.mp4")
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", ai_visuals, "-vf", f"subtitles={subtitle_file}",
+                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", captioned],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            visual_source = captioned
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            pass
     audio = _make_audio(script_data, output, duration)
     if audio:
         subprocess.run(
