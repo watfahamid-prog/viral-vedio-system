@@ -179,11 +179,17 @@ def _draw_mint(draw, p, title, hook, scene, category, scene_index, total, progre
 def _visual_prompt(opportunity, scene):
     trend = str(opportunity.get("trend", "current topic"))
     category = str(opportunity.get("category", "general"))
+    fmt = str(opportunity.get("format", "short_explainer"))
     return (
-        f"Vertical social media video, cinematic documentary style, {category} topic. "
-        f"Visualize this current topic without text, logos, watermarks, or recognizable copyrighted characters: "
-        f"{trend}. Scene: {scene}. Natural motion, realistic lighting, strong composition, fast social-media pacing, "
-        f"visually interesting background, coherent subject, 9:16."
+        "Create an ORIGINAL high-energy vertical YouTube Short scene. "
+        "This must look like real video, NOT a presentation, slideshow, poster, or text card. "
+        "Show a clear subject doing something on screen with continuous natural movement. "
+        "Use colorful, eye-catching visuals, dynamic camera motion, changing depth, expressive action, "
+        "strong lighting, visual surprise, and fast social-media pacing. "
+        "No subtitles, no captions, no written words, no logos, no watermarks. "
+        f"Topic: {trend}. Category: {category}. Format: {fmt}. "
+        f"Scene idea: {scene}. Make the scene visually understandable even with the sound muted. "
+        "Keep the subject consistent and make this a polished 9:16 short-form video shot."
     )
 
 
@@ -194,7 +200,9 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     clip_dir = os.path.join(OUTPUT_DIR, f"ai-clips-{run_id}")
     os.makedirs(clip_dir, exist_ok=True)
     clips = []
-    for i, scene in enumerate(scenes[:max(1, AI_VIDEO_MAX_CLIPS)]):
+    # Use multiple different AI-generated shots instead of repeating one clip.
+    clip_count = min(len(scenes), max(1, AI_VIDEO_MAX_CLIPS))
+    for i, scene in enumerate(scenes[:clip_count]):
         path = os.path.join(clip_dir, f"clip_{i:02d}.mp4")
         if generate_clip(_visual_prompt(opportunity, scene), path, duration=5):
             clips.append(path)
