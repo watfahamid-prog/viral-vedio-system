@@ -189,7 +189,7 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     clip_dir = os.path.join(OUTPUT_DIR, f"ai-clips-{run_id}")
     os.makedirs(clip_dir, exist_ok=True)
     clips = []
-    for i, scene in enumerate(scenes[:3]):
+    for i, scene in enumerate(scenes[:max(1, AI_VIDEO_MAX_CLIPS)]):
         path = os.path.join(clip_dir, f"clip_{i:02d}.mp4")
         if generate_clip(_visual_prompt(opportunity, scene), path, duration=5):
             clips.append(path)
