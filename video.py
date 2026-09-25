@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
-from config import OUTPUT_DIR, VIDEO_SECONDS
+from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS
 
 WIDTH, HEIGHT, FPS = 1080, 1920, 15
 
@@ -163,20 +163,34 @@ def _draw_mint(draw, p, title, hook, scene, category, scene_index, total, progre
     draw.text((85, 1515), f"{category.upper()}  •  {int(progress * 100):02d}%", font=small_font, fill=p["muted"])
 
 
+def _choose_duration(script_data, opportunity):
+    """Choose a trend-dependent duration between the configured minimum and maximum."""
+    text = _clean_speech(script_data)
+    words = len(re.findall(r"\b\w+[\w'’-]*\b", text))
+    estimated = int(round(words / 2.3)) if words else VIDEO_SECONDS
+    fmt = str(opportunity.get("format", "")).lower()
+    if "story" in fmt:
+        estimated += 8
+    elif "quick" in fmt:
+        estimated -= 5
+    return max(VIDEO_MIN_SECONDS, min(VIDEO_MAX_SECONDS, estimated))
+
+
 def create_video(opportunity, script_data, index=1):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     run_id = f"{index:02d}-{_slug(opportunity.get('trend', 'trend'))}"
     work = os.path.join(OUTPUT_DIR, f"frames-{run_id}")
     os.makedirs(work, exist_ok=True)
+    duration = _choose_duration(script_data, opportunity)
     scenes = script_data.get("scenes") or [script_data.get("hook", opportunity["hook"])]
-    frames = max(1, int(VIDEO_SECONDS * FPS))
+    frames = max(1, int(duration * FPS))
     title_font, body_font, small_font = _font(72), _font(42), _font(31)
     palette = PALETTES[(index - 1) % len(PALETTES)]
     fonts = (title_font, body_font, small_font)
 
     for i in range(frames):
         t = i / FPS
-        progress = min(1.0, t / VIDEO_SECONDS)
+        progress = min(1.0, t / duration)
         scene_index = min(len(scenes) - 1, int(progress * len(scenes)))
         scene = str(scenes[scene_index])
         img = Image.new("RGB", (WIDTH, HEIGHT), palette["bg"])
@@ -216,7 +230,7 @@ def create_video(opportunity, script_data, index=1):
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", silent],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
-    audio = _make_audio(script_data, output, VIDEO_SECONDS)
+    audio = _make_audio(script_data, output, duration)
     if audio:
         subprocess.run(
             ["ffmpeg", "-y", "-i", silent, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
@@ -239,7 +253,7 @@ def create_video(opportunity, script_data, index=1):
         "trend": opportunity["trend"], "hook": opportunity["hook"],
         "format": opportunity.get("format", "short_explainer"),
         "platform": opportunity.get("platform", "shorts"), "style": palette["name"],
-        "confidence": opportunity.get("confidence", 0), "duration_seconds": VIDEO_SECONDS,
+        "confidence": opportunity.get("confidence", 0), "duration_seconds": duration,
         "audio": bool(audio), "original_content": True, "script": script_data,
         "video_file": output,
     }
@@ -255,7 +269,7 @@ def write_manifest(opportunity, script_data, video_path):
         "trend": opportunity["trend"], "hook": opportunity["hook"],
         "format": opportunity.get("format", "short_explainer"),
         "platform": opportunity.get("platform", "shorts"),
-        "duration_seconds": VIDEO_SECONDS, "original_content": True,
+        "duration_seconds": _choose_duration(script_data, opportunity), "original_content": True,
         "script": script_data, "video_file": video_path,
     }
     with open(path, "w", encoding="utf-8") as f:
