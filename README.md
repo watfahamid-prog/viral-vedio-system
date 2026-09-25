@@ -41,6 +41,12 @@ The workflow runs manually, on pushes to main, and every 6 hours. Generated vide
 - VIDEO_SECONDS
 - DISCORD_WEBHOOK_URL
 - OPENAI_API_KEY (optional)
+- OPENAI_MODEL (optional; choose a model available to your API account)
+- HF_TOKEN (optional; enables external AI video inference)
+- AI_VIDEO_MODEL
+- AI_VIDEO_PROVIDER
+- TTS_ENGINE=edge (neural narration) or espeak
+- TTS_VOICE
 - YOUTUBE_API_KEY (future integration)
 - TIKTOK_RESEARCH_TOKEN (optional research integration)
 - YOUTUBE_ENABLED=false
