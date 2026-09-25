@@ -7,7 +7,7 @@ AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
 VIDEO_ENGINE = os.getenv("VIDEO_ENGINE", "auto").lower()
 AI_VIDEO_MODEL = os.getenv("AI_VIDEO_MODEL", "gen4.5")
 AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "180"))
-AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "3"))
+AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "10"))
 RUNWAY_API_KEY = os.getenv("RUNWAY_API_KEY", "")
 LUMA_API_KEY = os.getenv("LUMA_API_KEY", "")
 HF_TOKEN = os.getenv("HF_TOKEN", "")
