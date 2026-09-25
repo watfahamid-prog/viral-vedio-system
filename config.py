@@ -21,4 +21,4 @@ TTS_VOICE = os.getenv("TTS_VOICE", "en-US-AriaNeural")
 VIDEO_COUNT = int(os.getenv("VIDEO_COUNT", "3"))
 AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
 AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "180"))
-AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "3"))
+AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "5"))
