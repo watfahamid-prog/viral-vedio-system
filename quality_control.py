@@ -52,6 +52,21 @@ def check_video(video_path, platform="youtube"):
     if metrics["duration"] > min(VIDEO_MAX_SECONDS, 180):
         errors.append("too_long")
 
+    # Manifest and creative-structure checks.
+    manifest = path.with_suffix('.json')
+    if manifest.exists():
+        try:
+            data = json.loads(manifest.read_text(encoding='utf-8'))
+            shots = int(data.get('scene_count', 0) or 0)
+            if shots < 4 or shots > 11:
+                errors.append('shot_count_out_of_range')
+            if not data.get('original_content', False):
+                errors.append('originality_flag_missing')
+        except Exception:
+            warnings.append('manifest_unreadable')
+    else:
+        warnings.append('manifest_missing')
+
     # Platform-specific checks.
     if platform == "tiktok" and metrics["duration"] > 60:
         warnings.append("tiktok_target_over_60_seconds")
