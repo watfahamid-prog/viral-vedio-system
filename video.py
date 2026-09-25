@@ -1,3 +1,4 @@
+import hashlib
 import json
 import math
 import os
@@ -17,6 +18,10 @@ PALETTES = [
      "muted": (210, 177, 181), "accent": (255, 111, 97), "accent2": (255, 197, 90)},
     {"name": "mint", "bg": (232, 241, 235), "panel": (250, 252, 248), "ink": (20, 35, 28),
      "muted": (91, 112, 99), "accent": (39, 117, 92), "accent2": (225, 154, 72)},
+    {"name": "midnight", "bg": (16, 20, 30), "panel": (30, 38, 54), "ink": (245, 248, 255),
+     "muted": (163, 174, 195), "accent": (92, 157, 255), "accent2": (255, 196, 87)},
+    {"name": "paper", "bg": (238, 236, 229), "panel": (250, 249, 245), "ink": (32, 34, 39),
+     "muted": (104, 105, 110), "accent": (111, 79, 190), "accent2": (220, 120, 70)},
 ]
 
 
@@ -267,7 +272,8 @@ def create_video(opportunity, script_data, index=1):
         scenes = [str(opportunity.get("hook", opportunity.get("trend", "Current topic")))]
 
     title_font, body_font, small_font = _font(72), _font(42), _font(31)
-    palette = PALETTES[(index - 1) % len(PALETTES)]
+    style_seed = hashlib.sha256(str(opportunity.get("trend", "")).encode("utf-8")).hexdigest()
+    palette = PALETTES[int(style_seed[:8], 16) % len(PALETTES)]
     fonts = (title_font, body_font, small_font)
 
     # One keyframe per scene instead of hundreds/thousands of PNG frames.
