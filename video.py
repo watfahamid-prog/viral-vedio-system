@@ -74,7 +74,7 @@ def _make_audio(script_data, output, duration):
         if TTS_ENGINE == "edge":
             try:
                 subprocess.run(
-                    ["edge-tts", "--voice", TTS_VOICE, "--rate=+8%", "--text", speech, "--write-media", voice],
+                    ["edge-tts", "--voice", TTS_VOICE, "--rate=+10%", "--text", speech, "--write-media", voice],
                     check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 )
             except (FileNotFoundError, subprocess.CalledProcessError):
@@ -91,9 +91,13 @@ def _make_audio(script_data, output, duration):
                 ["espeak-ng", "-v", "en-us", "-s", "172", "-p", "48", "-a", "155", "-w", voice, speech],
                 check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
+        # A subtle procedural bed plus gentle stereo motion; it avoids relying on copyrighted music.
         subprocess.run(
-            ["ffmpeg", "-y", "-f", "lavfi", "-i", f"sine=frequency=92:duration={duration}",
-             "-filter_complex", f"[0:a]volume=0.025,afade=t=in:st=0:d=1,afade=t=out:st={max(0,duration-1)}:d=1[m]",
+            ["ffmpeg", "-y", "-f", "lavfi", "-i",
+             f"sine=frequency=92:duration={duration}",
+             "-filter_complex",
+             f"[0:a]volume=0.018,afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,duration-1.2)}:d=1.2,"
+             "lowpass=f=180,apulsator=mode=sine:hz=0.18:width=0.35[m]",
              "-c:a", "pcm_s16le", music],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
@@ -103,7 +107,7 @@ def _make_audio(script_data, output, duration):
              "[0:a]atrim=0:{0},asetpts=N/SR/TB,volume=1.0[v];"
              "[1:a]atrim=0:{0},asetpts=N/SR/TB[m];"
              "[v][m]amix=inputs=2:duration=longest:dropout_transition=0,"
-             "loudnorm=I=-16:TP=-1.5:LRA=11[a]".format(duration),
+             "loudnorm=I=-15:TP=-1.5:LRA=9[a]".format(duration),
              "-map", "[a]", "-t", str(duration), "-c:a", "pcm_s16le", mixed],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
@@ -347,6 +351,37 @@ def _make_srt(script_data, duration, run_id):
             f.write(f"{i + 1}\n{stamp(start)} --> {stamp(end)}\n{str(scene).strip()}\n\n")
     return path
 
+def _final_quality_gate(path, expected_duration):
+    """Verify the final MP4 is playable, vertical, has audio, and has no absurd timing."""
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries",
+             "format=duration:stream=codec_type,width,height,r_frame_rate",
+             "-of", "json", path],
+            check=True, capture_output=True, text=True,
+        )
+        data = json.loads(probe.stdout or "{}")
+        streams = data.get("streams", [])
+        vs = next((s for s in streams if s.get("codec_type") == "video"), None)
+        has_audio = any(s.get("codec_type") == "audio" for s in streams)
+        if not vs or not has_audio:
+            return False
+        w, h = int(vs.get("width", 0)), int(vs.get("height", 0))
+        actual = float((data.get("format") or {}).get("duration") or 0)
+        if w != WIDTH or h != HEIGHT:
+            return False
+        if actual < max(5.0, expected_duration * 0.85) or actual > expected_duration + 1.5:
+            return False
+        return True
+    except (OSError, ValueError, KeyError, json.JSONDecodeError, subprocess.CalledProcessError):
+        return False
+
+
+def _hook_duration(duration):
+    """Reserve more editing energy for the opening while keeping the whole short natural."""
+    return min(2.8, max(1.5, duration * 0.11))
+
+
 def _choose_duration(script_data, opportunity):
     """Choose a trend-dependent duration between the configured minimum and maximum."""
     text = _clean_speech(script_data)
@@ -521,6 +556,12 @@ def create_video(opportunity, script_data, index=1):
 
     if not os.path.exists(output) or os.path.getsize(output) < 50_000:
         raise RuntimeError(f"Video quality gate failed: missing or tiny output: {output}")
+    if not _final_quality_gate(output, duration):
+        try:
+            os.remove(output)
+        except OSError:
+            pass
+        raise RuntimeError("Video quality gate failed: invalid dimensions, duration, playback stream, or missing audio.")
 
     manifest = {
         "trend": opportunity["trend"],
@@ -539,6 +580,7 @@ def create_video(opportunity, script_data, index=1):
         "video_engine": "fallback_motion_graphics" if not ai_visuals else VIDEO_ENGINE,
         "ai_video_used": bool(ai_visuals),
         "ai_engine_ready": engine_available(),
+        "editing": {"fps": FPS, "hook_target_seconds": _hook_duration(duration), "caption_style": "ass_phrase_weighted", "quality_gate": True, "sound_bed": "procedural"},
         "ai_model": os.getenv("AI_VIDEO_MODEL", ""),
         "comfyui_configured": bool(COMFYUI_URL),
     }
