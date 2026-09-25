@@ -1,0 +1,84 @@
+import json
+import os
+import subprocess
+from pathlib import Path
+
+from config import VIDEO_MAX_SECONDS, VIDEO_MIN_SECONDS
+
+
+def _probe(video_path):
+    cmd = [
+        "ffprobe", "-v", "error",
+        "-show_entries", "format=duration,size",
+        "-show_entries", "stream=index,codec_type,codec_name,width,height,r_frame_rate",
+        "-of", "json", video_path,
+    ]
+    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    data = json.loads(result.stdout)
+    streams = data.get("streams", [])
+    fmt = data.get("format", {})
+    video = next((s for s in streams if s.get("codec_type") == "video"), {})
+    audio = next((s for s in streams if s.get("codec_type") == "audio"), {})
+    return {
+        "duration": float(fmt.get("duration", 0) or 0),
+        "size": int(float(fmt.get("size", 0) or 0)),
+        "width": int(video.get("width", 0) or 0),
+        "height": int(video.get("height", 0) or 0),
+        "video_codec": video.get("codec_name", ""),
+        "audio_codec": audio.get("codec_name", ""),
+        "has_audio": bool(audio),
+    }
+
+
+def check_video(video_path, platform="youtube"):
+    errors, warnings = [], []
+    path = Path(video_path)
+    if not path.exists():
+        return {"passed": False, "errors": ["file_missing"], "warnings": [], "metrics": {}}
+
+    try:
+        metrics = _probe(str(path))
+    except Exception as error:
+        return {"passed": False, "errors": [f"ffprobe_failed:{error}"], "warnings": [], "metrics": {}}
+
+    if metrics["size"] < 50_000:
+        errors.append("file_too_small")
+    if metrics["width"] != 1080 or metrics["height"] != 1920:
+        errors.append("wrong_vertical_resolution")
+    if not metrics["has_audio"]:
+        errors.append("missing_audio")
+    if metrics["duration"] < VIDEO_MIN_SECONDS:
+        errors.append("too_short")
+    if metrics["duration"] > min(VIDEO_MAX_SECONDS, 180):
+        errors.append("too_long")
+
+    # Platform-specific checks.
+    if platform == "tiktok" and metrics["duration"] > 60:
+        warnings.append("tiktok_target_over_60_seconds")
+    if platform == "youtube" and metrics["duration"] > 90:
+        warnings.append("youtube_short_target_over_90_seconds")
+
+    return {
+        "passed": not errors,
+        "platform": platform,
+        "errors": errors,
+        "warnings": warnings,
+        "metrics": metrics,
+    }
+
+
+def quality_check(video_items):
+    results = []
+    for item in video_items:
+        result = check_video(item["video"], item.get("platform", "youtube"))
+        result["video"] = item["video"]
+        result["trend"] = item.get("trend")
+        results.append(result)
+
+    passed = sum(1 for x in results if x["passed"])
+    return {
+        "passed": passed == len(results) and bool(results),
+        "passed_count": passed,
+        "total_count": len(results),
+        "results": results,
+    }
