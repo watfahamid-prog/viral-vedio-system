@@ -62,7 +62,7 @@ def main():
         f"🚀 Viral Video Automation complete\n"
         f"Trends scanned: {result['trend_count']} | Videos: {len(result['videos'])}\n"
         f"Sources represented: {', '.join(sorted(source_counts)) or 'none'}\n"
-        f"Video styles: editorial / sunset / mint\n"
+        f"Video styles: adaptive visual system\n"
         f"Publishing: OFF (YouTube API is intentionally the final integration)"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
