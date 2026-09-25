@@ -2,7 +2,7 @@ import hashlib
 import json
 import re
 import requests
-from config import OPENAI_API_KEY, AI_MODE
+from config import OPENAI_API_KEY, OPENAI_MODEL, AI_MODE
 
 
 def _pick(options, seed):
@@ -130,8 +130,8 @@ hashtags must contain 3-5 short hashtags."""
     try:
         response = requests.post(
             "https://api.openai.com/v1/responses",
-        headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-        json={"model": OPENAI_MODEL, "input": prompt, "max_output_tokens": 700},
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json={"model": OPENAI_MODEL, "input": prompt, "max_output_tokens": 700},
             timeout=60,
         )
     except requests.RequestException as error:
