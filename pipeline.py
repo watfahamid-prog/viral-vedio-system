@@ -5,24 +5,24 @@ from trends import get_trends
 
 def _category(text):
     value = str(text).lower()
-    if any(w in value for w in ["football", "soccer", "match", "goal", "sport", "league"]):
+    if any(w in value for w in ["football", "soccer", "match", "goal", "sport", "league", "nba", "nfl", "fifa"]):
         return "sports"
-    if any(w in value for w in ["iphone", "android", "ai", "tech", "app", "google", "microsoft", "openai"]):
+    if any(w in value for w in ["iphone", "android", "ai", "tech", "app", "google", "microsoft", "openai", "robot"]):
         return "technology"
-    if any(w in value for w in ["movie", "film", "series", "actor", "music", "song", "celebrity"]):
+    if any(w in value for w in ["movie", "film", "series", "actor", "music", "song", "celebrity", "show"]):
         return "entertainment"
+    if any(w in value for w in ["election", "government", "minister", "president", "parliament"]):
+        return "politics"
     return "general"
 
 
 def _format_for_run(index, source):
-    # Always produce a deliberate platform mix in one run.
-    if index == 0:
-        return "youtube_ranked_breakdown"
-    if index == 1:
-        return "tiktok_cantina_story"
-    if source == "google":
-        return "youtube_quick_explainer"
-    return "short_explainer"
+    return [
+        "youtube_ranked_breakdown",
+        "tiktok_cantina_story",
+        "youtube_quick_explainer",
+        "short_explainer",
+    ][index % 4]
 
 
 def _platform_for_format(format_name):
@@ -35,9 +35,9 @@ def _platform_for_format(format_name):
 
 def build_opportunities(trends):
     hooks = {
-        "youtube_ranked_breakdown": "Here are the key things to know about {trend}.",
-        "tiktok_cantina_story": "Wait, this is what is happening with {trend}.",
-        "youtube_quick_explainer": "Here is the quick update on {trend}.",
+        "youtube_ranked_breakdown": "Three quick things to know about {trend}.",
+        "tiktok_cantina_story": "Wait — here is why {trend} is suddenly everywhere.",
+        "youtube_quick_explainer": "Here is the simple explanation behind {trend}.",
         "short_explainer": "Here is the quick breakdown of {trend}.",
     }
     opportunities = []
@@ -48,8 +48,8 @@ def build_opportunities(trends):
         opportunities.append({
             "trend": trend,
             "source": source,
-            "score": item.get("score", 0) if isinstance(item, dict) else 0,
             "sources": item.get("sources", [source]) if isinstance(item, dict) else [source],
+            "score": item.get("score", 0) if isinstance(item, dict) else 0,
             "metrics": item.get("metrics", {}) if isinstance(item, dict) else {},
             "category": _category(trend),
             "hook": hooks[format_name].format(trend=trend),
@@ -63,9 +63,11 @@ def build_opportunities(trends):
 
 def run_pipeline():
     trends = get_trends()
+    opportunities = build_opportunities(trends)
     return {
         "started_at": datetime.now(timezone.utc).isoformat(),
         "dry_run": DRY_RUN,
         "trend_count": len(trends),
-        "opportunities": build_opportunities(trends),
+        "opportunity_count": len(opportunities),
+        "opportunities": opportunities,
     }
