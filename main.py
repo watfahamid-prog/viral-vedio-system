@@ -10,6 +10,7 @@ from performance import record_run
 from self_test import main as run_self_test
 from quality_control import quality_check
 from learning import record_learning, save_learning_summary, learning_context
+from output_repair import repair_video
 
 
 def main():
@@ -28,6 +29,12 @@ def main():
         )
         video_path = create_video(opportunity, script, index)
         manifest_path = write_manifest(opportunity, script, video_path)
+
+        repair = repair_video(
+            video_path, manifest_path, script,
+            duration=__import__("video")._choose_duration(script, opportunity),
+        )
+        print(f"Output repair #{index}: {repair}")
 
         if not os.path.exists(video_path) or os.path.getsize(video_path) < 50_000:
             raise RuntimeError(f"Output quality gate failed for video #{index}")
