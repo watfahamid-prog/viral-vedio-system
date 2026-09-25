@@ -185,9 +185,20 @@ def create_video(opportunity, script, index=1):
     concat.write_text("".join(f"file '{p}'\n" for p in segments),encoding="utf-8")
     silent=work/"silent.mp4"
     out=Path(OUTPUT_DIR)/f"viral_short_v2_{run_id}.mp4"
-    subprocess.run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),
-                    "-c","copy","-movflags","+faststart",str(silent)],
-                   check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    # Re-encode the concatenated video instead of stream-copying it. The
+    # kinetic renderer can produce tiny per-segment codec/timestamp differences;
+    # concat + -c copy then fails with ffmpeg exit 254. Re-encoding normalizes
+    # timestamps and codec parameters while keeping the final 1080x1920/15fps
+    # output stable for the audio mux and QC stages.
+    try:
+        subprocess.run([
+            "ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),
+            "-an","-c:v","libx264","-preset","veryfast","-crf","22",
+            "-pix_fmt","yuv420p","-r",str(FPS),"-movflags","+faststart",str(silent)
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    except subprocess.CalledProcessError as exc:
+        tail = (exc.stderr or "").splitlines()[-25:]
+        raise RuntimeError("FFmpeg video assembly failed:\\n" + "\\n".join(tail)) from exc
 
     audio=make_audio(script,work,duration)
     if audio:
