@@ -97,6 +97,13 @@ def _fallback(trend, hook, format_name="short_explainer"):
         hashtags = ["#trending", "#shorts", "#explainer"]
 
     opening = _pick(openings, seed[:8])
+    # Keep the fallback useful even without paid AI: extract meaningful words from the
+    # live headline so the narration does not sound identical for every topic.
+    topic_words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", trend) if len(w) > 2]
+    topic_phrase = " ".join(topic_words[:6]) or "this topic"
+    scenes[1] = scenes[1].replace("the trend itself", f"the topic {topic_phrase}")
+    scenes[2] = scenes[2].replace("the reaction", f"the reaction around {topic_phrase}")
+    scenes[3] = scenes[3].replace("the next development", f"what happens next with {topic_phrase}")
     script = " ".join([opening] + scenes)
     return {
         "title": title,
