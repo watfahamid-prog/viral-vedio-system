@@ -2,8 +2,6 @@ name: Viral Video Automation
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
   schedule:
     - cron: "0 */6 * * *"
 
@@ -12,7 +10,7 @@ permissions:
 
 concurrency:
   group: viral-video-automation
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   create-videos:
@@ -35,6 +33,11 @@ jobs:
 
       - name: Install requirements
         run: pip install -r requirements.txt
+
+      - name: Validate Python modules
+        run: |
+          python -m compileall -q .
+          python self_test.py
 
       - name: Run complete viral video pipeline
         env:
