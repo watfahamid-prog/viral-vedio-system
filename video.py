@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS, VIDEO_ENGINE, COMFYUI_URL, TTS_ENGINE, TTS_VOICE, AI_VIDEO_MAX_CLIPS
 from ai_video import generate_clip, engine_available
 
-WIDTH, HEIGHT, FPS = 1080, 1920, 15
+WIDTH, HEIGHT, FPS = 1080, 1920, 30
 
 PALETTES = [
     {"name": "editorial", "bg": (246, 243, 238), "panel": (255, 255, 255), "ink": (24, 24, 24),
@@ -196,30 +196,35 @@ def _visual_prompt(opportunity, scene, shot_index=0, total_shots=1):
     category = str(opportunity.get("category", "general"))
     fmt = str(opportunity.get("format", "short_explainer"))
     shot_styles = [
-        "open with an immediate attention-grabbing wide shot and a fast push-in",
-        "use a close-up with a natural handheld camera move and strong foreground depth",
-        "use a side tracking shot following the main subject through the environment",
-        "use an over-the-shoulder angle that reveals the important action",
-        "use a low-angle or high-angle reveal with a noticeable camera move",
-        "use a macro/detail shot, then a smooth rack-focus toward the subject",
-        "use a medium shot with expressive subject movement and a quick reframing",
-        "use a dynamic reveal that changes what the viewer can see halfway through the shot",
-        "use a cinematic follow shot with natural motion blur and changing depth",
-        "use a final payoff shot with a decisive camera move and visually clear result",
+        "immediate wide establishing shot with a fast controlled push-in",
+        "tight close-up with natural handheld movement and strong foreground depth",
+        "side tracking shot following the same main subject through the environment",
+        "over-the-shoulder reveal that clearly shows the important action",
+        "low-angle or high-angle reveal with a noticeable but realistic camera move",
+        "macro detail followed by a smooth rack focus to the main subject",
+        "medium shot with expressive physical movement and quick reframing",
+        "dynamic reveal that changes what the viewer can see during the shot",
+        "cinematic follow shot with natural motion blur and changing depth",
+        "decisive final payoff shot showing a clear visible result",
     ]
     style = shot_styles[shot_index % len(shot_styles)]
+    visual_bible = (
+        f"Visual continuity bible: same believable main subject identity across shots; "
+        f"same core environment and time-of-day unless the story explicitly requires a change; "
+        f"consistent wardrobe/object details; natural realistic lighting and documentary-style color."
+    )
     return (
-        "Create an ORIGINAL, photorealistic, professional vertical social-media video shot. "
-        "This is one continuous moving shot inside a normal video, NOT a presentation, slideshow, poster, "
-        "still image, or text card. The viewer must see a real subject, environment, and physical action. "
-        "The subject must visibly move throughout the entire clip; camera motion must also continue. "
-        f"{style}. "
-        "Use realistic lighting, depth of field, natural motion blur, believable physics, and a strong visual hook. "
-        "No subtitles, captions, written words, UI, logos, watermarks, borders, or title cards. "
+        "Create an ORIGINAL photorealistic professional vertical social-media video shot. "
+        "This must be real moving footage, never a presentation, slideshow, poster, still image, title card, "
+        "or generic abstract background. A visible subject must perform a clear physical action throughout "
+        "the clip and the camera must also move. "
+        f"{style}. {visual_bible} "
+        "Use believable physics, realistic skin/material texture, depth of field, natural motion blur, "
+        "and a strong composition that still makes sense with sound muted. "
+        "Do not show subtitles, captions, readable text, UI, logos, watermarks, borders, or fake interface elements. "
         f"Topic: {trend}. Category: {category}. Format: {fmt}. "
-        f"Scene {shot_index + 1} of {total_shots}: {scene}. "
-        "Keep visual continuity with the same main subject and setting when possible, but change camera angle "
-        "and composition from the previous shot. Make it understandable with sound muted."
+        f"Shot {shot_index + 1} of {total_shots}: {scene}. "
+        "Make this shot materially different in framing and action from neighboring shots while preserving continuity."
     )
 
 def _make_ai_visuals(opportunity, script_data, duration, run_id):
@@ -234,10 +239,13 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
         return None
     target = _shot_count(duration)
     shot_scenes = []
-    purposes = ["hook", "context", "detail", "action", "reaction", "reveal", "escalation", "payoff"]
+    purposes = ["hook", "context", "detail", "action", "reaction", "reveal", "escalation", "payoff", "surprise", "final payoff"]
     for i in range(target):
         base = source_scenes[i % len(source_scenes)]
-        shot_scenes.append(f"{base}. Shot purpose: {purposes[i % len(purposes)]}.")
+        shot_scenes.append(
+            f"{base}. Shot purpose: {purposes[i % len(purposes)]}. "
+            f"Use a distinct physical action and composition from shots {max(0, i-2)+1}-{i}."
+        )
     clip_dir = os.path.join(OUTPUT_DIR, f"ai-clips-{run_id}")
     os.makedirs(clip_dir, exist_ok=True)
     clips = []
@@ -246,8 +254,14 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     for i in range(clip_count):
         path = os.path.join(clip_dir, f"clip_{i:02d}.mp4")
         prompt = _visual_prompt(opportunity, shot_scenes[i], i, clip_count)
-        if generate_clip(prompt, path, duration=shot_duration):
+        if generate_clip(prompt, path, duration=shot_duration) and _validate_ai_clip(path, shot_duration):
             clips.append(path)
+        else:
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except OSError:
+                pass
     # Never loop a partial AI generation. If the provider cannot make enough
     # distinct shots, use the reliable fallback renderer instead.
     if len(clips) < max(6, int(math.ceil(clip_count * 0.75))):
@@ -280,7 +294,9 @@ def _make_ass(script_data, duration, run_id):
     scenes = [str(x).strip() for x in (script_data.get("scenes") or []) if str(x).strip()]
     if not scenes:
         scenes = [str(script_data.get("hook", "")).strip()]
-    step = duration / max(1, len(scenes))
+    weights = [max(1, len(re.findall(r"\\w+", s))) for s in scenes]
+    total_weight = sum(weights)
+    step_sizes = [duration * w / total_weight for w in weights] if total_weight else [duration / max(1, len(scenes))] * len(scenes)
 
     def stamp(value):
         value = max(0.0, float(value))
@@ -301,9 +317,11 @@ def _make_ass(script_data, duration, run_id):
                 "Alignment, MarginL, MarginR, MarginV, Encoding\\n")
         f.write("Style: Viral,Arial,54,&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,5,1,2,70,70,170,1\\n\\n")
         f.write("[Events]\\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\\n")
+        cursor = 0.0
         for i, scene in enumerate(scenes):
-            start = i * step
-            end = min(duration, (i + 1) * step)
+            start = cursor
+            end = min(duration, cursor + step_sizes[i])
+            cursor = end
             text = esc(scene)
             words = text.split()
             if len(words) > 12:
