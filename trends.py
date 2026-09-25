@@ -135,7 +135,18 @@ def get_trends():
         item["score"] = round(min(100.0, item.get("score", 0.0) + cross_platform_bonus + engagement_bonus + freshness_bonus), 3)
         item["confidence"] = round(min(1.0, 0.42 + 0.16 * len(sources) + min(0.4, item["score"] / 250)), 3)
 
-    ranked = sorted(combined, key=lambda x: x.get("score", 0), reverse=True)
+    # Favor fresh, cross-source topics while keeping source/category diversity.
+    now = datetime.now(timezone.utc)
+    for item in combined:
+        item["observed_at"] = now.isoformat()
+        source_count = len(item.get("sources", []))
+        item["trend_quality"] = round(
+            min(100.0, item.get("score", 0.0) * 0.72 + source_count * 8.0 +
+                min(12.0, item.get("metrics", {}).get("shares", 0) / 50000)),
+            3,
+        )
+
+    ranked = sorted(combined, key=lambda x: (x.get("trend_quality", 0), x.get("score", 0)), reverse=True)
     selected, source_counts, category_counts = [], {}, {}
     for item in ranked:
         source = item.get("source", "unknown")
