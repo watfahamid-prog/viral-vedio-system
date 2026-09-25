@@ -9,6 +9,15 @@ from config import OUTPUT_DIR, VIDEO_SECONDS
 
 WIDTH, HEIGHT, FPS = 1080, 1920, 15
 
+PALETTES = [
+    {"name": "editorial", "bg": (246, 243, 238), "panel": (255, 255, 255), "ink": (24, 24, 24),
+     "muted": (105, 100, 94), "accent": (211, 72, 45), "accent2": (244, 183, 64)},
+    {"name": "sunset", "bg": (35, 18, 28), "panel": (57, 27, 39), "ink": (255, 248, 239),
+     "muted": (210, 177, 181), "accent": (255, 111, 97), "accent2": (255, 197, 90)},
+    {"name": "mint", "bg": (232, 241, 235), "panel": (250, 252, 248), "ink": (20, 35, 28),
+     "muted": (91, 112, 99), "accent": (39, 117, 92), "accent2": (225, 154, 72)},
+]
+
 
 def _font(size):
     for path in [
@@ -48,43 +57,110 @@ def _clean_speech(script_data):
 
 
 def _make_audio(script_data, output, duration):
-    """Create free narration plus subtle generated background music."""
     speech = _clean_speech(script_data)
     if not speech:
         return None
-
     work = os.path.dirname(output)
     voice = os.path.join(work, "voice.wav")
     music = os.path.join(work, "music.wav")
     mixed = os.path.join(work, "audio.wav")
-
-    voice_cmd = [
-        "espeak-ng", "-v", "en-us", "-s", "180", "-p", "48",
-        "-a", "155", "-w", voice, speech
-    ]
     try:
-        subprocess.run(voice_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run([
-            "ffmpeg", "-y", "-f", "lavfi",
-            "-i", "sine=frequency=110:duration="+str(duration),
-            "-filter_complex",
-            "[0:a]volume=0.045,afade=t=in:st=0:d=1,afade=t=out:st="+str(max(0, duration-1))+":d=1[m]",
-            "-c:a", "pcm_s16le", music
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        # Keep narration clear and music quiet. The final mix is exactly video length.
-        subprocess.run([
-            "ffmpeg", "-y", "-i", voice, "-i", music,
-            "-filter_complex",
-            "[0:a]atrim=0:"+str(duration)+",asetpts=N/SR/TB,volume=1.0[v];"
-            "[1:a]atrim=0:"+str(duration)+",asetpts=N/SR/TB[m];"
-            "[v][m]amix=inputs=2:duration=longest:dropout_transition=0,"
-            "loudnorm=I=-16:TP=-1.5:LRA=11[a]",
-            "-map", "[a]", "-t", str(duration), "-c:a", "pcm_s16le", mixed
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            ["espeak-ng", "-v", "en-us", "-s", "172", "-p", "48", "-a", "155", "-w", voice, speech],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "lavfi", "-i", f"sine=frequency=92:duration={duration}",
+             "-filter_complex", f"[0:a]volume=0.025,afade=t=in:st=0:d=1,afade=t=out:st={max(0,duration-1)}:d=1[m]",
+             "-c:a", "pcm_s16le", music],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", voice, "-i", music,
+             "-filter_complex",
+             "[0:a]atrim=0:{0},asetpts=N/SR/TB,volume=1.0[v];"
+             "[1:a]atrim=0:{0},asetpts=N/SR/TB[m];"
+             "[v][m]amix=inputs=2:duration=longest:dropout_transition=0,"
+             "loudnorm=I=-16:TP=-1.5:LRA=11[a]".format(duration),
+             "-map", "[a]", "-t", str(duration), "-c:a", "pcm_s16le", mixed],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
         return mixed
     except (FileNotFoundError, subprocess.CalledProcessError):
         return None
+
+
+def _draw_editorial(draw, p, title, hook, scene, category, scene_index, total, progress, t, fonts):
+    title_font, body_font, small_font = fonts
+    draw.text((70, 75), "TREND BRIEF", font=small_font, fill=p["accent"])
+    draw.line((70, 135, WIDTH - 70, 135), fill=p["ink"], width=4)
+    y = 185
+    for line in _wrap(draw, title, title_font, WIDTH - 140)[:3]:
+        draw.text((70, y), line, font=title_font, fill=p["ink"])
+        y += 92
+    draw.rounded_rectangle((70, 510, WIDTH - 70, 755), radius=28, fill=p["panel"], outline=p["accent"], width=4)
+    draw.text((100, 545), "THE HOOK", font=small_font, fill=p["accent"])
+    y = 605
+    for line in _wrap(draw, hook, body_font, WIDTH - 200)[:3]:
+        draw.text((100, y), line, font=body_font, fill=p["ink"])
+        y += 58
+    draw.rounded_rectangle((70, 850, WIDTH - 70, 1420), radius=32, fill=p["ink"])
+    draw.text((105, 895), f"{category.upper()}  /  {scene_index + 1:02d}", font=small_font, fill=p["accent2"])
+    y = 980
+    for line in _wrap(draw, scene, body_font, WIDTH - 210)[:7]:
+        draw.text((105, y), line, font=body_font, fill=p["bg"])
+        y += 66
+    draw.text((70, 1510), "ORIGINAL QUICK BREAKDOWN", font=small_font, fill=p["muted"])
+
+
+def _draw_sunset(draw, p, title, hook, scene, category, scene_index, total, progress, t, fonts):
+    title_font, body_font, small_font = fonts
+    for r in [170, 330, 490]:
+        cx = int(820 + 80 * math.sin(t * 1.4))
+        cy = int(280 + 70 * math.cos(t * 1.2))
+        draw.ellipse((cx-r, cy-r, cx+r, cy+r), outline=p["accent"], width=6)
+    draw.text((65, 75), "STORY MODE", font=small_font, fill=p["accent2"])
+    y = 180
+    for line in _wrap(draw, title, title_font, 900)[:3]:
+        draw.text((65, y), line, font=title_font, fill=p["ink"])
+        y += 90
+    draw.rounded_rectangle((65, 540, WIDTH - 65, 770), radius=45, fill=p["accent"])
+    draw.text((100, 580), "WAIT —", font=small_font, fill=p["bg"])
+    y = 635
+    for line in _wrap(draw, hook, body_font, WIDTH - 200)[:3]:
+        draw.text((100, y), line, font=body_font, fill=p["bg"])
+        y += 55
+    draw.rounded_rectangle((65, 875, WIDTH - 65, 1450), radius=45, fill=p["panel"])
+    draw.text((105, 925), f"{scene_index + 1}/{total}  •  {category.upper()}", font=small_font, fill=p["accent"])
+    y = 1010
+    for line in _wrap(draw, scene, body_font, WIDTH - 210)[:7]:
+        draw.text((105, y), line, font=body_font, fill=p["ink"])
+        y += 66
+    draw.text((65, 1535), "FOLLOW FOR THE NEXT STORY", font=small_font, fill=p["accent2"])
+
+
+def _draw_mint(draw, p, title, hook, scene, category, scene_index, total, progress, t, fonts):
+    title_font, body_font, small_font = fonts
+    draw.rounded_rectangle((45, 45, WIDTH - 45, HEIGHT - 45), radius=55, outline=p["accent"], width=6)
+    draw.ellipse((760, 90, 1010, 340), fill=p["accent2"])
+    draw.ellipse((835, 165, 935, 265), fill=p["panel"])
+    draw.text((85, 90), "EXPLAINED", font=small_font, fill=p["accent"])
+    y = 190
+    for line in _wrap(draw, title, title_font, 760)[:3]:
+        draw.text((85, y), line, font=title_font, fill=p["ink"])
+        y += 92
+    draw.text((85, 520), "WHY PEOPLE CARE", font=small_font, fill=p["accent"])
+    y = 585
+    for line in _wrap(draw, hook, body_font, WIDTH - 170)[:3]:
+        draw.text((85, y), line, font=body_font, fill=p["ink"])
+        y += 58
+    draw.rounded_rectangle((85, 820, WIDTH - 85, 1435), radius=38, fill=p["panel"])
+    draw.text((125, 875), f"STEP {scene_index + 1}", font=small_font, fill=p["accent"])
+    y = 955
+    for line in _wrap(draw, scene, body_font, WIDTH - 250)[:7]:
+        draw.text((125, y), line, font=body_font, fill=p["ink"])
+        y += 66
+    draw.text((85, 1515), f"{category.upper()}  •  {int(progress * 100):02d}%", font=small_font, fill=p["muted"])
 
 
 def create_video(opportunity, script_data, index=1):
@@ -92,206 +168,95 @@ def create_video(opportunity, script_data, index=1):
     run_id = f"{index:02d}-{_slug(opportunity.get('trend', 'trend'))}"
     work = os.path.join(OUTPUT_DIR, f"frames-{run_id}")
     os.makedirs(work, exist_ok=True)
-
     scenes = script_data.get("scenes") or [script_data.get("hook", opportunity["hook"])]
     frames = max(1, int(VIDEO_SECONDS * FPS))
-    title_font, body_font = _font(76), _font(50)
-    category = str(opportunity.get("category", "general"))
-    format_name = str(opportunity.get("format", "short_explainer"))
-    platform = str(opportunity.get("platform", "shorts"))
-    style = {
-        "youtube_ranked_breakdown": "YOUTUBE RANKED",
-        "tiktok_cantina_story": "TIKTOK STORY",
-        "youtube_quick_explainer": "YOUTUBE EXPLAINER",
-        "short_explainer": "QUICK EXPLAINER",
-    }.get(format_name, "QUICK EXPLAINER")
-    small_font, tiny_font = _font(34), _font(28)
-    caption_font = _font(38)
+    title_font, body_font, small_font = _font(72), _font(42), _font(31)
+    palette = PALETTES[(index - 1) % len(PALETTES)]
+    fonts = (title_font, body_font, small_font)
 
     for i in range(frames):
         t = i / FPS
         progress = min(1.0, t / VIDEO_SECONDS)
         scene_index = min(len(scenes) - 1, int(progress * len(scenes)))
-        scene_progress = (progress * len(scenes)) % 1.0
-        img = Image.new("RGB", (WIDTH, HEIGHT), (7, 9, 18))
+        scene = str(scenes[scene_index])
+        img = Image.new("RGB", (WIDTH, HEIGHT), palette["bg"])
         draw = ImageDraw.Draw(img)
-
-        pulse = 0.5 + 0.5 * math.sin(t * 3.2)
-        for y in range(0, HEIGHT, 40):
-            wave = 0.5 + 0.5 * math.sin(t * 1.7 + y / 130)
-            draw.rectangle(
-                (0, y, WIDTH, y + 40),
-                fill=(
-                    int(8 + 12 * wave + 7 * pulse),
-                    int(10 + 15 * wave + 5 * pulse),
-                    int(24 + 28 * wave + 16 * pulse),
-                ),
-            )
-
-        # Platform-specific visual language: lists feel structured, TikTok stories feel more kinetic.
-        if format_name == "youtube_ranked_breakdown":
-            for n in range(5):
-                yy = 300 + n * 285
-                draw.rounded_rectangle((870, yy, 1005, yy + 92), radius=24, fill=(245, 245, 245))
-                draw.text((910, yy + 20), str(n + 1), font=small_font, fill=(7, 9, 18))
-        elif format_name == "tiktok_cantina_story":
-            for n in range(3):
-                x = int(70 + n * 300 + 35 * math.sin(t * 4 + n))
-                draw.ellipse((x, 320 + n * 130, x + 70, 390 + n * 130), fill=(245, 245, 245))
+        args = (draw, palette, script_data.get("title", opportunity["trend"]),
+                script_data.get("hook", opportunity["hook"]), scene,
+                opportunity.get("category", "general"), scene_index, len(scenes),
+                progress, t, fonts)
+        if index % 3 == 1:
+            _draw_editorial(*args)
+        elif index % 3 == 2:
+            _draw_sunset(*args)
         else:
-            draw.line((80, 360, WIDTH - 80, 360), fill=(245, 245, 245), width=5)
+            _draw_mint(*args)
 
-        # Moving light bands give each scene a more dynamic transition.
-        band_x = int((t / VIDEO_SECONDS) * (WIDTH + 500)) - 500
-        draw.polygon(
-            [(band_x, 0), (band_x + 180, 0), (band_x - 260, HEIGHT), (band_x - 440, HEIGHT)],
-            fill=(20, 28, 58),
-        )
-
-        format_label = style + " • " + str(
-            opportunity.get("format", "quick_explainer")
-        ).replace("_", " ").upper()
-        badge_width = min(760, 80 + len(format_label) * 22)
-        draw.rounded_rectangle((55, 70, badge_width, 150), radius=28, fill=(245, 245, 245))
-        draw.text((83, 92), format_label, font=small_font, fill=(7, 9, 18))
-
-        title = script_data.get("title") or opportunity.get("trend", "Trending now")
-        y = 235 - min(25, int((1 - min(progress * 5, 1)) * 25))
-        for line in _wrap(draw, title, title_font, WIDTH - 140)[:3]:
-            draw.text((70, y), line, font=title_font, fill="white")
-            y += 92
-
-        hook = script_data.get("hook") or opportunity.get("hook", "")
-        draw.rounded_rectangle((60, 555, WIDTH - 60, 760), radius=34, fill=(245, 245, 245))
-        draw.text((90, 585), "HOOK", font=tiny_font, fill=(30, 30, 35))
-        y = 625
-        hook_font = _font(42)
-        for line in _wrap(draw, hook, hook_font, WIDTH - 180)[:3]:
-            draw.text((90, y), line, font=hook_font, fill=(10, 12, 20))
-            y += 52
-
-        # Scene card slides slightly during each transition.
-        ease = 0.5 - 0.5 * math.cos(scene_progress * math.pi)
-        shift = int(22 * math.sin(t * 2.2) + (1 - ease) * 20)
-        top = 875 + shift
-        bottom = 1485 + shift
-        card_x = int(55 + 10 * math.sin(t * 2.5))
-        draw.rounded_rectangle((card_x, top, WIDTH - 55, bottom), radius=42, fill=(6, 8, 16))
-        draw.text(
-            (90, top + 55),
-            f"SCENE {scene_index + 1} • {category.upper()}",
-            font=tiny_font,
-            fill="white",
-        )
-        y = top + 125
-        for line in _wrap(draw, scenes[scene_index], body_font, WIDTH - 180)[:6]:
-            draw.text((90, y), line, font=body_font, fill="white")
-            y += 70
-
-        # Large readable karaoke-style caption for the active scene.
-        caption = re.sub(r"^(HOOK|WHY IT MATTERS|TAKEAWAY):\s*", "", str(scenes[scene_index]))
-        caption_lines = _wrap(draw, caption, caption_font, WIDTH - 170)[:2]
-        cap_top = 1510
-        cap_bottom = cap_top + 145
-        draw.rounded_rectangle((55, cap_top, WIDTH - 55, cap_bottom), radius=28, fill=(245, 245, 245))
-        cy = cap_top + 25
+        rail_y = 1690
+        draw.rounded_rectangle((70, rail_y, WIDTH - 70, rail_y + 18), radius=9, fill=palette["muted"])
+        draw.rounded_rectangle((70, rail_y, 70 + int((WIDTH - 140) * progress), rail_y + 18),
+                               radius=9, fill=palette["accent"])
+        caption_lines = _wrap(draw, re.sub(r"\s+", " ", scene), small_font, WIDTH - 180)[:2]
+        cap_y = 1745
         for line in caption_lines:
-            draw.text((85, cy), line, font=caption_font, fill=(8, 10, 18))
-            cy += 48
-
-        total = max(1, len(scenes))
-        start = WIDTH // 2 - ((total - 1) * 22)
-        for n in range(total):
-            x = start + n * 44
-            r = 10 if n == scene_index else 7
-            draw.ellipse((x-r, 1685-r, x+r, 1685+r), fill="white")
-
-        draw.rounded_rectangle((65, 1735, WIDTH - 65, 1763), radius=14, fill=(55, 60, 78))
-        draw.rounded_rectangle(
-            (65, 1735, 65 + int((WIDTH - 130) * progress), 1763),
-            radius=14,
-            fill="white",
-        )
-        draw.text((70, 1790), f"{int(progress * 100):02d}%", font=tiny_font, fill="white")
-        cta = "WATCH TO THE END" if format_name != "tiktok_cantina_story" else "WAIT FOR THE TWIST"
-        draw.text((WIDTH - 350, 1790), cta, font=tiny_font, fill="white")
-        draw.text(
-            (70, 1850),
-            "Follow for more quick trend breakdowns",
-            font=small_font,
-            fill="white",
-        )
+            draw.text((75, cap_y), line, font=small_font, fill=palette["ink"])
+            cap_y += 38
+        start = WIDTH // 2 - (len(scenes) - 1) * 20
+        for n in range(len(scenes)):
+            r = 9 if n == scene_index else 6
+            x = start + n * 40
+            draw.ellipse((x-r, 1870-r, x+r, 1870+r),
+                         fill=palette["accent"] if n == scene_index else palette["muted"])
         img.save(os.path.join(work, f"frame_{i:05d}.png"))
 
     silent = os.path.join(OUTPUT_DIR, f"silent_{run_id}.mp4")
     output = os.path.join(OUTPUT_DIR, f"viral_short_{run_id}.mp4")
     subprocess.run(
-        [
-            "ffmpeg", "-y", "-framerate", str(FPS), "-i",
-            os.path.join(work, "frame_%05d.png"),
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-movflags", "+faststart", silent,
-        ],
+        ["ffmpeg", "-y", "-framerate", str(FPS), "-i", os.path.join(work, "frame_%05d.png"),
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", silent],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
-
     audio = _make_audio(script_data, output, VIDEO_SECONDS)
     if audio:
         subprocess.run(
-            [
-                "ffmpeg", "-y", "-i", silent, "-i", audio,
-                "-map", "0:v:0", "-map", "1:a:0",
-                "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
-                "-shortest", "-movflags", "+faststart", output,
-            ],
+            ["ffmpeg", "-y", "-i", silent, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
+             "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest",
+             "-movflags", "+faststart", output],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
     else:
         shutil.copy2(silent, output)
 
-    # Keep artifacts small: PNG frames and temporary audio are build intermediates.
     shutil.rmtree(work, ignore_errors=True)
     for temp in [silent, os.path.join(OUTPUT_DIR, "voice.wav"),
                  os.path.join(OUTPUT_DIR, "music.wav"), os.path.join(OUTPUT_DIR, "audio.wav")]:
         if os.path.exists(temp):
             os.remove(temp)
-
     if not os.path.exists(output) or os.path.getsize(output) < 50_000:
         raise RuntimeError(f"Video quality gate failed: missing or tiny output: {output}")
 
     manifest = {
-        "trend": opportunity["trend"],
-        "hook": opportunity["hook"],
-        "format": opportunity["format"],
-        "platform": platform,
-        "confidence": opportunity.get("confidence", 0),
-        "duration_seconds": VIDEO_SECONDS,
-        "audio": bool(audio),
-        "original_content": True,
-        "script": script_data,
+        "trend": opportunity["trend"], "hook": opportunity["hook"],
+        "format": opportunity.get("format", "short_explainer"),
+        "platform": opportunity.get("platform", "shorts"), "style": palette["name"],
+        "confidence": opportunity.get("confidence", 0), "duration_seconds": VIDEO_SECONDS,
+        "audio": bool(audio), "original_content": True, "script": script_data,
         "video_file": output,
     }
-    with open(
-        os.path.join(OUTPUT_DIR, f"latest_video_{run_id}.json"),
-        "w", encoding="utf-8"
-    ) as f:
+    with open(os.path.join(OUTPUT_DIR, f"latest_video_{run_id}.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
     return output
 
 
 def write_manifest(opportunity, script_data, video_path):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    path = os.path.join(
-        OUTPUT_DIR, f"{os.path.splitext(os.path.basename(video_path))[0]}.json"
-    )
+    path = os.path.join(OUTPUT_DIR, f"{os.path.splitext(os.path.basename(video_path))[0]}.json")
     manifest = {
-        "trend": opportunity["trend"],
-        "hook": opportunity["hook"],
-        "format": opportunity["format"],
-        "duration_seconds": VIDEO_SECONDS,
-        "original_content": True,
-        "script": script_data,
-        "video_file": video_path,
+        "trend": opportunity["trend"], "hook": opportunity["hook"],
+        "format": opportunity.get("format", "short_explainer"),
+        "platform": opportunity.get("platform", "shorts"),
+        "duration_seconds": VIDEO_SECONDS, "original_content": True,
+        "script": script_data, "video_file": video_path,
     }
     with open(path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
