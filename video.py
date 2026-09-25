@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
 from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS, VIDEO_ENGINE, COMFYUI_URL
+from ai_video import generate_clip, engine_available
 
 WIDTH, HEIGHT, FPS = 1080, 1920, 15
 
@@ -163,6 +164,52 @@ def _draw_mint(draw, p, title, hook, scene, category, scene_index, total, progre
     draw.text((85, 1515), f"{category.upper()}  •  {int(progress * 100):02d}%", font=small_font, fill=p["muted"])
 
 
+def _visual_prompt(opportunity, scene):
+    trend = str(opportunity.get("trend", "current topic"))
+    category = str(opportunity.get("category", "general"))
+    return (
+        f"Vertical social media video, cinematic documentary style, {category} topic. "
+        f"Visualize this current topic without text, logos, watermarks, or recognizable copyrighted characters: "
+        f"{trend}. Scene: {scene}. Natural motion, realistic lighting, strong composition, fast social-media pacing, "
+        f"visually interesting background, coherent subject, 9:16."
+    )
+
+
+def _make_ai_visuals(opportunity, script_data, duration, run_id):
+    if not engine_available():
+        return None
+    scenes = script_data.get("scenes") or [script_data.get("hook", opportunity.get("trend", ""))]
+    clip_dir = os.path.join(OUTPUT_DIR, f"ai-clips-{run_id}")
+    os.makedirs(clip_dir, exist_ok=True)
+    clips = []
+    for i, scene in enumerate(scenes[:3]):
+        path = os.path.join(clip_dir, f"clip_{i:02d}.mp4")
+        if generate_clip(_visual_prompt(opportunity, scene), path, duration=5):
+            clips.append(path)
+    if not clips:
+        shutil.rmtree(clip_dir, ignore_errors=True)
+        return None
+
+    concat_list = os.path.join(clip_dir, "concat.txt")
+    with open(concat_list, "w", encoding="utf-8") as f:
+        for clip in clips:
+            f.write(f"file '{os.path.abspath(clip)}'\\n")
+
+    visual = os.path.join(OUTPUT_DIR, f"ai_visuals_{run_id}.mp4")
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list,
+             "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT},setsar=1",
+             "-t", str(duration), "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+             "-movflags", "+faststart", visual],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        return visual
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+    finally:
+        shutil.rmtree(clip_dir, ignore_errors=True)
+
 def _choose_duration(script_data, opportunity):
     """Choose a trend-dependent duration between the configured minimum and maximum."""
     text = _clean_speech(script_data)
@@ -230,19 +277,21 @@ def create_video(opportunity, script_data, index=1):
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", silent],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
+    ai_visuals = _make_ai_visuals(opportunity, script_data, duration, run_id)
+    visual_source = ai_visuals or silent
     audio = _make_audio(script_data, output, duration)
     if audio:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", silent, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
+            ["ffmpeg", "-y", "-i", visual_source, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
              "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest",
              "-movflags", "+faststart", output],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
     else:
-        shutil.copy2(silent, output)
+        shutil.copy2(visual_source, output)
 
     shutil.rmtree(work, ignore_errors=True)
-    for temp in [silent, os.path.join(OUTPUT_DIR, "voice.wav"),
+    for temp in [silent, ai_visuals, os.path.join(OUTPUT_DIR, "voice.wav"),
                  os.path.join(OUTPUT_DIR, "music.wav"), os.path.join(OUTPUT_DIR, "audio.wav")]:
         if os.path.exists(temp):
             os.remove(temp)
@@ -257,7 +306,10 @@ def create_video(opportunity, script_data, index=1):
         "audio": bool(audio), "original_content": True, "script": script_data,
         "video_file": output,
         "video_engine": VIDEO_ENGINE,
-        "ai_engine_ready": VIDEO_ENGINE not in {"template", "none", "off"},
+        "ai_video_used": bool(ai_visuals),
+        "ai_engine_ready": engine_available(),
+        "ai_model": os.getenv("AI_VIDEO_MODEL", ""),
+
         "comfyui_configured": bool(COMFYUI_URL),
     }
     with open(os.path.join(OUTPUT_DIR, f"latest_video_{run_id}.json"), "w", encoding="utf-8") as f:
