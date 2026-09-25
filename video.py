@@ -186,7 +186,9 @@ def _draw_mint(draw, p, title, hook, scene, category, scene_index, total, progre
 
 
 def _shot_count(duration):
-    return max(4, min(11, int(math.ceil(float(duration) / 4.0))))
+    # A normal short needs many continuous shots, not five repeated stills.
+    # AI clips are short, so assemble 8-12 distinct moving shots for natural pacing.
+    return max(8, min(14, int(math.ceil(float(duration) / 2.2))))
 
 
 def _visual_prompt(opportunity, scene):
@@ -219,10 +221,10 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     os.makedirs(clip_dir, exist_ok=True)
     clips = []
     # Use multiple different AI-generated shots instead of repeating one clip.
-    clip_count = min(len(scenes), max(1, min(11, AI_VIDEO_MAX_CLIPS)))
+    clip_count = min(len(scenes), max(1, min(14, AI_VIDEO_MAX_CLIPS)))
     for i, scene in enumerate(scenes[:clip_count]):
         path = os.path.join(clip_dir, f"clip_{i:02d}.mp4")
-        if generate_clip(_visual_prompt(opportunity, scene), path, duration=5):
+        if generate_clip(_visual_prompt(opportunity, scene), path, duration=4):
             clips.append(path)
     if not clips:
         shutil.rmtree(clip_dir, ignore_errors=True)
