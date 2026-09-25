@@ -57,6 +57,3 @@ The workflow runs manually, on pushes to main, and every 6 hours. Generated vide
 The workflow supports Hugging Face Inference Providers for text-to-video. The default model is LTX-Video, with Wan 2.1 1.3B available by setting VIDEO_ENGINE=hf_wan. Hugging Face currently documents text-to-video support through providers including fal-ai and lists LTX-Video, Wan 2.1, HunyuanVideo and CogVideoX among served models. The external inference provider may require its own paid credits; the repository therefore keeps an automatic template fallback.
 
 Add a GitHub Actions secret named HF_TOKEN before enabling provider inference. Never commit the token to the repository.
-
-
-<!-- automation maintenance -->
