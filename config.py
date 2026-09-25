@@ -19,3 +19,7 @@ COMFYUI_URL = os.getenv("COMFYUI_URL", "").rstrip("/")
 TTS_ENGINE = os.getenv("TTS_ENGINE", "edge").lower()
 TTS_VOICE = os.getenv("TTS_VOICE", "en-US-AriaNeural")
 VIDEO_COUNT = int(os.getenv("VIDEO_COUNT", "3"))
+
+# Video generation controls: keep GitHub runs fast and reliable by default.
+AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "45"))
+AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "1"))
