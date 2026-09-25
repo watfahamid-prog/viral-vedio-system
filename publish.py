@@ -3,14 +3,27 @@ import json
 import requests
 
 YOUTUBE_ACCESS_TOKEN = os.getenv("YOUTUBE_ACCESS_TOKEN", "")
+YOUTUBE_REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN", "")
+YOUTUBE_CLIENT_ID = os.getenv("YOUTUBE_CLIENT_ID", "")
+YOUTUBE_CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET", "")
 TIKTOK_ACCESS_TOKEN = os.getenv("TIKTOK_ACCESS_TOKEN", "")
 PUBLISH_ENABLED = os.getenv("PUBLISH_ENABLED", "false").lower() == "true"
 PUBLISH_PRIVACY = os.getenv("PUBLISH_PRIVACY", "private")
 
 def _youtube(video_path, title, description, tags):
-    if not YOUTUBE_ACCESS_TOKEN:
-        return {"enabled": False, "status": "waiting_for_youtube_oauth"}
+    token = YOUTUBE_ACCESS_TOKEN
     try:
+        if YOUTUBE_REFRESH_TOKEN and YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET:
+            refresh = requests.post(
+                "https://oauth2.googleapis.com/token",
+                data={"client_id": YOUTUBE_CLIENT_ID, "client_secret": YOUTUBE_CLIENT_SECRET,
+                      "refresh_token": YOUTUBE_REFRESH_TOKEN, "grant_type": "refresh_token"},
+                timeout=30,
+            )
+            refresh.raise_for_status()
+            token = refresh.json().get("access_token", token)
+        if not token:
+            return {"enabled": False, "status": "waiting_for_youtube_oauth"}
         metadata = {
             "snippet": {"title": title[:100], "description": description, "tags": tags[:15], "categoryId": "22"},
             "status": {"privacyStatus": PUBLISH_PRIVACY, "selfDeclaredMadeForKids": False}
