@@ -49,6 +49,8 @@ jobs:
           AI_VIDEO_ENABLED: "true"
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Lightricks/LTX-Video-0.9.8-13B-distilled"
+          TTS_ENGINE: "edge"
+          TTS_VOICE: "en-US-AriaNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           YOUTUBE_ENABLED: "false"
           TIKTOK_ENABLED: "false"
