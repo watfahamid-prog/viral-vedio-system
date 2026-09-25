@@ -38,6 +38,8 @@ jobs:
           MAX_TRENDS: "12"
           VIDEO_COUNT: "3"
           VIDEO_SECONDS: "15"
+      VIDEO_MIN_SECONDS: "15"
+      VIDEO_MAX_SECONDS: "90"
           AI_MODE: "template"
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
