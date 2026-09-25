@@ -2,3 +2,4 @@ requests
 Pillow
 huggingface_hub
 edge-tts
+runwayml
