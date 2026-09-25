@@ -127,20 +127,23 @@ Return ONLY valid JSON with keys: title, hook, script, scenes, caption, hashtags
 scenes must contain exactly 5 short visual/text scene descriptions.
 hashtags must contain 3-5 short hashtags."""
 
-    response = requests.post(
-        "https://api.openai.com/v1/responses",
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/responses",
         headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
         json={"model": OPENAI_MODEL, "input": prompt, "max_output_tokens": 700},
-        timeout=60,
-    )
-    if response.status_code == 429:
-        detail = response.json() if response.content else {}
-        error = detail.get("error", {})
-        raise RuntimeError(
-            f"OpenAI API 429 ({error.get('code', 'rate_limit_or_quota')}): "
-            f"{error.get('message', 'quota or rate limit reached')}"
+            timeout=60,
         )
-    if not response.ok:\n        print(f"OpenAI API error {response.status_code}; using template fallback.")\n        return _fallback(trend, hook, format_name)\n    response.raise_for_status()
+    except requests.RequestException as error:
+        print(f"OpenAI script generation failed, using template fallback: {error}")
+        return _fallback(trend, hook, format_name)
+    if response.status_code == 429:
+        print("OpenAI API quota/rate limit reached; using template fallback.")
+        return _fallback(trend, hook, format_name)
+    if not response.ok:
+        print(f"OpenAI API error {response.status_code}; using template fallback.")
+        return _fallback(trend, hook, format_name)
+    response.raise_for_status()
     data = response.json()
     text = data.get("output_text", "")
     if not text:
