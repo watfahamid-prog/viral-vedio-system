@@ -1,4 +1,4 @@
-name: Viral Video Automation v3 inspection 2
+name: Viral Video Automation v4 inspection
 
 on:
   workflow_dispatch:
@@ -52,11 +52,11 @@ jobs:
           VIDEO_MAX_SECONDS: "60"
           AI_MODE: "template"
           VIDEO_ENGINE: "auto"
-          AI_VIDEO_ENABLED: "true"
+          AI_VIDEO_ENABLED: "false"
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
           AI_VIDEO_TIMEOUT: "90"
-          AI_VIDEO_MAX_CLIPS: "4"
+          AI_VIDEO_MAX_CLIPS: "1"
           TTS_ENGINE: "edge"
           TTS_VOICE: "en-US-AriaNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -75,16 +75,17 @@ jobs:
       - name: Check generated outputs
         if: success()
         run: |
+          set -e
           test -f output/run_summary.json
-          test -n "$(find output -maxdepth 1 -name '*.mp4' -type f | head -1)"
+          test -f output/quality_report.json
           count="$(find output -maxdepth 1 -name '*.mp4' -type f | wc -l)"
           test "$count" -eq 3
           for video in output/*.mp4; do
-            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video"
-            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video"
+            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1080,1920'
+            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
             ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
           done
-          echo "Generated exactly 3 video files:"
+          echo "Generated exactly 3 valid vertical videos:"
           ls -lh output/*.mp4
 
       - name: Persist self-learning state
