@@ -46,6 +46,10 @@ jobs:
           VIDEO_MAX_SECONDS: "90"
           AI_MODE: "template"
           VIDEO_ENGINE: "auto"
+          AI_VIDEO_ENABLED: "true"
+          AI_VIDEO_PROVIDER: "fal-ai"
+          AI_VIDEO_MODEL: "Lightricks/LTX-Video-0.9.8-13B-distilled"
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           YOUTUBE_ENABLED: "false"
           TIKTOK_ENABLED: "false"
           PYTHONUNBUFFERED: "1"
@@ -56,6 +60,7 @@ jobs:
         run: |
           test -f output/run_summary.json
           test -n "$(find output -maxdepth 1 -name '*.mp4' -type f | head -1)"
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 output/*.mp4 | head
           echo "Generated video files:"
           ls -lh output/*.mp4
 
