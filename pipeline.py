@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from config import DRY_RUN, MAX_TRENDS, VIDEO_COUNT
 from trends import get_trends
+from learning import load_state
 
 
 def _category(text):
@@ -20,6 +21,8 @@ def _format_for_run(index, source, category="general", trend=""):
     """Choose a format from the topic instead of cycling blindly."""
     category = str(category).lower()
     source = str(source).lower()
+    state = load_state()
+    avoid_story = state.get('qc_failures', {}).get('too_long', 0) > 1
     if category == "sports":
         choices = ["youtube_ranked_breakdown", "tiktok_cantina_story"]
     elif category == "entertainment":
@@ -30,7 +33,7 @@ def _format_for_run(index, source, category="general", trend=""):
         choices = ["youtube_quick_explainer", "short_explainer"]
     else:
         choices = ["short_explainer", "youtube_quick_explainer", "tiktok_cantina_story"]
-    if "tiktok" in source and "tiktok_cantina_story" in choices:
+    if 'tiktok' in source and 'tiktok_cantina_story' in choices and not avoid_story:
         return "tiktok_cantina_story"
     return choices[(index + len(str(trend))) % len(choices)]
 
@@ -69,7 +72,17 @@ def build_opportunities(trends):
             "confidence": item.get("confidence", 0) if isinstance(item, dict) else 0,
             "status": "draft",
         })
-    return opportunities[:VIDEO_COUNT]
+    selected = opportunities[:VIDEO_COUNT]
+    if len(selected) >= 2:
+        for i, item in enumerate(selected):
+            if i % 2 == 0:
+                item['platform'] = 'youtube'
+                item['format'] = 'youtube_ranked_breakdown' if item['category'] == 'sports' else 'youtube_quick_explainer'
+            else:
+                item['platform'] = 'tiktok'
+                item['format'] = 'tiktok_cantina_story'
+            item['hook'] = hooks[item['format']].format(trend=item['trend'])
+    return selected
 
 
 def run_pipeline():
