@@ -56,6 +56,10 @@ def record_learning(result, qc_result):
         lessons.append("Keep short-form videos inside the configured duration target.")
     if failures.get("file_too_small"):
         lessons.append("Reject tiny/corrupt outputs before they reach Discord.")
+    if failures.get("shot_count_out_of_range"):
+        lessons.append("Keep every short-form video between 4 and 11 distinct shots.")
+    if failures.get("originality_flag_missing"):
+        lessons.append("Require an explicit original-content flag before publishing.")
 
     for lesson in lessons:
         if lesson not in state.setdefault("lessons", []):
