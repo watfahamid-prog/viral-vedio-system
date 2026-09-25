@@ -8,6 +8,7 @@ VIDEO_SECONDS = int(os.getenv("VIDEO_SECONDS", "15"))
 VIDEO_MIN_SECONDS = int(os.getenv("VIDEO_MIN_SECONDS", "15"))
 VIDEO_MAX_SECONDS = int(os.getenv("VIDEO_MAX_SECONDS", "90"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 TIKTOK_RESEARCH_TOKEN = os.getenv("TIKTOK_RESEARCH_TOKEN", "")
 YOUTUBE_ENABLED = os.getenv("YOUTUBE_ENABLED", "false").lower() == "true"
