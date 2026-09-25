@@ -176,12 +176,16 @@ def _draw_mint(draw, p, title, hook, scene, category, scene_index, total, progre
     draw.text((85, 1515), f"{category.upper()}  •  {int(progress * 100):02d}%", font=small_font, fill=p["muted"])
 
 
+def _shot_count(duration):
+    return max(4, min(11, int(math.ceil(float(duration) / 4.0))))
+
+
 def _visual_prompt(opportunity, scene):
     trend = str(opportunity.get("trend", "current topic"))
     category = str(opportunity.get("category", "general"))
     fmt = str(opportunity.get("format", "short_explainer"))
     return (
-        "Create an ORIGINAL high-energy vertical YouTube Short scene. "
+        "Create an ORIGINAL high-energy vertical short-form scene. "
         "This must look like real video, NOT a presentation, slideshow, poster, or text card. "
         "Show a clear subject doing something on screen with continuous natural movement. "
         "Use colorful, eye-catching visuals, dynamic camera motion, changing depth, expressive action, "
@@ -196,12 +200,17 @@ def _visual_prompt(opportunity, scene):
 def _make_ai_visuals(opportunity, script_data, duration, run_id):
     if not engine_available():
         return None
-    scenes = script_data.get("scenes") or [script_data.get("hook", opportunity.get("trend", ""))]
+    scenes = script_data.get("visual_scenes") or script_data.get("scenes") or [script_data.get("hook", opportunity.get("trend", ""))]
+    target = _shot_count(duration)
+    if len(scenes) < target:
+        base = list(scenes)
+        while len(scenes) < target:
+            scenes.append(base[len(scenes) % len(base)])
     clip_dir = os.path.join(OUTPUT_DIR, f"ai-clips-{run_id}")
     os.makedirs(clip_dir, exist_ok=True)
     clips = []
     # Use multiple different AI-generated shots instead of repeating one clip.
-    clip_count = min(len(scenes), max(1, AI_VIDEO_MAX_CLIPS))
+    clip_count = min(len(scenes), max(1, min(11, AI_VIDEO_MAX_CLIPS)))
     for i, scene in enumerate(scenes[:clip_count]):
         path = os.path.join(clip_dir, f"clip_{i:02d}.mp4")
         if generate_clip(_visual_prompt(opportunity, scene), path, duration=5):
@@ -275,7 +284,13 @@ def create_video(opportunity, script_data, index=1):
 
     duration = _choose_duration(script_data, opportunity)
     scenes = script_data.get("scenes") or [script_data.get("hook", opportunity["hook"])]
-    scenes = [str(s).strip() for s in scenes if str(s).strip()][:5]
+    target_shots = _shot_count(duration)
+    scenes = [str(s).strip() for s in scenes if str(s).strip()]
+    if len(scenes) < target_shots:
+        base = list(scenes)
+        while len(scenes) < target_shots:
+            scenes.append(base[len(scenes) % len(base)])
+    scenes = scenes[:target_shots]
     if not scenes:
         scenes = [str(opportunity.get("hook", opportunity.get("trend", "Current topic")))]
 
@@ -418,6 +433,7 @@ def create_video(opportunity, script_data, index=1):
         "confidence": opportunity.get("confidence", 0),
         "duration_seconds": duration,
         "scene_count": len(scenes),
+        "target_shot_range": "4-11",
         "audio": bool(audio),
         "original_content": True,
         "script": script_data,
