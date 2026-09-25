@@ -150,9 +150,18 @@ def get_trends():
     selected, source_counts, category_counts = [], {}, {}
     for item in ranked:
         source = item.get("source", "unknown")
-        words = _normalize(item["trend"]).split()
-        category_key = words[0] if words else "unknown"
-        if source_counts.get(source, 0) >= 5 or category_counts.get(category_key, 0) >= 2:
+        text = item.get("trend", "").lower()
+        if any(w in text for w in ["football", "soccer", "match", "goal", "sport", "league", "nba", "nfl", "fifa"]):
+            category_key = "sports"
+        elif any(w in text for w in ["iphone", "android", "ai", "tech", "app", "google", "microsoft", "openai", "robot"]):
+            category_key = "technology"
+        elif any(w in text for w in ["movie", "film", "series", "actor", "music", "song", "celebrity", "show"]):
+            category_key = "entertainment"
+        elif any(w in text for w in ["election", "government", "minister", "president", "parliament"]):
+            category_key = "politics"
+        else:
+            category_key = "general"
+        if source_counts.get(source, 0) >= 5 or category_counts.get(category_key, 0) >= 3:
             continue
         selected.append(item)
         source_counts[source] = source_counts.get(source, 0) + 1
