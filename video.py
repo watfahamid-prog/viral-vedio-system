@@ -273,6 +273,45 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     finally:
         shutil.rmtree(clip_dir, ignore_errors=True)
 
+
+def _make_ass(script_data, duration, run_id):
+    """Create clean short-form captions: bold, phone-readable and bottom-safe."""
+    path = os.path.join(OUTPUT_DIR, f"captions-{run_id}.ass")
+    scenes = [str(x).strip() for x in (script_data.get("scenes") or []) if str(x).strip()]
+    if not scenes:
+        scenes = [str(script_data.get("hook", "")).strip()]
+    step = duration / max(1, len(scenes))
+
+    def stamp(value):
+        value = max(0.0, float(value))
+        h = int(value // 3600)
+        m = int((value % 3600) // 60)
+        s = int(value % 60)
+        cs = int((value - int(value)) * 100)
+        return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+    def esc(text):
+        return str(text).replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("[Script Info]\\nScriptType: v4.00+\\nPlayResX: 1080\\nPlayResY: 1920\\n\\n")
+        f.write("[V4+ Styles]\\n")
+        f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
+                "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
+                "Alignment, MarginL, MarginR, MarginV, Encoding\\n")
+        f.write("Style: Viral,Arial,54,&H00FFFFFF,&H00FFFFFF,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,5,1,2,70,70,170,1\\n\\n")
+        f.write("[Events]\\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\\n")
+        for i, scene in enumerate(scenes):
+            start = i * step
+            end = min(duration, (i + 1) * step)
+            text = esc(scene)
+            words = text.split()
+            if len(words) > 12:
+                midpoint = len(words) // 2
+                text = " ".join(words[:midpoint]) + "\\N" + " ".join(words[midpoint:])
+            f.write(f"Dialogue: 0,{stamp(start)},{stamp(end)},Viral,,0,0,0,,{text}\\n")
+    return path
+
 def _make_srt(script_data, duration, run_id):
     path = os.path.join(OUTPUT_DIR, f"captions-{run_id}.srt")
     scenes = script_data.get("scenes") or [script_data.get("hook", "")]
@@ -304,12 +343,11 @@ def _choose_duration(script_data, opportunity):
 
 
 def create_video(opportunity, script_data, index=1):
-    """Build a fast, polished vertical video.
+    """Build a polished vertical short.
 
-    The default renderer uses a handful of high-resolution scene cards plus
-    ffmpeg motion (zoom/pan). This is dramatically faster than rendering one
-    1080x1920 PNG for every frame. Remote AI video is optional and capped so
-    a provider outage can never stall the whole automation.
+    Preferred path: real AI-generated moving footage assembled from many
+    distinct shots. The procedural renderer remains only as a resilient
+    fallback when AI generation is unavailable.
     """
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     run_id = f"{index:02d}-{_slug(opportunity.get('trend', 'trend'))}"
@@ -422,7 +460,7 @@ def create_video(opportunity, script_data, index=1):
     if engine_available() and AI_VIDEO_MAX_CLIPS > 0:
         ai_visuals = _make_ai_visuals(opportunity, script_data, duration, run_id)
 
-    subtitle_file = _make_srt(script_data, duration, run_id) if ai_visuals else None
+    subtitle_file = _make_ass(script_data, duration, run_id) if ai_visuals else None
     visual_source = ai_visuals or silent
     captioned = None
 
@@ -430,7 +468,7 @@ def create_video(opportunity, script_data, index=1):
         captioned = os.path.join(OUTPUT_DIR, f"captioned_{run_id}.mp4")
         try:
             subprocess.run(
-                ["ffmpeg", "-y", "-i", ai_visuals, "-vf", f"subtitles={subtitle_file}",
+                ["ffmpeg", "-y", "-i", ai_visuals, "-vf", f"ass={subtitle_file}",
                  "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
                  "-movflags", "+faststart", captioned],
                 check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
