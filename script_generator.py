@@ -105,11 +105,19 @@ def _fallback(trend, hook, format_name="short_explainer"):
     scenes[2] = scenes[2].replace("the reaction", f"the reaction around {topic_phrase}")
     scenes[3] = scenes[3].replace("the next development", f"what happens next with {topic_phrase}")
     script = " ".join([opening] + scenes)
+    visual_scenes = [
+        f"eye-catching real-world scene representing {topic_phrase}, colorful environment and continuous movement",
+        f"close-up action connected to {topic_phrase}, dynamic camera tracking and strong depth",
+        f"surprising visual moment related to {topic_phrase}, energetic movement and cinematic lighting",
+        f"wide cinematic scene showing the world around {topic_phrase}, vibrant colors and changing perspective",
+        f"strong final visual representing {topic_phrase}, memorable action and satisfying payoff",
+    ]
     return {
         "title": title,
         "hook": clean_hook,
         "script": script,
         "scenes": scenes,
+        "visual_scenes": visual_scenes,
         "word_count": len(script.split()),
         "caption": f"{title} — original {format_name.replace('_', ' ')}.",
         "hashtags": hashtags,
@@ -130,8 +138,9 @@ HOOK: {hook}
 Use only information contained in the topic and hook. Do not invent names, numbers, quotes,
 events, or causes. Do not copy any creator's wording, footage, watermark, or script.
 Make it natural, fast, and easy to speak aloud. Target roughly 35-180 spoken words depending on the format and story depth.
-Return ONLY valid JSON with keys: title, hook, script, scenes, caption, hashtags.
-scenes must contain exactly 5 short visual/text scene descriptions.
+Return ONLY valid JSON with keys: title, hook, script, scenes, visual_scenes, caption, hashtags.
+scenes must contain exactly 5 short narration/caption scene lines.
+visual_scenes must contain exactly 5 detailed visual directions for AI video generation. Each must describe visible action, setting, camera movement, lighting, and subject; never request readable text on screen.
 hashtags must contain 3-5 short hashtags."""
 
     try:
