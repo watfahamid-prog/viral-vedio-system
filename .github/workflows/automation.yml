@@ -9,7 +9,7 @@ on:
     - cron: "0 */6 * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: viral-video-automation
@@ -56,7 +56,7 @@ jobs:
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
           AI_VIDEO_TIMEOUT: "90"
-          AI_VIDEO_MAX_CLIPS: "3"
+          AI_VIDEO_MAX_CLIPS: "6"
           TTS_ENGINE: "edge"
           TTS_VOICE: "en-US-AriaNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -84,6 +84,19 @@ jobs:
           done
           echo "Generated video files:"
           ls -lh output/*.mp4
+
+      - name: Persist self-learning state
+        if: always()
+        run: |
+          if [ -f learning_state.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add learning_state.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Update self-learning state [skip ci]"
+              git push
+            fi
+          fi
 
       - name: Save generated videos and metadata
         if: always()
