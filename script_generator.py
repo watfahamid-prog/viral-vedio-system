@@ -139,7 +139,7 @@ If the topic is political, describe documented information neutrally: do not per
 Return ONLY valid JSON with keys: title, hook, script, scenes, visual_scenes, caption, hashtags.
 scenes must contain exactly 8 short narration/caption lines with distinct information or visual purpose.
 visual_scenes must contain exactly 8 production-ready visual directions. Each must specify visible subject/action, setting, camera movement, lighting, and continuity. Never request readable text, logos, watermarks, copied footage, or a recognizable creator's style.
-The five visual scenes must be meaningfully different so the finished short does not look like the same shot repeated.
+The eight visual scenes must be meaningfully different so the finished short does not look like the same shot repeated.
 hashtags must contain 3-5 short hashtags."""
 
     try:
