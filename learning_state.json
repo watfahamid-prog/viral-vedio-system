@@ -1,32 +1,32 @@
 {
   "version": 1,
-  "runs": 3,
-  "videos": 9,
+  "runs": 4,
+  "videos": 12,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6
   },
   "platforms": {
     "youtube": {
-      "checked": 6,
-      "passed": 2
+      "checked": 8,
+      "passed": 4
     },
     "tiktok": {
-      "checked": 3,
-      "passed": 1
+      "checked": 4,
+      "passed": 2
     }
   },
   "formats": {
     "youtube_quick_explainer": {
-      "created": 6
+      "created": 8
     },
     "tiktok_cantina_story": {
-      "created": 3
+      "created": 4
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-25T16:40:35.949727+00:00"
+  "last_updated": "2026-09-25T16:45:46.438391+00:00"
 }
