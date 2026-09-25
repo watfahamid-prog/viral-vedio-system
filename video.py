@@ -191,56 +191,79 @@ def _shot_count(duration):
     return max(8, min(14, int(math.ceil(float(duration) / 2.2))))
 
 
-def _visual_prompt(opportunity, scene):
+def _visual_prompt(opportunity, scene, shot_index=0, total_shots=1):
     trend = str(opportunity.get("trend", "current topic"))
     category = str(opportunity.get("category", "general"))
     fmt = str(opportunity.get("format", "short_explainer"))
+    shot_styles = [
+        "open with an immediate attention-grabbing wide shot and a fast push-in",
+        "use a close-up with a natural handheld camera move and strong foreground depth",
+        "use a side tracking shot following the main subject through the environment",
+        "use an over-the-shoulder angle that reveals the important action",
+        "use a low-angle or high-angle reveal with a noticeable camera move",
+        "use a macro/detail shot, then a smooth rack-focus toward the subject",
+        "use a medium shot with expressive subject movement and a quick reframing",
+        "use a dynamic reveal that changes what the viewer can see halfway through the shot",
+        "use a cinematic follow shot with natural motion blur and changing depth",
+        "use a final payoff shot with a decisive camera move and visually clear result",
+    ]
+    style = shot_styles[shot_index % len(shot_styles)]
     return (
-        "Create an ORIGINAL high-energy vertical short-form scene. "
-        "This must look like real video, NOT a presentation, slideshow, poster, or text card. "
-        "Show a clear subject doing something on screen with continuous natural movement. "
-        "Use colorful, eye-catching visuals, dynamic camera motion, changing depth, expressive action, "
-        "strong lighting, visual surprise, and fast social-media pacing. "
-        "No subtitles, no captions, no written words, no logos, no watermarks. "
+        "Create an ORIGINAL, photorealistic, professional vertical social-media video shot. "
+        "This is one continuous moving shot inside a normal video, NOT a presentation, slideshow, poster, "
+        "still image, or text card. The viewer must see a real subject, environment, and physical action. "
+        "The subject must visibly move throughout the entire clip; camera motion must also continue. "
+        f"{style}. "
+        "Use realistic lighting, depth of field, natural motion blur, believable physics, and a strong visual hook. "
+        "No subtitles, captions, written words, UI, logos, watermarks, borders, or title cards. "
         f"Topic: {trend}. Category: {category}. Format: {fmt}. "
-        f"Scene idea: {scene}. Make the scene visually understandable even with the sound muted. "
-        "Keep the subject consistent and make this a polished 9:16 short-form video shot."
+        f"Scene {shot_index + 1} of {total_shots}: {scene}. "
+        "Keep visual continuity with the same main subject and setting when possible, but change camera angle "
+        "and composition from the previous shot. Make it understandable with sound muted."
     )
 
-
 def _make_ai_visuals(opportunity, script_data, duration, run_id):
+    """Generate the real visual track: many unique moving AI shots, never looped."""
     if not engine_available():
         return None
-    scenes = script_data.get("visual_scenes") or script_data.get("scenes") or [script_data.get("hook", opportunity.get("trend", ""))]
+    source_scenes = script_data.get("visual_scenes") or script_data.get("scenes") or [
+        script_data.get("hook", opportunity.get("trend", ""))
+    ]
+    source_scenes = [str(s).strip() for s in source_scenes if str(s).strip()]
+    if not source_scenes:
+        return None
     target = _shot_count(duration)
-    if len(scenes) < target:
-        base = list(scenes)
-        while len(scenes) < target:
-            scenes.append(base[len(scenes) % len(base)])
+    shot_scenes = []
+    purposes = ["hook", "context", "detail", "action", "reaction", "reveal", "escalation", "payoff"]
+    for i in range(target):
+        base = source_scenes[i % len(source_scenes)]
+        shot_scenes.append(f"{base}. Shot purpose: {purposes[i % len(purposes)]}.")
     clip_dir = os.path.join(OUTPUT_DIR, f"ai-clips-{run_id}")
     os.makedirs(clip_dir, exist_ok=True)
     clips = []
-    # Use multiple different AI-generated shots instead of repeating one clip.
-    clip_count = min(len(scenes), max(1, min(14, AI_VIDEO_MAX_CLIPS)))
-    for i, scene in enumerate(scenes[:clip_count]):
+    clip_count = min(target, max(8, min(14, AI_VIDEO_MAX_CLIPS)))
+    shot_duration = max(2.0, min(4.0, float(duration) / max(1, clip_count)))
+    for i in range(clip_count):
         path = os.path.join(clip_dir, f"clip_{i:02d}.mp4")
-        if generate_clip(_visual_prompt(opportunity, scene), path, duration=4):
+        prompt = _visual_prompt(opportunity, shot_scenes[i], i, clip_count)
+        if generate_clip(prompt, path, duration=shot_duration):
             clips.append(path)
-    if not clips:
+    # Never loop a partial AI generation. If the provider cannot make enough
+    # distinct shots, use the reliable fallback renderer instead.
+    if len(clips) < max(6, int(math.ceil(clip_count * 0.75))):
         shutil.rmtree(clip_dir, ignore_errors=True)
         return None
-
     concat_list = os.path.join(clip_dir, "concat.txt")
     with open(concat_list, "w", encoding="utf-8") as f:
         for clip in clips:
             f.write(f"file '{os.path.abspath(clip)}'\n")
-
     visual = os.path.join(OUTPUT_DIR, f"ai_visuals_{run_id}.mp4")
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-stream_loop", "-1", "-f", "concat", "-safe", "0", "-i", concat_list,
-             "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT},setsar=1",
-             "-t", str(duration), "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list,
+             "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT},setsar=1,"
+                     "fps=30,format=yuv420p",
+             "-t", str(duration), "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
              "-movflags", "+faststart", visual],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
@@ -452,12 +475,12 @@ def create_video(opportunity, script_data, index=1):
         "confidence": opportunity.get("confidence", 0),
         "duration_seconds": duration,
         "scene_count": len(scenes),
-        "target_shot_range": "4-11",
+        "target_shot_range": "8-14",
         "audio": bool(audio),
         "original_content": True,
         "script": script_data,
         "video_file": output,
-        "video_engine": "motion_graphics" if not ai_visuals else VIDEO_ENGINE,
+        "video_engine": "fallback_motion_graphics" if not ai_visuals else VIDEO_ENGINE,
         "ai_video_used": bool(ai_visuals),
         "ai_engine_ready": engine_available(),
         "ai_model": os.getenv("AI_VIDEO_MODEL", ""),
