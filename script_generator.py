@@ -115,14 +115,14 @@ def generate_script(trend: str, hook: str, format_name: str = "short_explainer")
     if AI_MODE != "openai" or not OPENAI_API_KEY:
         return _fallback(trend, hook, format_name)
 
-    prompt = f"""Create an original 15-second vertical short about this current topic.
+    prompt = f"""Create an original vertical short about this current topic. Choose pacing appropriate for the requested format and keep it concise enough for a 15-90 second video.
 TREND: {trend}
 FORMAT: {format_name}
 HOOK: {hook}
 
 Use only information contained in the topic and hook. Do not invent names, numbers, quotes,
 events, or causes. Do not copy any creator's wording, footage, watermark, or script.
-Make it natural, fast, and easy to speak aloud. Target 35-50 spoken words.
+Make it natural, fast, and easy to speak aloud. Target roughly 35-180 spoken words depending on the format and story depth.
 Return ONLY valid JSON with keys: title, hook, script, scenes, caption, hashtags.
 scenes must contain exactly 5 short visual/text scene descriptions.
 hashtags must contain 3-5 short hashtags."""
