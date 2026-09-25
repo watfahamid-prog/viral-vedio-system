@@ -7,9 +7,11 @@ from publish import publish
 from discord import notify
 from config import OUTPUT_DIR, VIDEO_COUNT, VIDEO_ENGINE
 from performance import record_run
+from self_test import main as run_self_test
 
 
 def main():
+    run_self_test()
     result = run_pipeline()
     result["videos"] = []
 
