@@ -205,7 +205,7 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     visual = os.path.join(OUTPUT_DIR, f"ai_visuals_{run_id}.mp4")
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list,
+            ["ffmpeg", "-y", "-stream_loop", "-1", "-f", "concat", "-safe", "0", "-i", concat_list,
              "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT},setsar=1",
              "-t", str(duration), "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
              "-movflags", "+faststart", visual],
