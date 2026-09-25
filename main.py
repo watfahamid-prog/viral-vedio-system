@@ -5,7 +5,7 @@ from video import create_video, write_manifest
 from script_generator import generate_script
 from publish import publish
 from discord import notify
-from config import OUTPUT_DIR, VIDEO_COUNT
+from config import OUTPUT_DIR, VIDEO_COUNT, VIDEO_ENGINE
 from performance import record_run
 
 
