@@ -1,4 +1,4 @@
-name: Viral Video Automation
+name: Viral Video Automation v3 inspection
 
 on:
   workflow_dispatch:
