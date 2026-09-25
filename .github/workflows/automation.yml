@@ -18,7 +18,7 @@ concurrency:
 jobs:
   create-videos:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -52,11 +52,11 @@ jobs:
           VIDEO_MAX_SECONDS: "90"
           AI_MODE: "template"
           VIDEO_ENGINE: "auto"
-          AI_VIDEO_ENABLED: "false"
+          AI_VIDEO_ENABLED: "true"
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
-          AI_VIDEO_TIMEOUT: "45"
-          AI_VIDEO_MAX_CLIPS: "1"
+          AI_VIDEO_TIMEOUT: "90"
+          AI_VIDEO_MAX_CLIPS: "3"
           TTS_ENGINE: "edge"
           TTS_VOICE: "en-US-AriaNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
