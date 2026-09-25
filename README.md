@@ -2,32 +2,46 @@
 
 Automated trend-to-content pipeline for original short-form videos.
 
-## Current flow
+## Current pipeline
 
-Google News / Google Trends → trend scanner → opportunity builder → original-content manifest → Discord notification
+1. Find current topics from Google News and Google Trends RSS.
+2. Optionally merge YouTube and TikTok research data when official credentials are available.
+3. Score, deduplicate, and diversify the trend opportunities.
+4. Create three different short-form concepts/scripts.
+5. Render three visually different vertical videos with narration.
+6. Write manifests, a run summary, and performance-ready metadata.
+7. Upload all generated files to the GitHub Actions artifact.
+8. Send a Discord completion notification when a webhook is configured.
+9. Keep YouTube/TikTok publishing disabled until their official APIs are added.
 
-## Safety mode
+## Video improvements
 
-The system starts with `DRY_RUN=true`. It does not automatically publish videos. It also does not copy another creator's video, script, watermark, or footage.
+Each run intentionally uses three visual identities:
+- Editorial: light paper-style layout with red/orange accents.
+- Story: dark warm layout with moving rings and conversational hook card.
+- Explained: mint editorial layout with structured step cards.
 
-## Run locally
+The videos no longer use one repeated blue template. The template generator also creates five scenes with different narrative structures so the three outputs are not clones.
 
-    pip install -r requirements.txt
-    python main.py
+## Important
+
+- DRY_RUN=true remains enabled during testing.
+- AI_MODE=template does not require OpenAI API credits.
+- YouTube API/upload is intentionally the final integration.
+- Never commit API keys or Discord webhooks to the repository.
+
+## GitHub Actions
+
+The workflow runs manually, on pushes to main, and every 6 hours. Generated videos and metadata are retained as an artifact for 7 days.
 
 ## Environment variables
 
-- `DRY_RUN`: keep true while testing
-- `MAX_TRENDS`: maximum topics processed per run
-- `DISCORD_WEBHOOK_URL`: optional Discord webhook
-- `OPENAI_API_KEY`: optional AI generation provider credential
-- `YOUTUBE_ENABLED`: disabled until official YouTube credentials are configured
-- `TIKTOK_ENABLED`: disabled until official TikTok credentials are configured
-
-## Deployment
-
-The repository is designed to run as a scheduled Render job. Publishing credentials must be added as private environment variables in Render; never commit secrets to GitHub.
-
-## Next integrations
-
-The architecture has separate modules for AI content generation, video rendering, YouTube publishing, TikTok publishing, and Discord notifications. Each integration can be enabled independently after its official API credentials are configured.
+- MAX_TRENDS
+- VIDEO_COUNT
+- VIDEO_SECONDS
+- DISCORD_WEBHOOK_URL
+- OPENAI_API_KEY (optional)
+- YOUTUBE_API_KEY (future integration)
+- TIKTOK_RESEARCH_TOKEN (optional research integration)
+- YOUTUBE_ENABLED=false
+- TIKTOK_ENABLED=false
