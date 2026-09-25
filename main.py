@@ -1,7 +1,7 @@
 import json
 import os
 from pipeline import run_pipeline
-from video import create_video, write_manifest
+from video_v2 import create_video, write_manifest
 from script_generator import generate_script
 from publish import publish
 from discord import notify
@@ -10,7 +10,6 @@ from performance import record_run
 from self_test import main as run_self_test
 from quality_control import quality_check
 from learning import record_learning, save_learning_summary, learning_context
-from output_repair import repair_video
 
 
 def main():
@@ -29,12 +28,6 @@ def main():
         )
         video_path = create_video(opportunity, script, index)
         manifest_path = write_manifest(opportunity, script, video_path)
-
-        repair = repair_video(
-            video_path, manifest_path, script,
-            duration=__import__("video")._choose_duration(script, opportunity),
-        )
-        print(f"Output repair #{index}: {repair}")
 
         if not os.path.exists(video_path) or os.path.getsize(video_path) < 50_000:
             raise RuntimeError(f"Output quality gate failed for video #{index}")
@@ -85,7 +78,7 @@ def main():
         f"🚀 Viral Video Automation complete\n"
         f"Trends scanned: {result['trend_count']} | Videos: {len(result['videos'])}\n"
         f"Sources represented: {', '.join(sorted(source_counts)) or 'none'}\n"
-        f"Video styles: adaptive visual system\n"
+        f"Video styles: kinetic motion v2\n"
         f"Publishing: OFF (YouTube API is intentionally the final integration)"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
