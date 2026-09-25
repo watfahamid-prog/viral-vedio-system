@@ -47,8 +47,11 @@ def _fallback(trend, hook, format_name="short_explainer"):
         scenes = [
             clean_hook,
             f"First: {topic_phrase} is gaining attention right now.",
-            "Second: the useful context is what changed, happened, or was reported.",
-            "Third: the next confirmed update is the part worth watching.",
+            "Here is the key context behind the attention.",
+            "The next detail explains what actually changed.",
+            "Then the reaction shows why people noticed.",
+            "The important part is what is confirmed so far.",
+            "The next update is the detail worth watching.",
             "That is the quick breakdown.",
         ]
         hashtags = ["#shorts", "#trending", "#explainer", "#news"]
@@ -57,8 +60,11 @@ def _fallback(trend, hook, format_name="short_explainer"):
         scenes = [
             clean_hook,
             "At first, it looked like just another update.",
-            "Then the reactions started moving the story faster.",
-            "Now the interesting part is what happens next.",
+            "Then one detail changed how people saw the story.",
+            "The reaction made the story move even faster.",
+            "Another detail explains what is happening now.",
+            "The confirmed part is easier to understand than the headline.",
+            "Now the question is what the next update shows.",
             "That is the story so far.",
         ]
         hashtags = ["#fyp", "#trending", "#story", "#explained"]
@@ -67,8 +73,11 @@ def _fallback(trend, hook, format_name="short_explainer"):
         scenes = [
             clean_hook,
             f"This is getting attention in the {category} space.",
-            "The key point is the change or event behind the headline.",
-            "The context matters because the story is still developing.",
+            "Start with the actual change behind the headline.",
+            "Then look at the detail that explains why it matters.",
+            "The reaction adds another useful piece of context.",
+            "What is confirmed is more important than speculation.",
+            "The story can still develop from here.",
             "That is the short version.",
         ]
         hashtags = ["#shorts", "#explained", "#trending", "#news"]
@@ -77,19 +86,25 @@ def _fallback(trend, hook, format_name="short_explainer"):
         scenes = [
             clean_hook,
             "First, understand what actually changed.",
-            "Next, look at the reaction and why people are paying attention.",
-            "Then watch for the next confirmed update.",
+            "Next, look at the detail behind the headline.",
+            "Then look at the reaction and why people noticed.",
+            "Another detail puts the story into context.",
+            "Separate the confirmed facts from assumptions.",
+            "Watch for the next confirmed update.",
             "That is the core of the story.",
         ]
         hashtags = ["#trending", "#shorts", "#explainer"]
 
     opening = _pick(openings, seed[:8])
     visual_scenes = [
-        f"Opening: a striking real-world establishing shot that instantly communicates {topic_phrase}; the main subject enters frame, fast push-in camera, natural lighting, shallow depth of field.",
-        f"Context: a close-up of the key subject or object connected to {topic_phrase} performing a clear action; handheld tracking, realistic motion, layered background.",
-        f"Reaction: a visually surprising but plausible moment showing the human or environmental reaction around {topic_phrase}; quick camera move, expressive movement, cinematic contrast.",
-        f"Detail: a different location or angle that explains the next important part of {topic_phrase}; smooth orbit or dolly movement, strong foreground/background separation.",
-        f"Payoff: a memorable final visual tied directly to {topic_phrase}; camera pulls back or reveals the wider scene, energetic movement, polished cinematic finish.",
+        f"Opening: a striking real-world establishing shot that instantly communicates {topic_phrase}; main subject enters frame, fast push-in, natural lighting, shallow depth of field.",
+        f"Context: the same subject or object performs a clear action connected to {topic_phrase}; medium tracking shot, realistic environment and layered depth.",
+        f"Close detail: a physical detail that explains {topic_phrase}; macro lens, rack focus, controlled handheld movement.",
+        f"Reaction: a plausible human or environmental reaction connected to {topic_phrase}; side movement, expressive action, natural documentary lighting.",
+        f"Change: show the specific event or transformation behind {topic_phrase}; dynamic camera move, clear before/after visual logic.",
+        f"Evidence/context: another real location or angle that helps explain {topic_phrase}; over-the-shoulder framing, realistic textures and continuity.",
+        f"Escalation: visually show what happens next around {topic_phrase}; follow shot, stronger movement, deeper background.",
+        f"Payoff: a memorable final real-world visual tied directly to {topic_phrase}; decisive reveal or pull-back, polished cinematic finish.",
     ]
     script = " ".join([opening] + scenes)
     return {
@@ -122,8 +137,8 @@ Target roughly 35-150 spoken words.
 If the topic is political, describe documented information neutrally: do not persuade, endorse, attack, rank, or predict election outcomes.
 
 Return ONLY valid JSON with keys: title, hook, script, scenes, visual_scenes, caption, hashtags.
-scenes must contain exactly 5 short narration/caption lines with distinct information or visual purpose.
-visual_scenes must contain exactly 5 production-ready visual directions. Each must specify visible subject/action, setting, camera movement, lighting, and continuity. Never request readable text, logos, watermarks, copied footage, or a recognizable creator's style.
+scenes must contain exactly 8 short narration/caption lines with distinct information or visual purpose.
+visual_scenes must contain exactly 8 production-ready visual directions. Each must specify visible subject/action, setting, camera movement, lighting, and continuity. Never request readable text, logos, watermarks, copied footage, or a recognizable creator's style.
 The five visual scenes must be meaningfully different so the finished short does not look like the same shot repeated.
 hashtags must contain 3-5 short hashtags."""
 
@@ -152,7 +167,7 @@ hashtags must contain 3-5 short hashtags."""
                     if part.get("type") == "output_text":
                         text += part.get("text", "")
         result = json.loads(text)
-        if len(result.get("scenes", [])) != 5 or len(result.get("visual_scenes", [])) != 5:
+        if len(result.get("scenes", [])) != 8 or len(result.get("visual_scenes", [])) != 8:
             raise ValueError("AI returned the wrong scene count")
         result["format"] = format_name
         result["learning_context_used"] = True
