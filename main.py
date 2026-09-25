@@ -8,10 +8,13 @@ from discord import notify
 from config import OUTPUT_DIR, VIDEO_COUNT, VIDEO_ENGINE
 from performance import record_run
 from self_test import main as run_self_test
+from quality_control import quality_check
+from learning import record_learning, save_learning_summary, learning_context
 
 
 def main():
     run_self_test()
+    print('Learning context:', learning_context())
     result = run_pipeline()
     result["videos"] = []
 
@@ -51,6 +54,15 @@ def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(OUTPUT_DIR, "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
+    qc = quality_check(result['videos'])
+    with open(os.path.join(OUTPUT_DIR, 'quality_report.json'), 'w', encoding='utf-8') as f:
+        json.dump(qc, f, ensure_ascii=False, indent=2)
+    state = record_learning(result, qc)
+    save_learning_summary(state, OUTPUT_DIR)
+    if not qc['passed']:
+        failed = [item for item in qc['results'] if not item['passed']]
+        details = '; '.join(f"video={item.get('video')}: {','.join(item.get('errors', []))}" for item in failed)
+        raise RuntimeError(f'Quality control blocked Discord: {details}')
     record_run(result)
 
     source_counts = {}
