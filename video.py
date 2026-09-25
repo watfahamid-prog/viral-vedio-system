@@ -193,7 +193,7 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     concat_list = os.path.join(clip_dir, "concat.txt")
     with open(concat_list, "w", encoding="utf-8") as f:
         for clip in clips:
-            f.write(f"file '{os.path.abspath(clip)}'\\n")
+            f.write(f"file '{os.path.abspath(clip)}'\n")
 
     visual = os.path.join(OUTPUT_DIR, f"ai_visuals_{run_id}.mp4")
     try:
