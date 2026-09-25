@@ -6,7 +6,7 @@ Automated trend-to-content pipeline for original short-form videos.
 
 1. Find current topics from Google News and Google Trends RSS.
 2. Optionally merge YouTube and TikTok research data when official credentials are available.
-3. Score, deduplicate, and diversify the trend opportunities.
+3. Score, deduplicate, diversify, and timestamp trend opportunities.
 4. Create three different short-form concepts/scripts.
 5. Render three visually different vertical videos with narration.
 6. Write manifests, a run summary, and performance-ready metadata.
@@ -21,7 +21,7 @@ Each run intentionally uses three visual identities:
 - Story: dark warm layout with moving rings and conversational hook card.
 - Explained: mint editorial layout with structured step cards.
 
-The videos no longer use one repeated blue template. The template generator also creates five scenes with different narrative structures so the three outputs are not clones.
+AI generation is now a real optional path, not only a placeholder. The system generates several short visual clips per video and falls back to the existing renderer if the AI provider is unavailable.\n\nThe videos no longer use one repeated blue template. The template generator also creates five scenes with different narrative structures so the three outputs are not clones.
 
 ## Important
 
@@ -45,3 +45,9 @@ The workflow runs manually, on pushes to main, and every 6 hours. Generated vide
 - TIKTOK_RESEARCH_TOKEN (optional research integration)
 - YOUTUBE_ENABLED=false
 - TIKTOK_ENABLED=false
+
+## AI video engine
+
+The workflow supports Hugging Face Inference Providers for text-to-video. The default model is LTX-Video, with Wan 2.1 1.3B available by setting VIDEO_ENGINE=hf_wan. Hugging Face currently documents text-to-video support through providers including fal-ai and lists LTX-Video, Wan 2.1, HunyuanVideo and CogVideoX among served models. The external inference provider may require its own paid credits; the repository therefore keeps an automatic template fallback.
+
+Add a GitHub Actions secret named HF_TOKEN before enabling provider inference. Never commit the token to the repository.
