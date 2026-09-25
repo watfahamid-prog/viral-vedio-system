@@ -217,6 +217,23 @@ def _make_ai_visuals(opportunity, script_data, duration, run_id):
     finally:
         shutil.rmtree(clip_dir, ignore_errors=True)
 
+def _make_srt(script_data, duration, run_id):
+    path = os.path.join(OUTPUT_DIR, f"captions-{run_id}.srt")
+    scenes = script_data.get("scenes") or [script_data.get("hook", "")]
+    step = duration / max(1, len(scenes))
+    with open(path, "w", encoding="utf-8") as f:
+        for i, scene in enumerate(scenes):
+            start = i * step
+            end = min(duration, (i + 1) * step)
+            def stamp(value):
+                hours = int(value // 3600)
+                minutes = int((value % 3600) // 60)
+                seconds = int(value % 60)
+                millis = int((value - int(value)) * 1000)
+                return f"{hours:02d}:{minutes:02d}:{seconds:02d},{millis:03d}"
+            f.write(f"{i + 1}\\n{stamp(start)} --> {stamp(end)}\\n{str(scene).strip()}\\n\\n")
+    return path
+
 def _choose_duration(script_data, opportunity):
     """Choose a trend-dependent duration between the configured minimum and maximum."""
     text = _clean_speech(script_data)
@@ -298,9 +315,9 @@ def create_video(opportunity, script_data, index=1):
         shutil.copy2(visual_source, output)
 
     shutil.rmtree(work, ignore_errors=True)
-    for temp in [silent, ai_visuals, os.path.join(OUTPUT_DIR, "voice.wav"), os.path.join(OUTPUT_DIR, "voice.mp3"),
+    for temp in [silent, ai_visuals, subtitle_file, captioned if "captioned" in locals() else None, os.path.join(OUTPUT_DIR, "voice.wav"), os.path.join(OUTPUT_DIR, "voice.mp3"),
                  os.path.join(OUTPUT_DIR, "music.wav"), os.path.join(OUTPUT_DIR, "audio.wav")]:
-        if os.path.exists(temp):
+        if temp and os.path.exists(temp):
             os.remove(temp)
     if not os.path.exists(output) or os.path.getsize(output) < 50_000:
         raise RuntimeError(f"Video quality gate failed: missing or tiny output: {output}")
