@@ -72,10 +72,19 @@ def _make_audio(script_data, output, duration):
     mixed = os.path.join(work, "audio.wav")
     try:
         if TTS_ENGINE == "edge":
-            subprocess.run(
-                ["edge-tts", "--voice", TTS_VOICE, "--rate=+8%", "--text", speech, "--write-media", voice],
-                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            )
+            try:
+                subprocess.run(
+                    ["edge-tts", "--voice", TTS_VOICE, "--rate=+8%", "--text", speech, "--write-media", voice],
+                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+            except (FileNotFoundError, subprocess.CalledProcessError):
+                # Edge TTS can fail because of network/provider issues in Actions.
+                # Always fall back to local eSpeak so videos never lose their audio track.
+                voice = os.path.join(work, "voice.wav")
+                subprocess.run(
+                    ["espeak-ng", "-v", "en-us", "-s", "172", "-p", "48", "-a", "155", "-w", voice, speech],
+                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
         else:
             voice = os.path.join(work, "voice.wav")
             subprocess.run(
