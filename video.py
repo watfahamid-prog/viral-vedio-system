@@ -289,10 +289,12 @@ def create_video(opportunity, script_data, index=1):
             opportunity.get("category", "general"), scene_index, len(scenes),
             progress, scene_index * scene_duration, fonts
         )
-        if index % 3 == 1:
-            _draw_editorial(*args)
-        elif index % 3 == 2:
+        # Match the layout to the chosen format so each video has a distinct identity.
+        fmt = str(opportunity.get("format", "short_explainer"))
+        if fmt == "tiktok_cantina_story":
             _draw_sunset(*args)
+        elif fmt == "youtube_ranked_breakdown":
+            _draw_editorial(*args)
         else:
             _draw_mint(*args)
 
