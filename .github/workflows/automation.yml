@@ -5,11 +5,19 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: viral-video-automation
+  cancel-in-progress: true
 
 jobs:
   create-videos:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -17,14 +25,17 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
+          cache: "pip"
+      - name: Install ffmpeg and narration engine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng
       - name: Install requirements
         run: pip install -r requirements.txt
-      - name: Run viral video pipeline
+      - name: Run complete viral video pipeline
         env:
           DRY_RUN: "true"
-          MAX_TRENDS: "10"
+          MAX_TRENDS: "12"
           VIDEO_COUNT: "3"
           VIDEO_SECONDS: "15"
           AI_MODE: "template"
@@ -32,7 +43,17 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           TIKTOK_RESEARCH_TOKEN: ${{ secrets.TIKTOK_RESEARCH_TOKEN }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          YOUTUBE_ENABLED: "false"
+          TIKTOK_ENABLED: "false"
+          PYTHONUNBUFFERED: "1"
         run: python main.py
+      - name: Check generated outputs
+        if: success()
+        run: |
+          test -f output/run_summary.json
+          test -n "$(find output -maxdepth 1 -name '*.mp4' -type f | head -1)"
+          echo "Generated video files:"
+          ls -lh output/*.mp4
       - name: Save generated videos and metadata
         if: always()
         uses: actions/upload-artifact@v4
