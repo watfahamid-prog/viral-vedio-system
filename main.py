@@ -41,7 +41,7 @@ def main():
             "platform": opportunity.get("platform", "shorts"),
             "format": opportunity.get("format", "short_explainer"),
             "confidence": opportunity.get("confidence", 0),
-            "publishing": publish(video_path),
+            "publishing": publish(video_path, script),
         })
 
     expected = min(VIDEO_COUNT, len(result["opportunities"]))
