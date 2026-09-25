@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
-from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS
+from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS, VIDEO_ENGINE, COMFYUI_URL
 
 WIDTH, HEIGHT, FPS = 1080, 1920, 15
 
@@ -256,6 +256,9 @@ def create_video(opportunity, script_data, index=1):
         "confidence": opportunity.get("confidence", 0), "duration_seconds": duration,
         "audio": bool(audio), "original_content": True, "script": script_data,
         "video_file": output,
+        "video_engine": VIDEO_ENGINE,
+        "ai_engine_ready": VIDEO_ENGINE not in {"template", "none", "off"},
+        "comfyui_configured": bool(COMFYUI_URL),
     }
     with open(os.path.join(OUTPUT_DIR, f"latest_video_{run_id}.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
