@@ -44,7 +44,7 @@ def _download(url, output_path):
         for chunk in response.iter_content(chunk_size=1024 * 1024):
             if chunk:
                 f.write(chunk)
-    if path.stat().st_size < 10_000:
+    if path.stat().st_size < 50_000:
         path.unlink(missing_ok=True)
         raise RuntimeError("Downloaded video is suspiciously small")
     return str(path)
