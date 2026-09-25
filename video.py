@@ -231,7 +231,7 @@ def _make_srt(script_data, duration, run_id):
                 seconds = int(value % 60)
                 millis = int((value - int(value)) * 1000)
                 return f"{hours:02d}:{minutes:02d}:{seconds:02d},{millis:03d}"
-            f.write(f"{i + 1}\\n{stamp(start)} --> {stamp(end)}\\n{str(scene).strip()}\\n\\n")
+            f.write(f"{i + 1}\n{stamp(start)} --> {stamp(end)}\n{str(scene).strip()}\n\n")
     return path
 
 def _choose_duration(script_data, opportunity):
