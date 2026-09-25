@@ -13,4 +13,6 @@ TIKTOK_RESEARCH_TOKEN = os.getenv("TIKTOK_RESEARCH_TOKEN", "")
 YOUTUBE_ENABLED = os.getenv("YOUTUBE_ENABLED", "false").lower() == "true"
 TIKTOK_ENABLED = os.getenv("TIKTOK_ENABLED", "false").lower() == "true"
 AI_MODE = os.getenv("AI_MODE", "template").lower()
+VIDEO_ENGINE = os.getenv("VIDEO_ENGINE", "auto").lower()
+COMFYUI_URL = os.getenv("COMFYUI_URL", "").rstrip("/")
 VIDEO_COUNT = int(os.getenv("VIDEO_COUNT", "3"))
