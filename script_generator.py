@@ -130,7 +130,7 @@ hashtags must contain 3-5 short hashtags."""
     response = requests.post(
         "https://api.openai.com/v1/responses",
         headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-        json={"model": "gpt-5.6-luna", "input": prompt, "max_output_tokens": 700},
+        json={"model": OPENAI_MODEL, "input": prompt, "max_output_tokens": 700},
         timeout=60,
     )
     if response.status_code == 429:
@@ -140,7 +140,7 @@ hashtags must contain 3-5 short hashtags."""
             f"OpenAI API 429 ({error.get('code', 'rate_limit_or_quota')}): "
             f"{error.get('message', 'quota or rate limit reached')}"
         )
-    response.raise_for_status()
+    if not response.ok:\n        print(f"OpenAI API error {response.status_code}; using template fallback.")\n        return _fallback(trend, hook, format_name)\n    response.raise_for_status()
     data = response.json()
     text = data.get("output_text", "")
     if not text:
