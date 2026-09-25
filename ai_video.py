@@ -59,7 +59,7 @@ def _runway(prompt, output_path, duration=5):
         task = client.image_to_video.create(
             model=AI_VIDEO_MODEL if AI_VIDEO_MODEL in {"gen4.5", "gen4_turbo"} else "gen4.5",
             prompt_text=prompt,
-            ratio="768:1280",
+            ratio="720:1280",
             duration=max(2, min(10, int(duration))),
         ).wait_for_task_output()
         outputs = getattr(task, "output", None) or []
