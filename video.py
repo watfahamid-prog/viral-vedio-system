@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
-from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS, VIDEO_ENGINE, COMFYUI_URL
+from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS, VIDEO_ENGINE, COMFYUI_URL, TTS_ENGINE, TTS_VOICE
 from ai_video import generate_clip, engine_available
 
 WIDTH, HEIGHT, FPS = 1080, 1920, 15
@@ -62,14 +62,21 @@ def _make_audio(script_data, output, duration):
     if not speech:
         return None
     work = os.path.dirname(output)
-    voice = os.path.join(work, "voice.wav")
+    voice = os.path.join(work, "voice.mp3")
     music = os.path.join(work, "music.wav")
     mixed = os.path.join(work, "audio.wav")
     try:
-        subprocess.run(
-            ["espeak-ng", "-v", "en-us", "-s", "172", "-p", "48", "-a", "155", "-w", voice, speech],
-            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
+        if TTS_ENGINE == "edge":
+            subprocess.run(
+                ["edge-tts", "--voice", TTS_VOICE, "--rate=+8%", "--text", speech, "--write-media", voice],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        else:
+            voice = os.path.join(work, "voice.wav")
+            subprocess.run(
+                ["espeak-ng", "-v", "en-us", "-s", "172", "-p", "48", "-a", "155", "-w", voice, speech],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
         subprocess.run(
             ["ffmpeg", "-y", "-f", "lavfi", "-i", f"sine=frequency=92:duration={duration}",
              "-filter_complex", f"[0:a]volume=0.025,afade=t=in:st=0:d=1,afade=t=out:st={max(0,duration-1)}:d=1[m]",
@@ -291,7 +298,7 @@ def create_video(opportunity, script_data, index=1):
         shutil.copy2(visual_source, output)
 
     shutil.rmtree(work, ignore_errors=True)
-    for temp in [silent, ai_visuals, os.path.join(OUTPUT_DIR, "voice.wav"),
+    for temp in [silent, ai_visuals, os.path.join(OUTPUT_DIR, "voice.wav"), os.path.join(OUTPUT_DIR, "voice.mp3"),
                  os.path.join(OUTPUT_DIR, "music.wav"), os.path.join(OUTPUT_DIR, "audio.wav")]:
         if os.path.exists(temp):
             os.remove(temp)
