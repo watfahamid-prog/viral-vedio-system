@@ -44,7 +44,8 @@ def main():
             "platform": opportunity.get("platform", "shorts"),
             "format": opportunity.get("format", "short_explainer"),
             "confidence": opportunity.get("confidence", 0),
-            "publishing": publish(video_path, script),
+            "script": script,
+            "publishing": {"status": "pending_quality_control"},
         })
 
     expected = min(VIDEO_COUNT, len(result["opportunities"]))
@@ -63,6 +64,9 @@ def main():
         failed = [item for item in qc['results'] if not item['passed']]
         details = '; '.join(f"video={item.get('video')}: {','.join(item.get('errors', []))}" for item in failed)
         raise RuntimeError(f'Quality control blocked Discord: {details}')
+    for item in result['videos']:
+        item['publishing'] = publish(item['video'], item.get('script', {}))
+
     record_run(result)
 
     source_counts = {}
