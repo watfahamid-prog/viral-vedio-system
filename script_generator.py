@@ -3,6 +3,7 @@ import json
 import re
 import requests
 from config import OPENAI_API_KEY, OPENAI_MODEL, AI_MODE
+from learning import learning_context
 
 
 def _pick(options, seed):
@@ -134,6 +135,7 @@ def generate_script(trend: str, hook: str, format_name: str = "short_explainer")
 TREND: {trend}
 FORMAT: {format_name}
 HOOK: {hook}
+PREVIOUS SYSTEM LESSONS: {learning_context()}
 
 Use only information contained in the topic and hook. Do not invent names, numbers, quotes,
 events, or causes. Do not copy any creator's wording, footage, watermark, or script.
@@ -169,5 +171,6 @@ hashtags must contain 3-5 short hashtags."""
                     text += part.get("text", "")
     result = json.loads(text)
     result["format"] = format_name
+    result["learning_context_used"] = True
     result["generation_mode"] = "openai"
     return result
