@@ -23,8 +23,8 @@ def main():
         opportunity["hook"],
         opportunity["format"],
     )
-    assert len(script["scenes"]) == 5
-    assert len(script.get("visual_scenes", [])) == 5
+    assert len(script["scenes"]) == 8
+    assert len(script.get("visual_scenes", [])) == 8
     duration = _choose_duration(script, opportunity)
     assert 15 <= duration <= 90
     print("SELF-TEST OK")
