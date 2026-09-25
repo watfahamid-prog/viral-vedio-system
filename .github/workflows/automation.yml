@@ -18,7 +18,7 @@ concurrency:
 jobs:
   create-videos:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -47,16 +47,16 @@ jobs:
           DRY_RUN: "true"
           MAX_TRENDS: "12"
           VIDEO_COUNT: "3"
-          VIDEO_SECONDS: "15"
+          VIDEO_SECONDS: "20"
           VIDEO_MIN_SECONDS: "15"
-          VIDEO_MAX_SECONDS: "90"
+          VIDEO_MAX_SECONDS: "60"
           AI_MODE: "template"
           VIDEO_ENGINE: "auto"
           AI_VIDEO_ENABLED: "true"
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
           AI_VIDEO_TIMEOUT: "90"
-          AI_VIDEO_MAX_CLIPS: "6"
+          AI_VIDEO_MAX_CLIPS: "4"
           TTS_ENGINE: "edge"
           TTS_VOICE: "en-US-AriaNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -77,12 +77,14 @@ jobs:
         run: |
           test -f output/run_summary.json
           test -n "$(find output -maxdepth 1 -name '*.mp4' -type f | head -1)"
+          count="$(find output -maxdepth 1 -name '*.mp4' -type f | wc -l)"
+          test "$count" -eq 3
           for video in output/*.mp4; do
             ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video"
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video"
             ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
           done
-          echo "Generated video files:"
+          echo "Generated exactly 3 video files:"
           ls -lh output/*.mp4
 
       - name: Persist self-learning state
@@ -102,7 +104,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viral-videos-run-${{ github.run_number }}
+          name: viral-videos-visual-inspection-run-${{ github.run_number }}
           path: output/
           if-no-files-found: warn
           retention-days: 7
