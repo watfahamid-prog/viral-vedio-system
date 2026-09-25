@@ -74,7 +74,11 @@ jobs:
         run: |
           test -f output/run_summary.json
           test -n "$(find output -maxdepth 1 -name '*.mp4' -type f | head -1)"
-          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 output/*.mp4 | head
+          for video in output/*.mp4; do
+            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video"
+            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video"
+            ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
+          done
           echo "Generated video files:"
           ls -lh output/*.mp4
 
