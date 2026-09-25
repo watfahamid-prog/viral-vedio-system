@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
-from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS, VIDEO_ENGINE, COMFYUI_URL, TTS_ENGINE, TTS_VOICE
+from config import OUTPUT_DIR, VIDEO_SECONDS, VIDEO_MIN_SECONDS, VIDEO_MAX_SECONDS, VIDEO_ENGINE, COMFYUI_URL, TTS_ENGINE, TTS_VOICE, AI_VIDEO_MAX_CLIPS
 from ai_video import generate_clip, engine_available
 
 WIDTH, HEIGHT, FPS = 1080, 1920, 15
@@ -248,28 +248,41 @@ def _choose_duration(script_data, opportunity):
 
 
 def create_video(opportunity, script_data, index=1):
+    """Build a fast, polished vertical video.
+
+    The default renderer uses a handful of high-resolution scene cards plus
+    ffmpeg motion (zoom/pan). This is dramatically faster than rendering one
+    1080x1920 PNG for every frame. Remote AI video is optional and capped so
+    a provider outage can never stall the whole automation.
+    """
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     run_id = f"{index:02d}-{_slug(opportunity.get('trend', 'trend'))}"
-    work = os.path.join(OUTPUT_DIR, f"frames-{run_id}")
+    work = os.path.join(OUTPUT_DIR, f"render-{run_id}")
     os.makedirs(work, exist_ok=True)
+
     duration = _choose_duration(script_data, opportunity)
     scenes = script_data.get("scenes") or [script_data.get("hook", opportunity["hook"])]
-    frames = max(1, int(duration * FPS))
+    scenes = [str(s).strip() for s in scenes if str(s).strip()][:5]
+    if not scenes:
+        scenes = [str(opportunity.get("hook", opportunity.get("trend", "Current topic")))]
+
     title_font, body_font, small_font = _font(72), _font(42), _font(31)
     palette = PALETTES[(index - 1) % len(PALETTES)]
     fonts = (title_font, body_font, small_font)
 
-    for i in range(frames):
-        t = i / FPS
-        progress = min(1.0, t / duration)
-        scene_index = min(len(scenes) - 1, int(progress * len(scenes)))
-        scene = str(scenes[scene_index])
+    # One keyframe per scene instead of hundreds/thousands of PNG frames.
+    keyframes = []
+    scene_duration = duration / len(scenes)
+    for scene_index, scene in enumerate(scenes):
         img = Image.new("RGB", (WIDTH, HEIGHT), palette["bg"])
         draw = ImageDraw.Draw(img)
-        args = (draw, palette, script_data.get("title", opportunity["trend"]),
-                script_data.get("hook", opportunity["hook"]), scene,
-                opportunity.get("category", "general"), scene_index, len(scenes),
-                progress, t, fonts)
+        progress = scene_index / max(1, len(scenes) - 1)
+        args = (
+            draw, palette, script_data.get("title", opportunity["trend"]),
+            script_data.get("hook", opportunity["hook"]), scene,
+            opportunity.get("category", "general"), scene_index, len(scenes),
+            progress, scene_index * scene_duration, fonts
+        )
         if index % 3 == 1:
             _draw_editorial(*args)
         elif index % 3 == 2:
@@ -277,76 +290,126 @@ def create_video(opportunity, script_data, index=1):
         else:
             _draw_mint(*args)
 
-        rail_y = 1690
-        draw.rounded_rectangle((70, rail_y, WIDTH - 70, rail_y + 18), radius=9, fill=palette["muted"])
-        draw.rounded_rectangle((70, rail_y, 70 + int((WIDTH - 140) * progress), rail_y + 18),
-                               radius=9, fill=palette["accent"])
-        caption_lines = _wrap(draw, re.sub(r"\s+", " ", scene), small_font, WIDTH - 180)[:2]
-        cap_y = 1745
+        # Large kinetic caption area for readability on phones.
+        caption = re.sub(r"\s+", " ", scene)
+        caption_lines = _wrap(draw, caption, body_font, WIDTH - 170)[:3]
+        cap_y = 1540
         for line in caption_lines:
-            draw.text((75, cap_y), line, font=small_font, fill=palette["ink"])
-            cap_y += 38
-        start = WIDTH // 2 - (len(scenes) - 1) * 20
-        for n in range(len(scenes)):
-            r = 9 if n == scene_index else 6
-            x = start + n * 40
-            draw.ellipse((x-r, 1870-r, x+r, 1870+r),
-                         fill=palette["accent"] if n == scene_index else palette["muted"])
-        img.save(os.path.join(work, f"frame_{i:05d}.png"))
+            draw.rounded_rectangle(
+                (65, cap_y - 8, WIDTH - 65, cap_y + 50),
+                radius=16, fill=palette["ink"]
+            )
+            draw.text((85, cap_y), line, font=small_font, fill=palette["bg"])
+            cap_y += 54
+
+        path = os.path.join(work, f"scene_{scene_index:02d}.jpg")
+        img.save(path, quality=92, optimize=True)
+        keyframes.append(path)
 
     silent = os.path.join(OUTPUT_DIR, f"silent_{run_id}.mp4")
     output = os.path.join(OUTPUT_DIR, f"viral_short_{run_id}.mp4")
+
+    # Turn each keyframe into a subtle moving shot, then join the shots.
+    segments = []
+    for i, image_path in enumerate(keyframes):
+        segment = os.path.join(work, f"segment_{i:02d}.mp4")
+        seg_duration = scene_duration
+        frames = max(1, int(round(seg_duration * FPS)))
+        zoom = "min(zoom+0.0009,1.08)"
+        x_expr = "iw/2-(iw/zoom/2)"
+        y_expr = "ih/2-(ih/zoom/2)"
+        subprocess.run(
+            [
+                "ffmpeg", "-y", "-loop", "1", "-i", image_path,
+                "-vf",
+                f"zoompan=z='{zoom}':x='{x_expr}':y='{y_expr}':d={frames}:s={WIDTH}x{HEIGHT}:fps={FPS}",
+                "-t", f"{seg_duration:.3f}", "-an",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                "-pix_fmt", "yuv420p", "-movflags", "+faststart", segment
+            ],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        segments.append(segment)
+
+    concat_list = os.path.join(work, "segments.txt")
+    with open(concat_list, "w", encoding="utf-8") as f:
+        for segment in segments:
+            f.write(f"file '{os.path.abspath(segment)}'\n")
+
     subprocess.run(
-        ["ffmpeg", "-y", "-framerate", str(FPS), "-i", os.path.join(work, "frame_%05d.png"),
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", silent],
+        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list,
+         "-c", "copy", "-movflags", "+faststart", silent],
         check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
-    ai_visuals = _make_ai_visuals(opportunity, script_data, duration, run_id)
+
+    # Optional AI footage. Disabled in the GitHub workflow by default because
+    # remote text-to-video can be slow; if enabled, use only a small number of
+    # clips and fall back instantly to the fast renderer.
+    ai_visuals = None
+    if engine_available() and AI_VIDEO_MAX_CLIPS > 0:
+        ai_visuals = _make_ai_visuals(opportunity, script_data, duration, run_id)
+
     subtitle_file = _make_srt(script_data, duration, run_id) if ai_visuals else None
     visual_source = ai_visuals or silent
     captioned = None
+
     if ai_visuals and subtitle_file:
         captioned = os.path.join(OUTPUT_DIR, f"captioned_{run_id}.mp4")
         try:
             subprocess.run(
                 ["ffmpeg", "-y", "-i", ai_visuals, "-vf", f"subtitles={subtitle_file}",
-                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", captioned],
+                 "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+                 "-movflags", "+faststart", captioned],
                 check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
             visual_source = captioned
         except (FileNotFoundError, subprocess.CalledProcessError):
             pass
+
     audio = _make_audio(script_data, output, duration)
     if audio:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", visual_source, "-i", audio, "-map", "0:v:0", "-map", "1:a:0",
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest",
-             "-movflags", "+faststart", output],
+            ["ffmpeg", "-y", "-i", visual_source, "-i", audio,
+             "-map", "0:v:0", "-map", "1:a:0",
+             "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+             "-shortest", "-movflags", "+faststart", output],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
     else:
         shutil.copy2(visual_source, output)
 
     shutil.rmtree(work, ignore_errors=True)
-    for temp in [silent, ai_visuals, subtitle_file, captioned if "captioned" in locals() else None, os.path.join(OUTPUT_DIR, "voice.wav"), os.path.join(OUTPUT_DIR, "voice.mp3"),
-                 os.path.join(OUTPUT_DIR, "music.wav"), os.path.join(OUTPUT_DIR, "audio.wav")]:
+    for temp in [
+        silent, ai_visuals, subtitle_file,
+        captioned if "captioned" in locals() else None,
+        os.path.join(OUTPUT_DIR, "voice.wav"),
+        os.path.join(OUTPUT_DIR, "voice.mp3"),
+        os.path.join(OUTPUT_DIR, "music.wav"),
+        os.path.join(OUTPUT_DIR, "audio.wav"),
+    ]:
         if temp and os.path.exists(temp):
             os.remove(temp)
+
     if not os.path.exists(output) or os.path.getsize(output) < 50_000:
         raise RuntimeError(f"Video quality gate failed: missing or tiny output: {output}")
 
     manifest = {
-        "trend": opportunity["trend"], "hook": opportunity["hook"],
+        "trend": opportunity["trend"],
+        "hook": opportunity["hook"],
         "format": opportunity.get("format", "short_explainer"),
-        "platform": opportunity.get("platform", "shorts"), "style": palette["name"],
-        "confidence": opportunity.get("confidence", 0), "duration_seconds": duration,
-        "audio": bool(audio), "original_content": True, "script": script_data,
+        "platform": opportunity.get("platform", "shorts"),
+        "style": palette["name"],
+        "confidence": opportunity.get("confidence", 0),
+        "duration_seconds": duration,
+        "scene_count": len(scenes),
+        "audio": bool(audio),
+        "original_content": True,
+        "script": script_data,
         "video_file": output,
-        "video_engine": VIDEO_ENGINE,
+        "video_engine": "motion_graphics" if not ai_visuals else VIDEO_ENGINE,
         "ai_video_used": bool(ai_visuals),
         "ai_engine_ready": engine_available(),
         "ai_model": os.getenv("AI_VIDEO_MODEL", ""),
-
         "comfyui_configured": bool(COMFYUI_URL),
     }
     with open(os.path.join(OUTPUT_DIR, f"latest_video_{run_id}.json"), "w", encoding="utf-8") as f:
