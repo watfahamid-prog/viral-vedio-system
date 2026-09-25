@@ -367,11 +367,19 @@ def create_video(opportunity, script_data, index=1):
         for segment in segments:
             f.write(f"file '{os.path.abspath(segment)}'\n")
 
-    subprocess.run(
-        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list,
-         "-c", "copy", "-movflags", "+faststart", silent],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+    # Normalize the segment stream during assembly. Individual zoompan
+    # segments can have slightly different timestamps; stream-copy concat is
+    # fragile and was causing repeated FFmpeg failures in Actions.
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_list,
+             "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+             "-pix_fmt", "yuv420p", "-r", str(FPS), "-movflags", "+faststart", silent],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        tail = (exc.stderr or "").splitlines()[-25:]
+        raise RuntimeError("FFmpeg segment assembly failed:\\n" + "\\n".join(tail)) from exc
 
     # Optional AI footage. Disabled in the GitHub workflow by default because
     # remote text-to-video can be slow; if enabled, use only a small number of
