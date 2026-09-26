@@ -632,6 +632,8 @@ def _make_audio(script, work, duration):
     text = _speech(script)
     # Prefer the free Gemini TTS engine when a Gemini key is configured.
     try:
+        if os.getenv("ZERO_COST_MODE", "false").lower() == "true":
+            raise RuntimeError("ZERO_COST_MODE: Gemini TTS disabled")
         from gemini_tts import gemini_tts
         gemini_path = work / "voice_gemini.wav"
         generated = gemini_tts(text, str(gemini_path))
