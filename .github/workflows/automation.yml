@@ -72,10 +72,11 @@ jobs:
       - name: Report video-engine availability
         env:
           AI_VIDEO_ENABLED: "true"
-          VIDEO_ENGINE: "auto"
+          VIDEO_ENGINE: "pollinations"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
           LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
         run: |
           python - <<'PY'
           from ai_video import available_engines
@@ -103,7 +104,13 @@ jobs:
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
           AI_VIDEO_TIMEOUT: "180"
-          AI_VIDEO_MAX_CLIPS: "8"
+          AI_VIDEO_MAX_CLIPS: "2"
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+          POLLINATIONS_IMAGE_MODEL: "flux"
+          POLLINATIONS_VIDEO_MODEL: "wan-fast"
+          POLLINATIONS_MAX_IMAGES_PER_VIDEO: "6"
+          POLLINATIONS_MAX_MOTION_CLIPS_PER_VIDEO: "2"
+          POLLINATIONS_VIDEO_SECONDS: "4"
           TTS_ENGINE: "auto"
           TTS_VOICE: "en-US-GuyNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
