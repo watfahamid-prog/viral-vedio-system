@@ -256,26 +256,17 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
             for j, line in enumerate(_wrap(d, _phrase(hook, 18), _regular(43), 790)[:5]):
                 d.text((120, 1080 + j*62), line, font=_regular(43), fill=(*ink, 225))
         elif layouts == 1:
-            d.rounded_rectangle((60, 160, 1020, 820), radius=54, fill=(*accent, 235))
-            d.text((105, 215), "WHAT CHANGED?", font=_font(30), fill=(*bg, 255))
-            y = 300
-            for line in _wrap(d, _phrase(scene, 15), _font(80), 820)[:5]:
-                d.text((105, y), line, font=_font(80), fill=(*bg, 255))
-                y += 94
-            d.text((75, 950), "WATCH THE REACTION", font=_font(29), fill=(*hot, 255))
-            _draw_category_icon(d, category, 820, 1280, 190, accent, hot)
+            d.text((70, 165), "WHAT CHANGED?", font=_font(30), fill=(*hot, 255))
+            _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
+            d.rounded_rectangle((70, 1420, 1010, 1570), radius=30, fill=(*accent, 235))
+            for j, line in enumerate(_wrap(d, _phrase(scene, 10), _font(46), 850)[:2]):
+                d.text((100, 1440+j*55), line, font=_font(46), fill=(*bg, 255))
         elif layouts == 2:
             d.text((70, 165), "ZOOM IN", font=_font(30), fill=(*accent, 255))
-            d.ellipse((720, 190, 1010, 480), outline=(*hot, 220), width=10)
-            d.ellipse((790, 260, 940, 410), fill=(*accent, 80), outline=(*accent, 255), width=4)
-            y = 550
-            for line in _wrap(d, _phrase(scene, 17), _font(78), 900)[:5]:
-                d.text((70, y), line, font=_font(78), fill=(*ink, 255))
-                y += 94
-            d.line((70, 1110, 1010, 1110), fill=(*accent, 180), width=4)
-            d.text((70, 1170), "THE QUICK VERSION", font=_font(29), fill=(*hot, 255))
-            for j, line in enumerate(_wrap(d, _phrase(hook, 16), _regular(45), 880)[:4]):
-                d.text((70, 1230+j*63), line, font=_regular(45), fill=(*ink, 225))
+            _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
+            d.text((70, 1420), "THE QUICK VERSION", font=_font(29), fill=(*hot, 255))
+            for j, line in enumerate(_wrap(d, _phrase(hook, 11), _regular(42), 880)[:3]):
+                d.text((70, 1470+j*55), line, font=_regular(42), fill=(*ink, 230))
         else:
             d.text((70, 160), "BREAKDOWN", font=_font(30), fill=(*hot, 255))
             _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
