@@ -25,6 +25,7 @@ def main():
     if not result["opportunities"]:
         raise RuntimeError("No trend opportunities were found. Nothing was generated.")
 
+    # Primary output set: always create VIDEO_COUNT normal videos.
     for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
         if opportunity.get("platform") == "youtube":
             video_path, manifest_path = create_youtube_commentary_video(opportunity, index)
@@ -68,9 +69,59 @@ def main():
             "publishing": {"status": "pending_quality_control"},
         })
 
-    expected = min(VIDEO_COUNT, len(result["opportunities"]))
-    if len(result["videos"]) != expected:
-        raise RuntimeError(f"Pipeline quality gate failed: expected {expected} videos, created {len(result['videos'])}")
+    if len(result["videos"]) != VIDEO_COUNT:
+        raise RuntimeError(
+            f"Pipeline quality gate failed: expected exactly {VIDEO_COUNT} primary videos, "
+            f"created {len(result['videos'])}"
+        )
+
+    # Separate YouTube set: three dedicated Top-10 listicles, independent of
+    # live trend availability. This guarantees the YouTube deliverable exists
+    # even when trend feeds return only one usable opportunity.
+    youtube_topics = [
+        "funniest moments caught on camera",
+        "scariest moments caught on camera",
+        "wildest unexpected moments",
+    ]
+    youtube_outputs = []
+    for youtube_index, topic in enumerate(youtube_topics, 1):
+        youtube_opportunity = {
+            "trend": topic,
+            "source": "evergreen_listicle",
+            "sources": ["Pexels", "Pixabay", "Wikimedia Commons", "Internet Archive"],
+            "summary": "Evergreen Top-10 concept selected as a resilient YouTube fallback.",
+            "hook": f"Top 10 {topic}.",
+            "format": "youtube_top10",
+            "platform": "youtube",
+            "confidence": 0.9,
+            "status": "ready",
+        }
+        try:
+            youtube_path, youtube_manifest = create_youtube_commentary_video(
+                youtube_opportunity, youtube_index
+            )
+            youtube_outputs.append({
+                "trend": topic,
+                "video": youtube_path,
+                "manifest": youtube_manifest,
+                "platform": "youtube",
+                "format": "top_10_listicle",
+                "generation_mode": "real_footage_commentary",
+            })
+        except Exception as error:
+            # Keep the primary pipeline intact, but record the exact YouTube
+            # failure so the workflow quality gate can report it clearly.
+            youtube_outputs.append({
+                "trend": topic,
+                "video": "",
+                "manifest": "",
+                "platform": "youtube",
+                "format": "top_10_listicle",
+                "generation_mode": "failed",
+                "error": str(error),
+            })
+
+    result["youtube_videos"] = youtube_outputs
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(OUTPUT_DIR, "run_summary.json"), "w", encoding="utf-8") as f:
