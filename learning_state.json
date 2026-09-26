@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 54,
-  "videos": 153,
+  "runs": 55,
+  "videos": 156,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -18,8 +18,8 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 4,
-      "passed": 4
+      "checked": 7,
+      "passed": 7
     }
   },
   "formats": {
@@ -39,57 +39,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 4
+      "created": 7
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-26T16:48:35.940927+00:00",
+  "last_updated": "2026-09-26T19:41:45.251667+00:00",
   "creative_history": [
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Svensk i Bangkok: Regnandet bara fortsätter",
-      "hook": "A real-life moment connected to Svensk i Bangkok: Regnandet bara fortsätter.",
-      "format": "youtube_real_commentary",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
-      "trend": "boxning",
-      "hook": "Wait — here is why boxning is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "general",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "hammarby mot eskilstuna",
-      "hook": "A real-life moment connected to hammarby mot eskilstuna.",
-      "format": "youtube_real_commentary",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
     {
       "trend": "Example technology trend",
       "hook": "A real-life moment connected to Example technology trend.",
@@ -725,6 +683,69 @@
       "hook": "Here is the quick breakdown of funniest moments caught on camera.",
       "format": "short_explainer",
       "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Uppgifter: Stefan Löfven dödshotad",
+      "hook": "Here is the quick breakdown of Uppgifter: Stefan Löfven dödshotad.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "rysslands utrikesminister",
+      "hook": "Here is the quick breakdown of rysslands utrikesminister.",
+      "format": "short_explainer",
+      "category": "politics",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Dödliga ryska attacker i Ukraina",
+      "hook": "Here is the quick breakdown of Dödliga ryska attacker i Ukraina.",
+      "format": "short_explainer",
+      "category": "technology",
       "platform": "shorts"
     }
   ]
