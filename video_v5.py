@@ -248,6 +248,7 @@ def create_video(opportunity, script, index=1):
                 generated = generate_clip(
                     prompt, str(ai_path),
                     duration=min(5, max(3, int(round(scene_time)))),
+                    image_path=key,
                 )
                 if generated and Path(generated).exists():
                     normalized = work / f"ai_scene_{ai_i:02d}_norm.mp4"
@@ -307,6 +308,7 @@ def create_video(opportunity, script, index=1):
                     generated = generate_clip(
                         prompt, str(retry_path),
                         duration=min(5, max(3, int(round(scene_time)))),
+                        image_path=keys[weak_i],
                     )
                     if generated and Path(generated).exists():
                         normalized = work / f"regen_scene_{weak_i:02d}_norm.mp4"
