@@ -504,6 +504,7 @@ def _make_audio(script, work, duration):
         subprocess.run(["ffmpeg", "-y", "-i", str(edge), "-ar", "48000", "-ac", "1",
                         "-c:a", "pcm_s16le", str(voice)],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return str(voice)
     except Exception:
         subprocess.run(
             ["espeak-ng", "-v", "en-us", "-s", "170", "-p", "50", "-a", "165", "-w", str(voice), text],
