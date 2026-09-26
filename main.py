@@ -25,6 +25,8 @@ def main():
         script = generate_script(
             opportunity["trend"], opportunity["hook"],
             opportunity.get("format", "short_explainer"),
+            opportunity.get("summary", ""),
+            opportunity.get("source_url", ""),
         )
         video_path = create_video(opportunity, script, index)
         manifest_path = write_manifest(opportunity, script, video_path)
