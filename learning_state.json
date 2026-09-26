@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 48,
-  "videos": 143,
+  "runs": 49,
+  "videos": 145,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -9,12 +9,12 @@
   },
   "platforms": {
     "youtube": {
-      "checked": 95,
-      "passed": 88
+      "checked": 96,
+      "passed": 89
     },
     "tiktok": {
-      "checked": 48,
-      "passed": 45
+      "checked": 49,
+      "passed": 46
     }
   },
   "formats": {
@@ -22,7 +22,7 @@
       "created": 84
     },
     "tiktok_cantina_story": {
-      "created": 48
+      "created": 49
     },
     "youtube_ranked_breakdown": {
       "created": 2
@@ -31,14 +31,14 @@
       "created": 7
     },
     "youtube_top10": {
-      "created": 2
+      "created": 3
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-26T15:14:57.646046+00:00",
+  "last_updated": "2026-09-26T15:25:29.618900+00:00",
   "creative_history": [
     {
       "trend": "Example technology trend",
@@ -347,6 +347,34 @@
       "format": "youtube_top10",
       "category": "technology",
       "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Biskop Johan Tyrberg om AI-larmen: Viktigt att vi från kyrkorna reagerar",
+      "hook": "Top 10 Biskop Johan Tyrberg om AI-larmen: Viktigt att vi från kyrkorna reagerar moments you need to see.",
+      "format": "youtube_top10",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Googles nya avatarer ska ge AI-agenter ett ansikte",
+      "hook": "Wait — here is why Googles nya avatarer ska ge AI-agenter ett ansikte is suddenly everywhere.",
+      "format": "tiktok_cantina_story",
+      "category": "technology",
+      "platform": "tiktok"
     }
   ]
 }
