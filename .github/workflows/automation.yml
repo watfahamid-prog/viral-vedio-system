@@ -42,6 +42,35 @@ jobs:
           python -m compileall -q .
           python self_test.py
 
+      - name: Verify Gemini API secret
+        env:
+          GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: "gemini-2.5-flash"
+        run: |
+          set -euo pipefail
+          if [ -z "\${GEMINI_API_KEY:-}" ]; then
+            echo "GEMINI_API_KEY secret is missing or empty."
+            exit 1
+          fi
+          response="\$(curl -sS -w '\n%{http_code}' \
+            "https://generativelanguage.googleapis.com/v1beta/models/\${GEMINI_MODEL}:generateContent" \
+            -H "x-goog-api-key: \${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"contents":[{"parts":[{"text":"Reply with exactly: GEMINI_OK"}]}],"generationConfig":{"maxOutputTokens":10}}')"
+          status="\$(printf '%s\n' "\$response" | tail -n 1)"
+          body="\$(printf '%s\n' "\$response" | sed '\$d')"
+          if [ "\$status" != "200" ]; then
+            echo "Gemini API verification failed with HTTP \$status."
+            printf '%s\n' "\$body" | head -c 1000
+            exit 1
+          fi
+          if ! printf '%s\n' "\$body" | grep -q "GEMINI_OK"; then
+            echo "Gemini API responded, but the test response was unexpected."
+            exit 1
+          fi
+          echo "Gemini API verification passed."
+
       - name: Run complete viral video pipeline
         env:
           DRY_RUN: "true"
@@ -50,7 +79,7 @@ jobs:
           VIDEO_SECONDS: "20"
           VIDEO_MIN_SECONDS: "15"
           VIDEO_MAX_SECONDS: "60"
-          AI_MODE: "openai"
+          AI_MODE: "template"
           GEMINI_ENABLED: "true"
           GEMINI_MODEL: "gemini-2.5-flash"
           GEMINI_VISUAL_QC_ENABLED: "true"
