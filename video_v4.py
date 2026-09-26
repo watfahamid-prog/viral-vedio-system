@@ -509,7 +509,7 @@ def _make_captions(script, duration, work):
         cs=int((value-int(value))*100)
         return f"0:{int(value)//60:02d}:{int(value)%60:02d}.{cs:02d}"
     def esc(value):
-        return str(value).replace("\","\\").replace("{","\\{").replace("}","\\}")
+        return str(value).replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
     with path.open("w",encoding="utf-8") as f:
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\n")
