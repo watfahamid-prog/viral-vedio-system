@@ -24,6 +24,9 @@ DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
+YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb").strip()
@@ -380,6 +383,86 @@ def _source_score(source, query):
     return score
 
 
+
+def _gemini_rank_sources(sources, theme):
+    """Optional AI judge for source metadata; falls back safely on errors."""
+    if not YOUTUBE_AI_SELECTOR_ENABLED or not GEMINI_API_KEY or not sources:
+        return sources
+    candidates = [{"id": i, "title": str(s.get("title", ""))[:180],
+                   "description": str(s.get("description", ""))[:300],
+                   "provider": s.get("provider", "")} for i, s in enumerate(sources[:36])]
+    prompt = (
+        f"You are a strict casting editor for a viral YouTube Top-10 {theme} listicle. "
+        "Score candidates only from metadata. Prefer footage clearly matching the promised event "
+        "and likely to work in a 4-second vertical clip. Reject generic landscapes, wildlife, "
+        "portraits, calm stock footage, and unrelated clips. Return ONLY JSON like "
+        "[{\"id\":0,\"score\":0,\"reason\":\"short\"}]. "
+        f"Candidates: {json.dumps(candidates, ensure_ascii=False)}"
+    )
+    try:
+        response = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}],
+                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2500}},
+            timeout=45,
+        )
+        response.raise_for_status()
+        raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        match = re.search(r"\[.*\]", raw, re.S)
+        if not match:
+            raise ValueError("Gemini returned no JSON ranking")
+        judged = json.loads(match.group(0))
+        by_id = {int(x["id"]): x for x in judged if isinstance(x, dict) and str(x.get("id", "")).isdigit()}
+        for i, source in enumerate(sources):
+            if i in by_id:
+                ai_score = max(0, min(100, int(by_id[i].get("score", 0))))
+                source["_ai_score"] = ai_score
+                source["_ai_reason"] = str(by_id[i].get("reason", ""))[:180]
+                source["_match_score"] = source.get("_match_score", 0) + ai_score * 0.55
+        print(f"YouTube AI selector: Gemini judged {len(by_id)} candidates for {theme}.")
+    except Exception as error:
+        print(f"YouTube AI selector unavailable; using local selector: {error}")
+    return sources
+
+
+def _visual_preflight(path, duration):
+    """Reject black/frozen source videos before they become final clips."""
+    sample_dir = Path(path).with_suffix("")
+    sample_dir.mkdir(exist_ok=True)
+    frames = []
+    try:
+        for pct in (0.2, 0.5, 0.8):
+            frame = sample_dir / f"qc_{int(pct * 100)}.jpg"
+            subprocess.run([
+                "ffmpeg", "-y", "-loglevel", "error", "-ss", str(max(0.1, duration * pct)),
+                "-i", str(path), "-frames:v", "1", "-vf", "scale=160:160", str(frame)
+            ], check=True, timeout=20)
+            frames.append(frame)
+        from PIL import Image, ImageStat
+        images = [Image.open(frame).convert("L") for frame in frames]
+        means = [ImageStat.Stat(img).mean[0] for img in images]
+        if max(means) < 8:
+            return False, "near-black footage"
+        diffs = []
+        for a, b in zip(images, images[1:]):
+            diffs.append(sum(abs(x - y) for x, y in zip(a.getdata(), b.getdata())) / (160 * 160))
+        if max(means) - min(means) < 1.5 and max(diffs, default=0) < 1.0:
+            return False, "nearly frozen footage"
+    except Exception as error:
+        return False, f"visual QC error: {error}"
+    finally:
+        for frame in frames:
+            try:
+                frame.unlink()
+            except OSError:
+                pass
+        try:
+            sample_dir.rmdir()
+        except OSError:
+            pass
+    return True, "passed"
+
 def _rank_and_diversify(sources, theme):
     """Choose high-relevance clips first, while avoiding ten near-identical clips."""
     ranked = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
@@ -564,6 +647,7 @@ def create_youtube_commentary_video(opportunity, index):
         if len(sources) >= CLIPS_PER_VIDEO * 6:
             break
 
+    sources = _gemini_rank_sources(sources, theme)
     sources = _rank_and_diversify(sources, theme)
 
     clips, manifest = [], []
@@ -576,6 +660,10 @@ def create_youtube_commentary_video(opportunity, index):
             _download(source["url"], raw)
             duration = _probe_duration(raw)
             if duration < CLIP_SECONDS + 0.5:
+                continue
+            visual_ok, visual_reason = _visual_preflight(raw, duration)
+            if not visual_ok:
+                print(f"YouTube visual QC rejected source: {source.get('title','unknown')} ({visual_reason})")
                 continue
             max_start = max(0.0, duration - CLIP_SECONDS)
 
@@ -675,7 +763,9 @@ def create_youtube_commentary_video(opportunity, index):
             "title_card_seconds": TITLE_SECONDS, "countdown": "#10 -> #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
-            "selection_engine": "theme-aware semantic metadata scoring with hard negative gates",
+            "selection_engine": "theme-aware semantic scoring + optional Gemini AI judge + visual preflight QC",
+            "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
+            "visual_preflight": True,
             "commentary_style": "fast_reactive",
         },
         "sources": manifest,
