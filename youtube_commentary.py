@@ -23,6 +23,10 @@ DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
+ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb").strip()
+ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5").strip()
 
 
 def _safe_name(value):
@@ -267,8 +271,40 @@ def _commentary(opportunity, source):
 
 
 def _tts(text, path):
+    """Generate narration with ElevenLabs first, then fall back to edge-tts.
+
+    ElevenLabs is optional. If its key is missing, rate-limited, unavailable,
+    or returns an invalid response, the free/local edge-tts path is used.
+    """
     if TTS_ENGINE in {"none", "text"}:
         return None
+
+    if ELEVENLABS_ENABLED and ELEVENLABS_API_KEY:
+        try:
+            endpoint = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
+            response = requests.post(
+                endpoint,
+                params={"output_format": "mp3_44100_128"},
+                headers={
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                },
+                json={
+                    "text": text,
+                    "model_id": ELEVENLABS_MODEL,
+                },
+                timeout=120,
+            )
+            response.raise_for_status()
+            if not response.content.startswith(b"ID3") and not response.content.startswith(b"\xff\xfb"):
+                raise ValueError("ElevenLabs returned unexpected audio data")
+            path.write_bytes(response.content)
+            print("YouTube TTS: ElevenLabs voice generated successfully.")
+            return str(path)
+        except Exception as error:
+            print(f"YouTube TTS: ElevenLabs failed; falling back to edge-tts: {error}")
+
     try:
         if TTS_ENGINE in {"auto", "edge"}:
             import asyncio
@@ -276,9 +312,10 @@ def _tts(text, path):
             async def make():
                 await edge_tts.Communicate(text, TTS_VOICE).save(str(path))
             asyncio.run(make())
+            print("YouTube TTS: edge-tts fallback generated successfully.")
             return str(path)
     except Exception as error:
-        print(f"YouTube TTS fallback: {error}")
+        print(f"YouTube TTS fallback failed: {error}")
     return None
 
 
