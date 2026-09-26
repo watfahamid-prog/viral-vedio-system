@@ -11,7 +11,7 @@ def _clean_json(text):
     if text.startswith("```"):
         lines = text.splitlines()
         if lines and lines[0].startswith("```"): lines = lines[1:]
-        if lines and lines[-1].strip() == "```:": lines = lines[:-1]
+        if lines and lines[-1].strip() == "```": lines = lines[:-1]
         text = "\n".join(lines).strip()
     start, end = text.find("{"), text.rfind("}")
     return json.loads(text[start:end + 1]) if start >= 0 and end > start else None
