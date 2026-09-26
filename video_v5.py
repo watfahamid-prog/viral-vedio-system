@@ -266,15 +266,19 @@ def create_video(opportunity, script, index=1):
         weak = [i for i in dict.fromkeys(weak) if 0 <= i < target][:2]
         if weak:
             from ai_video import generate_clip, engine_available
+            from creative_director import repair_weak_shot
             if engine_available():
                 for weak_i in weak:
-                    prompt = (
+                    review_item = next((x for x in visual_review.get("scene_reviews", [])
+                                        if int(x.get("scene_index", -1)) == weak_i), {})
+                    reason = review_item.get("reason", "weak visual quality or repetition")
+                    repaired_prompt = repair_weak_shot(script, weak_i, reason)
+                    prompt = repaired_prompt or (
                         "REGENERATE THIS WEAK SHOT. Make it visually premium, physically plausible, "
-                        "dynamic and clearly different from neighboring shots. "
-                        "Use a distinct camera movement, composition and environment. "
-                        "Avoid static slideshow/card visuals, blue gradients, repeated backgrounds, "
-                        "readable text, logos and watermarks. Vertical 9:16. "
-                        + visuals[weak_i]
+                        "dynamic and clearly different from neighboring shots. Use a distinct camera "
+                        "movement, composition, action and environment depth. Avoid static slideshow/card "
+                        "visuals, blue gradients, repeated backgrounds, readable text, logos and watermarks. "
+                        "Vertical 9:16. " + visuals[weak_i]
                     )
                     retry_path = work / f"regen_scene_{weak_i:02d}.mp4"
                     generated = generate_clip(
@@ -385,6 +389,9 @@ def create_video(opportunity, script, index=1):
         "creative_qc_enabled": bool(visual_review.get("enabled")),
         "creative_qc_score": visual_review.get("score_1_to_10"),
         "weak_scenes_regenerated": regeneration_count,
+        "final_visual_qc": visual_review,
+        "continuity_bible": script.get("continuity_bible", {}),
+        "shot_plan": script.get("shot_plan", []),
         "art_direction": f"palette-{(index-1)%len(v4.PALETTES)+1}/dynamic-layouts",
         "script": script,
         "video_file": str(out),
