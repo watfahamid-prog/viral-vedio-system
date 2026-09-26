@@ -45,7 +45,7 @@ jobs:
       - name: Verify Gemini API secret
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: "gemini-2.5-flash"
+          GEMINI_MODEL: "gemini-3.8-flash"
         run: |
           set -euo pipefail
           if [ -z "${GEMINI_API_KEY:-}" ]; then
@@ -69,6 +69,22 @@ jobs:
             exit 0
           fi
           echo "Gemini API verification passed."
+      - name: Report video-engine availability
+        env:
+          AI_VIDEO_ENABLED: "true"
+          VIDEO_ENGINE: "auto"
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
+          LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
+        run: |
+          python - <<'PY'
+          from ai_video import available_engines
+          engines = available_engines()
+          print("AI video engines available:", engines)
+          if not engines:
+              print("WARNING: no AI video engine secret is configured; the renderer will use its visual fallback.")
+          PY
+
       - name: Run complete viral video pipeline
         env:
           DRY_RUN: "false"
@@ -77,9 +93,9 @@ jobs:
           VIDEO_SECONDS: "20"
           VIDEO_MIN_SECONDS: "15"
           VIDEO_MAX_SECONDS: "60"
-          AI_MODE: "template"
+          AI_MODE: "ai"
           GEMINI_ENABLED: ${{ secrets.GEMINI_API_KEY != '' }}
-          GEMINI_MODEL: "gemini-2.5-flash"
+          GEMINI_MODEL: "gemini-3.8-flash"
           GEMINI_VISUAL_QC_ENABLED: ${{ secrets.GEMINI_API_KEY != '' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "auto"
@@ -87,7 +103,7 @@ jobs:
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
           AI_VIDEO_TIMEOUT: "90"
-          AI_VIDEO_MAX_CLIPS: "6"
+          AI_VIDEO_MAX_CLIPS: "8"
           TTS_ENGINE: "auto"
           TTS_VOICE: "en-US-GuyNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
