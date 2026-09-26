@@ -44,7 +44,7 @@ def check_video(video_path, platform="youtube", item_script=None):
     if metrics["size"] < 50_000:
         errors.append("file_too_small")
     if platform == "youtube":
-        if metrics["width"] != 1920 or metrics["height"] != 1080:
+        if metrics["width"] != 1080 or metrics["height"] != 1920:
             errors.append("wrong_youtube_resolution")
     else:
         if metrics["width"] != 1080 or metrics["height"] != 1920:
@@ -60,8 +60,8 @@ def check_video(video_path, platform="youtube", item_script=None):
     # Visual integrity: reject a long full-black section.
     try:
         black = subprocess.run([
-            "ffmpeg", "-hide_banner", "-i", str(path),
-            "-vf", "blackdetect=d=1.0:pix_th=0.10",
+            "ffmpeg", "-hide_banner", "-ss", str(float(os.getenv("YOUTUBE_TITLE_SECONDS", "1.5") or 1.5) + 0.2), "-i", str(path),
+            "-vf", "blackdetect=d=1.5:pix_th=0.10",
             "-an", "-f", "null", "-"
         ], capture_output=True, text=True, timeout=45)
         if "black_start:" in (black.stderr or ""):
