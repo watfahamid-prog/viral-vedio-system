@@ -5,9 +5,9 @@ import requests
 
 AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
 VIDEO_ENGINE = os.getenv("VIDEO_ENGINE", "auto").lower()
-AI_VIDEO_MODEL = os.getenv("AI_VIDEO_MODEL", "gen4.5")
+AI_VIDEO_MODEL = os.getenv("AI_VIDEO_MODEL", "gen4.5").strip()
 AI_VIDEO_TIMEOUT = max(15, min(90, int(os.getenv("AI_VIDEO_TIMEOUT", "60"))))
-AI_VIDEO_MAX_CLIPS = max(0, min(6, int(os.getenv("AI_VIDEO_MAX_CLIPS", "3"))))
+AI_VIDEO_MAX_CLIPS = max(0, min(8, int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))))
 RUNWAY_API_KEY = os.getenv("RUNWAY_API_KEY", "").strip()
 LUMA_API_KEY = os.getenv("LUMA_API_KEY", "").strip()
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
