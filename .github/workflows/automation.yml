@@ -2,18 +2,27 @@ name: Viral Video Automation v5 free-engine stack # final visual-engine validati
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+    inputs:
+      mode:
+        description: "Run one production lane manually"
+        required: true
+        default: "youtube"
+        type: choice
+        options:
+          - youtube
+          - normal
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 * * * *"
+      timezone: "Europe/Stockholm"
+    - cron: "30 */3 * * *"
+      timezone: "Europe/Stockholm"
 
 permissions:
   contents: write
 
 concurrency:
-  group: viral-video-automation-v2
-  cancel-in-progress: true
+  group: viral-video-${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
+  cancel-in-progress: false
 
 jobs:
   create-videos:
@@ -114,6 +123,7 @@ jobs:
 
       - name: Run complete viral video pipeline
         env:
+          RUN_MODE: ${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
           DRY_RUN: "false"
           ZERO_COST_MODE: "true"
           MAX_TRENDS: "12"
@@ -170,29 +180,40 @@ jobs:
 
       - name: Check generated outputs
         if: success()
+        env:
+          RUN_MODE: ${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
         run: |
-          set -e
+          set -euo pipefail
           test -f output/run_summary.json
           test -f output/quality_report.json
-          count="$(find output -maxdepth 1 -name '*.mp4' -type f ! -name 'youtube_commentary_*.mp4' | wc -l)"
-          test "$count" -eq 3
-          echo "Primary videos found: $count"
-          for video in output/*.mp4; do
-            if [[ "$video" == *youtube_commentary_*.mp4 ]]; then
-              continue
-            fi
-            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
-            ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
-          done
+
+          primary_count="$(find output -maxdepth 1 -name '*.mp4' -type f ! -name 'youtube_commentary_*.mp4' | wc -l)"
           youtube_count="$(find output -maxdepth 1 -name 'youtube_commentary_*.mp4' -type f | wc -l)"
-          test "$youtube_count" -eq 3
-          for video in output/youtube_commentary_*.mp4; do
-            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1080,1920'
-            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
-            duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video")"
-            awk "BEGIN { exit !($duration >= 45) }"
+
+          if [ "$RUN_MODE" = "youtube" ]; then
+            test "$primary_count" -eq 0
+            test "$youtube_count" -eq 3
+            echo "YouTube lane: exactly 3 YouTube Top-10 videos, 0 normal videos."
+          else
+            test "$primary_count" -eq 3
+            test "$youtube_count" -eq 0
+            echo "Normal lane: exactly 3 normal videos, 0 YouTube videos."
+          fi
+
+          for video in output/*.mp4; do
+            [ -f "$video" ] || continue
+            if [[ "$video" == *youtube_commentary_*.mp4 ]]; then
+              ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1080,1920'
+              ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
+              duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video")"
+              awk "BEGIN { exit !($duration >= 45) }"
+            else
+              ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
+              ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
+            fi
           done
-          echo "Generated exactly 3 primary videos + 3 YouTube Top-10 listicles:"
+
+          echo "Generated outputs:"
           ls -lh output/*.mp4
 
       - name: Create compact visual inspection previews
