@@ -148,6 +148,7 @@ def _fetch_visual_assets(opportunity, work):
                 for word in re.findall(r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", query.lower()):
                     if len(word) >= 4 and word not in {"this", "that", "with", "here", "sources", "källor"}:
                         terms.append(aliases.get(word, word))
+                repeated_phrase = bool(re.search(r"\\b(\\w+)\\s+\\1\\b", query.lower()))
                 terms = list(dict.fromkeys(terms))
 
                 pages = (api.json().get("query", {}).get("pages", {}) or {}).values()
@@ -162,9 +163,16 @@ def _fetch_visual_assets(opportunity, work):
                     )
                     haystack = html.unescape((title_text + " " + desc_text)).lower()
                     score = sum(1 for term in terms if term in haystack)
-                    if query.lower() in haystack:
-                        score += 3
-                    if score <= 0:
+                    exact_phrase = query.lower() in haystack
+                    if exact_phrase:
+                        score += 5
+                    # Repeated phrases such as "hipp hipp" must match the phrase itself;
+                    # a random file containing only one "hipp" token is not relevant.
+                    if repeated_phrase and not exact_phrase:
+                        continue
+                    # Multi-term topics need more than one weak token match.
+                    required = 1 if len(terms) <= 1 else min(2, len(terms))
+                    if score < required:
                         continue
                     url = info.get("thumburl") or info.get("url")
                     if not url:
