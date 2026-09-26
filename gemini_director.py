@@ -5,6 +5,7 @@ import requests
 GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "true").lower() == "true"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+GEMINI_ORIGINALITY_ENABLED = os.getenv("GEMINI_ORIGINALITY_ENABLED", "false").lower() == "true"
 
 def direct_script(trend, hook, format_name, source_summary, base_script):
     if not (GEMINI_ENABLED and GEMINI_API_KEY):
@@ -71,7 +72,7 @@ def direct_script(trend, hook, format_name, source_summary, base_script):
         return base_script
 
 def originality_review(candidates, history):
-    if not (GEMINI_ENABLED and GEMINI_API_KEY) or not candidates:
+    if not (GEMINI_ORIGINALITY_ENABLED and GEMINI_API_KEY) or not candidates:
         return None
     previous = "\n".join(
         f"- {item.get('trend','')} | {item.get('hook','')} | {item.get('format','')}"
