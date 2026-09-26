@@ -18,7 +18,8 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
-CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "6")))
+CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "5")))
+HOOK_SECONDS = 2
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
@@ -253,6 +254,16 @@ def _make_clip(source, destination, start, duration):
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _normalize_audio(path):
+    subprocess.run([
+        "ffmpeg", "-y", "-i", str(path),
+        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-ar", "48000", "-c:a", "aac", "-b:a", "128k",
+        str(path.with_name(path.stem + "_norm.m4a"))
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return path.with_name(path.stem + "_norm.m4a")
+
+
 def _concat(clips, output):
     manifest = output.parent / "concat.txt"
     manifest.write_text("\n".join(f"file '{p.resolve()}'" for p in clips), encoding="utf-8")
@@ -406,6 +417,8 @@ def create_youtube_commentary_video(opportunity, index):
         subprocess.run([
             "ffmpeg", "-y", "-i", str(combined), "-i", audio_path,
             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
+            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+            "-ar", "48000", "-b:a", "128k",
             "-shortest", "-movflags", "+faststart", str(final)
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         mode = "ai_voice"
@@ -436,6 +449,7 @@ def create_youtube_commentary_video(opportunity, index):
     metadata = {
         "platform": "youtube", "mode": mode, "format": "top_10_listicle",
         "trend": opportunity.get("trend", ""), "commentary": comments,
+        "editing": {"clips": CLIPS_PER_VIDEO, "clip_seconds": CLIP_SECONDS, "audio_normalization": True, "aspect_ratio": "16:9"},
         "sources": manifest,
         "license_policy": (
             "Automated sources are limited to Wikimedia Commons items with license metadata, "
