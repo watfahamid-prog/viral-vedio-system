@@ -397,24 +397,28 @@ def _listicle_commentary(rank, opportunity, source):
 
 
 def _source_score(source, query):
-    text = " ".join([
-        str(source.get("title", "")),
-        str(source.get("description", "")),
-        str(query),
-    ]).lower()
+    # Score actual source metadata only. Do not include the search query:
+    # otherwise every result receives the same theme points.
+    title = str(source.get("title", "")).lower()
+    description = str(source.get("description", "")).lower()
+    text = f"{title} {description}"
     keyword_map = {
-        "funniest": ("funny", "funniest", "laugh", "hilarious", "fail", "fails", "comedy"),
-        "scariest": ("scary", "horror", "creepy", "ghost", "haunted", "terrifying"),
-        "wildest": ("wild", "crazy", "unexpected", "insane", "shocking"),
+        "funniest": ("funny", "funniest", "laugh", "hilarious", "fail", "fails", "comedy", "humor", "prank", "reaction"),
+        "scariest": ("scary", "horror", "creepy", "ghost", "haunted", "terrifying", "fear", "frightened", "dark", "spooky"),
+        "wildest": ("wild", "crazy", "unexpected", "insane", "shocking", "chaos", "extreme", "surprise", "accident"),
     }
     theme = _listicle_theme(query)
-    score = sum(3 for word in keyword_map.get(theme, ()) if word in text)
+    words = keyword_map.get(theme, ())
+    matches = sum(1 for word in words if word in text)
+    score = matches * 7
+    action_words = ("people", "person", "reaction", "caught", "moment", "camera", "crowd", "street", "animal")
+    score += sum(1 for word in action_words if word in text)
     if source.get("provider") == "Pexels":
-        score += 3
-    elif source.get("provider") == "Pixabay":
-        score += 2
-    elif source.get("provider") == "Wikimedia Commons":
         score += 1
+    elif source.get("provider") == "Pixabay":
+        score += 1
+    elif source.get("provider") == "Wikimedia Commons":
+        score += 2
     if source.get("creator"):
         score += 1
     return score
