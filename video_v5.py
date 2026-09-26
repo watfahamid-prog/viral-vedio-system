@@ -294,13 +294,29 @@ def create_video(opportunity, script, index=1):
     # Free local sound-design layer: three subtle transition whooshes.
     try:
         sfx = work / "transition_sfx.wav"
-        subprocess.run(
-            ["ffmpeg", "-y", "-f", "lavfi", "-i",
-             "sine=frequency=640:duration=0.22",
-             "-af", "afade=t=in:st=0:d=0.03,afade=t=out:st=0.16:d=0.06,lowpass=f=2400,volume=0.045",
-             "-ar", "48000", "-ac", "1", str(sfx)],
-            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
+        generated_sfx = None
+        try:
+            from audio_enhancements import elevenlabs_sfx
+            generated_sfx = elevenlabs_sfx(
+                "short cinematic whoosh transition, subtle, clean, modern social video",
+                str(work / "eleven_transition.mp3"), duration=0.8
+            )
+        except Exception:
+            generated_sfx = None
+        if generated_sfx:
+            subprocess.run(
+                ["ffmpeg","-y","-i",generated_sfx,"-ar","48000","-ac","1",
+                 "-filter:a","afade=t=in:st=0:d=0.05,afade=t=out:st=0.65:d=0.12,volume=0.10",
+                 str(sfx)],
+                check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        else:
+            subprocess.run(
+                ["ffmpeg", "-y", "-f", "lavfi", "-i",
+                 "sine=frequency=640:duration=0.22",
+                 "-af", "afade=t=in:st=0:d=0.03,afade=t=out:st=0.16:d=0.06,lowpass=f=2400,volume=0.045",
+                 "-ar", "48000", "-ac", "1", str(sfx)],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
         enhanced = work / "audio_sfx.wav"
         delay1 = max(500, int(duration * 250))
         delay2 = max(900, int(duration * 500))
