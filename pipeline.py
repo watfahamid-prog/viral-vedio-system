@@ -96,15 +96,45 @@ def build_opportunities(trends):
     if ai_keep is not None:
         candidates = [item for i, item in enumerate(candidates) if i in ai_keep]
     selected = candidates[:VIDEO_COUNT]
-    if len(selected) >= 2:
-        for i, item in enumerate(selected):
-            if i % 2 == 0:
-                item["platform"] = "youtube"
-                item["format"] = "youtube_top10"
-            else:
-                item["platform"] = "tiktok"
-                item["format"] = "tiktok_cantina_story"
-            item["hook"] = (hooks.get(item["format"], hooks["youtube_real_commentary"])).format(trend=item["trend"])
+
+    # The primary pipeline must always produce VIDEO_COUNT normal videos.
+    # YouTube Top-10 listicles are generated separately so a missing/weak
+    # trend cannot accidentally reduce the total output count.
+    fallback_topics = [
+        "funniest moments caught on camera",
+        "scariest moments caught on camera",
+        "wildest unexpected moments",
+    ]
+    existing = {str(item.get("trend", "")).strip().lower() for item in selected}
+    fallback_index = 0
+    while len(selected) < VIDEO_COUNT:
+        topic = fallback_topics[fallback_index % len(fallback_topics)]
+        fallback_index += 1
+        if topic in existing:
+            continue
+        selected.append({
+            "trend": topic,
+            "source": "fallback",
+            "sources": ["fallback"],
+            "score": 0,
+            "metrics": {},
+            "summary": "Reliable evergreen fallback concept used when live trend opportunities are insufficient.",
+            "source_url": "",
+            "publisher": "",
+            "category": "general",
+            "hook": hooks["short_explainer"].format(trend=topic),
+            "format": "short_explainer",
+            "platform": "shorts",
+            "confidence": 0.7,
+            "status": "fallback",
+            "originality_score": 1.0,
+        })
+        existing.add(topic)
+
+    for item in selected:
+        item["platform"] = "shorts"
+        item["format"] = "short_explainer"
+        item["hook"] = hooks["short_explainer"].format(trend=item["trend"])
     history = state.setdefault("creative_history", [])
     for item in selected:
         history.append({"trend": item.get("trend",""), "hook": item.get("hook",""), "format": item.get("format",""), "category": item.get("category",""), "platform": item.get("platform","")})
