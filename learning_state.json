@@ -49,69 +49,6 @@
   "last_updated": "2026-09-26T22:42:47.100249+00:00",
   "creative_history": [
     {
-      "trend": "Irans president kom, sågs och talade i fiendeland",
-      "hook": "Wait — here is why Irans president kom, sågs och talade i fiendeland is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "politics",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "USA och Kina öppnar direktlinje om AI-incidenter",
-      "hook": "Top 10 USA och Kina öppnar direktlinje om AI-incidenter moments you need to see.",
-      "format": "youtube_top10",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Biskop Johan Tyrberg om AI-larmen: Viktigt att vi från kyrkorna reagerar",
-      "hook": "Top 10 Biskop Johan Tyrberg om AI-larmen: Viktigt att vi från kyrkorna reagerar moments you need to see.",
-      "format": "youtube_top10",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Googles nya avatarer ska ge AI-agenter ett ansikte",
-      "hook": "Wait — here is why Googles nya avatarer ska ge AI-agenter ett ansikte is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "technology",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Katastrofläge efter två dagars regn i Bangkok",
-      "hook": "Top 10 real-life moments connected to Katastrofläge efter två dagars regn i Bangkok.",
-      "format": "youtube_real_commentary",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
       "trend": "Example technology trend",
       "hook": "Top 10 real-life moments connected to Example technology trend.",
       "format": "youtube_real_commentary",
@@ -739,6 +676,69 @@
       "hook": "Here is the quick breakdown of Dödliga ryska attacker i Ukraina.",
       "format": "short_explainer",
       "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Dödliga ryska attacker i Ukraina",
+      "hook": "Here is the quick breakdown of Dödliga ryska attacker i Ukraina.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Irans president kom, sågs och talade i fiendeland",
+      "hook": "Here is the quick breakdown of Irans president kom, sågs och talade i fiendeland.",
+      "format": "short_explainer",
+      "category": "politics",
       "platform": "shorts"
     },
     {
