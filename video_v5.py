@@ -1,4 +1,4 @@
-import json, math, os, subprocess, re
+import json, math, os, subprocess, re, shutil
 from pathlib import Path
 from PIL import Image
 import video_v4 as v4
