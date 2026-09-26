@@ -217,7 +217,7 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
     # Thin cinematic frame and scene marker.
     d.rounded_rectangle((34, 34, WIDTH-34, HEIGHT-34), radius=46, outline=(*accent, 150), width=3)
     d.text((70, 72), "TREND / NOW", font=_font(27), fill=(*accent, 255))
-    d.text((WIDTH-210, 72), f"{index+1:02d} / {total:02d}", font=_font(27), fill=(*ink, 235))
+    d.text((WIDTH-210, 72), f"{index+1:02d} / {total:02d}", font=_font(27), fill=(*ink, 255))
 
     # Every scene has a different composition.
     if index == 0:
@@ -251,10 +251,10 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
             for line in _wrap(d, _phrase(scene, 17), _font(78), 880)[:5]:
                 d.text((80, y), line, font=_font(78), fill=(*ink, 255))
                 y += 94
-            d.rounded_rectangle((80, 950, 1000, 1430), radius=46, fill=(*ink, 18), outline=(*accent, 170), width=3)
+            d.rounded_rectangle((80, 950, 1000, 1430), radius=46, fill=tuple(int(bg[i] * 0.82 + ink[i] * 0.18) for i in range(3)), outline=(*accent, 170), width=3)
             d.text((120, 1010), "CONTEXT", font=_font(27), fill=(*accent, 255))
             for j, line in enumerate(_wrap(d, _phrase(hook, 18), _regular(43), 790)[:5]):
-                d.text((120, 1080 + j*62), line, font=_regular(43), fill=(*ink, 225))
+                d.text((120, 1080 + j*62), line, font=_regular(43), fill=(*ink, 255))
         elif layouts == 1:
             d.text((70, 165), "WHAT CHANGED?", font=_font(30), fill=(*hot, 255))
             _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
@@ -266,7 +266,7 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
             _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
             d.text((70, 1420), "THE QUICK VERSION", font=_font(29), fill=(*hot, 255))
             for j, line in enumerate(_wrap(d, _phrase(hook, 11), _regular(42), 880)[:3]):
-                d.text((70, 1470+j*55), line, font=_regular(42), fill=(*ink, 230))
+                d.text((70, 1470+j*55), line, font=_regular(42), fill=(*ink, 255))
         else:
             d.text((70, 160), "BREAKDOWN", font=_font(30), fill=(*hot, 255))
             _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
@@ -279,7 +279,7 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
     d.rounded_rectangle((70, bar_y, 1010, bar_y+12), radius=6, fill=tuple(int(bg[i] * 0.55 + ink[i] * 0.45) for i in range(3)))
     progress = (index + 1) / total
     d.rounded_rectangle((70, bar_y, int(70 + 940*progress), bar_y+12), radius=6, fill=(*hot, 255))
-    d.text((70, 1790), _phrase(title, 9).upper(), font=_font(25), fill=(*ink, 175))
+    d.text((70, 1790), _phrase(title, 9).upper(), font=_font(25), fill=(*ink, 220))
     img.convert("RGB").save(path, quality=95, optimize=True)
 
 def _make_audio(script, work, duration):
