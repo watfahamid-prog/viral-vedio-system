@@ -242,6 +242,35 @@ def create_video(opportunity, script, index=1):
     audio = _make_polished_audio(script, work, duration)
     if not audio:
         raise RuntimeError("Narration engine unavailable; refusing to create a silent video.")
+    # Free local sound-design layer: three subtle transition whooshes.
+    try:
+        sfx = work / "transition_sfx.wav"
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "lavfi", "-i",
+             "sine=frequency=640:duration=0.22",
+             "-af", "afade=t=in:st=0:d=0.03,afade=t=out:st=0.16:d=0.06,lowpass=f=2400,volume=0.045",
+             "-ar", "48000", "-ac", "1", str(sfx)],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        enhanced = work / "audio_sfx.wav"
+        delay1 = max(500, int(duration * 250))
+        delay2 = max(900, int(duration * 500))
+        delay3 = max(1200, int(duration * 750))
+        graph = (
+            "[1:a]adelay=" + str(delay1) + "|" + str(delay1) + "[s1];"
+            "[1:a]adelay=" + str(delay2) + "|" + str(delay2) + "[s2];"
+            "[1:a]adelay=" + str(delay3) + "|" + str(delay3) + "[s3];"
+            "[0:a][s1][s2][s3]amix=inputs=4:duration=first,alimiter=limit=0.95[out]"
+        )
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", audio, "-i", str(sfx), "-filter_complex", graph,
+             "-map", "[out]", "-t", str(duration), "-ar", "48000", "-ac", "1",
+             "-c:a", "pcm_s16le", str(enhanced)],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        audio = str(enhanced)
+    except Exception as error:
+        print(f"Local transition SFX skipped: {error}")
 
     captions = v4._make_captions(script, duration, work)
     final_tmp = work / "final.mp4"
