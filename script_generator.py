@@ -41,7 +41,10 @@ def _fallback(trend, hook, format_name="short_explainer", source_summary="", sou
     topic_words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", trend) if len(w) > 2]
     topic_phrase = " ".join(topic_words[:7]) or "this topic"
     evidence = _clean(re.sub(r"<[^>]+>", " ", source_summary))
-    evidence = " ".join(evidence.split())[:420]
+    evidence = re.sub(r"&(?:nbsp|amp|quot|#39);", " ", evidence, flags=re.I)
+    evidence = re.sub(r"\s+", " ", evidence).strip()
+    evidence_sentences = [x.strip(" .") for x in re.split(r"(?<=[.!?])\s+", evidence) if len(x.strip()) > 20]
+    evidence = ". ".join(evidence_sentences[:3])[:520]
 
     if format_name == "youtube_ranked_breakdown":
         title = f"3 Things About {title}"
@@ -114,16 +117,49 @@ def _fallback(trend, hook, format_name="short_explainer", source_summary="", sou
             "The story may change as more verified information appears.",
             "That is the verified short version from the available source.",
         ]
-    visual_scenes = [
-        f"Opening: a striking real-world establishing shot that instantly communicates {topic_phrase}; main subject enters frame, fast push-in, natural lighting, shallow depth of field.",
-        f"Context: the same subject or object performs a clear action connected to {topic_phrase}; medium tracking shot, realistic environment and layered depth.",
-        f"Close detail: a physical detail that explains {topic_phrase}; macro lens, rack focus, controlled handheld movement.",
-        f"Reaction: a plausible human or environmental reaction connected to {topic_phrase}; side movement, expressive action, natural documentary lighting.",
-        f"Change: show the specific event or transformation behind {topic_phrase}; dynamic camera move, clear before/after visual logic.",
-        f"Evidence/context: another real location or angle that helps explain {topic_phrase}; over-the-shoulder framing, realistic textures and continuity.",
-        f"Escalation: visually show what happens next around {topic_phrase}; follow shot, stronger movement, deeper background.",
-        f"Payoff: a memorable final real-world visual tied directly to {topic_phrase}; decisive reveal or pull-back, polished cinematic finish.",
-    ]
+    visual_templates = {
+        "sports": [
+            f"Opening: wide stadium or competition establishing shot for {topic_phrase}, athletes moving through frame, fast push-in, dramatic natural light, deep background.",
+            f"Action: close tracking shot of the relevant sporting action for {topic_phrase}, clear body movement, realistic motion blur, sideline perspective.",
+            f"Detail: macro insert of ball, equipment or venue detail associated with {topic_phrase}, shallow depth, rack focus.",
+            f"Reaction: crowd or team reaction after the key moment in {topic_phrase}, handheld documentary framing, realistic expressions.",
+            f"Change: visually show the key turning point in {topic_phrase} with a before/after composition, lateral camera move, strong depth.",
+            f"Context: alternate wide angle of the venue connected to {topic_phrase}, slow orbit, natural daylight, consistent setting.",
+            f"Escalation: fast follow shot of the next decisive sporting movement, foreground obstruction, realistic physics and camera shake.",
+            f"Payoff: clean hero shot of the venue/action tied to {topic_phrase}, slow pull-back, polished cinematic finish.",
+        ],
+        "technology": [
+            f"Opening: cinematic close-up of a modern device or technology environment representing {topic_phrase}, screen glow without readable text, fast push-in.",
+            f"Action: hands interacting naturally with the device or hardware behind {topic_phrase}, over-shoulder tracking shot, realistic reflections.",
+            f"Detail: macro shot of a physical component associated with {topic_phrase}, controlled rack focus.",
+            f"Reaction: user discovering the key feature behind {topic_phrase}, medium shot, natural indoor lighting, believable gesture.",
+            f"Change: visual before/after demonstration of the technology's effect, lateral move, clear physical transformation.",
+            f"Context: wider laboratory, office or home setting connected to {topic_phrase}, slow orbit, layered depth.",
+            f"Escalation: dynamic close follow of the technology in use, foreground depth, realistic motion.",
+            f"Payoff: premium technology environment hero shot representing {topic_phrase}, slow pull-back, clean finish.",
+        ],
+        "politics": [
+            f"Opening: neutral cinematic exterior of the relevant government or civic setting for {topic_phrase}, slow push-in, natural daylight.",
+            f"Context: officials or public participants moving through a formal civic environment, medium tracking shot, documentary lighting.",
+            f"Detail: close-up of a document, microphone, podium or institutional detail relevant to {topic_phrase}, no readable text.",
+            f"Reaction: neutral public or press reaction around the documented event, observational framing, realistic expressions.",
+            f"Change: visual representation of the documented development in {topic_phrase}, controlled camera move, no persuasive symbolism.",
+            f"Evidence: alternate exterior/interior angle of the relevant institution, steady camera, consistent geography.",
+            f"Escalation: wider press or civic scene showing what happens next, natural movement, realistic depth.",
+            f"Payoff: calm establishing shot returning to the relevant civic setting, slow pull-back, neutral documentary finish.",
+        ],
+        "general": [
+            f"Opening: visually specific real-world establishing shot that represents {topic_phrase}, subject/action immediately clear, fast push-in, natural light.",
+            f"Action: medium tracking shot showing the main physical action behind {topic_phrase}, realistic environment and layered depth.",
+            f"Detail: macro close-up of a physical object or environmental detail that explains {topic_phrase}, rack focus.",
+            f"Reaction: believable human or environmental reaction connected to {topic_phrase}, handheld documentary framing.",
+            f"Change: clear visual before/after or transformation behind {topic_phrase}, dynamic camera move and realistic physics.",
+            f"Context: alternate real location or angle that adds information about {topic_phrase}, slow orbit, consistent setting.",
+            f"Escalation: follow shot showing what happens next around {topic_phrase}, stronger movement and foreground depth.",
+            f"Payoff: memorable real-world hero shot directly tied to {topic_phrase}, decisive reveal or slow pull-back.",
+        ],
+    }
+    visual_scenes = visual_templates.get(category, visual_templates["general"])
     script = " ".join([opening] + scenes)
     return {
         "title": title,
