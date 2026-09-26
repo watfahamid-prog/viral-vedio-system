@@ -221,8 +221,38 @@ def create_video(opportunity, script, index=1):
         words = [w for w in re.findall(r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", raw_trend) if len(w) >= 4]
         retry_opportunity["trend"] = " ".join(words[:5])
         if retry_opportunity["trend"] and retry_opportunity["trend"] != raw_trend:
-            assets, retry_credits = v4._fetch_visual_assets(retry_opportunity, work)
+            assets, retry_credits = v4._fetch_visual_assets(retry_opportunity, work / "trend_retry")
             credits.extend(retry_credits)
+
+    # The trend itself is not always a searchable image topic. In zero-cost mode,
+    # search the actual scene descriptions one-by-one before giving up. This keeps
+    # the final video image-based and text-free without requiring a paid generator.
+    if not assets:
+        scene_terms = []
+        for scene in scenes:
+            words = [w.lower() for w in re.findall(
+                r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", scene
+            ) if len(w) >= 5]
+            query = " ".join(list(dict.fromkeys(words))[:6])
+            if query and query not in scene_terms:
+                scene_terms.append(query)
+        for n, query in enumerate(scene_terms[:target]):
+            scene_work = work / f"scene_search_{n:02d}"
+            scene_work.mkdir(parents=True, exist_ok=True)
+            scene_opportunity = dict(opportunity)
+            scene_opportunity["trend"] = query
+            found, found_credits = v4._fetch_visual_assets(scene_opportunity, scene_work)
+            credits.extend(found_credits)
+            for src in found:
+                dst = work / f"scene_asset_{len(assets):02d}.jpg"
+                try:
+                    shutil.copyfile(src, dst)
+                    assets.append(str(dst))
+                except Exception:
+                    pass
+            if len(assets) >= target:
+                break
+        print(f"Zero-cost visual search: {len(assets)} usable assets found.")
     # Prefer original AI keyframes when the legitimate low-cost media key is configured.
     # The router is bounded per video, so a run cannot silently explode media spend.
     ai_keyframes = []
