@@ -71,8 +71,8 @@ def check_video(video_path, platform="youtube"):
         try:
             data = json.loads(manifest.read_text(encoding='utf-8'))
             shots = int(data.get('scene_count', 0) or 0)
-            if shots < 4 or shots > 11:
-                errors.append('shot_count_out_of_range')
+            if shots < 8 or shots > 14:
+                errors.append('scene_count_out_of_range')
             if not data.get('original_content', False):
                 errors.append('originality_flag_missing')
         except Exception:
