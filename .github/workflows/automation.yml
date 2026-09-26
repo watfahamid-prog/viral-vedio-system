@@ -174,17 +174,23 @@ jobs:
           test -f output/quality_report.json
           count="$(find output -maxdepth 1 -name '*.mp4' -type f ! -name 'youtube_commentary_*.mp4' | wc -l)"
           test "$count" -eq 3
-          echo "Main videos found: $count"
+          echo "Primary videos found: $count"
           for video in output/*.mp4; do
+            if [[ "$video" == *youtube_commentary_*.mp4 ]]; then
+              continue
+            fi
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
             ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
           done
           youtube_count="$(find output -maxdepth 1 -name 'youtube_commentary_*.mp4' -type f | wc -l)"
-          test "$youtube_count" -ge 1
+          test "$youtube_count" -eq 3
           for video in output/youtube_commentary_*.mp4; do
             ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1080,1920'
+            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
+            duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video")"
+            awk "BEGIN { exit !($duration >= 45) }"
           done
-          echo "Generated exactly 3 videos; YouTube uses real reusable footage + commentary:"
+          echo "Generated exactly 3 primary videos + 3 YouTube Top-10 listicles:"
           ls -lh output/*.mp4
 
       - name: Create compact visual inspection previews
@@ -210,7 +216,7 @@ jobs:
           du -sh preview_artifact
       - name: Save compact previews for visual inspection
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: viral-video-previews-run-${{ github.run_number }}
           path: preview_artifact/
@@ -232,7 +238,7 @@ jobs:
 
       - name: Save generated videos and metadata
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: viral-videos-visual-inspection-run-${{ github.run_number }}
           path: output/
