@@ -19,6 +19,7 @@ from youtube_commentary import create_youtube_commentary_video
 def main():
     run_self_test()
     print("Learning context:", learning_context())
+
     run_mode = os.getenv("RUN_MODE", "both").strip().lower()
     if run_mode not in {"youtube", "normal", "both"}:
         raise RuntimeError(f"Invalid RUN_MODE: {run_mode}")
@@ -30,24 +31,19 @@ def main():
     if not result["opportunities"]:
         raise RuntimeError("No trend opportunities were found. Nothing was generated.")
 
-    # Normal output set. In YouTube-only mode this entire section is skipped.
+    # Normal videos are generated only in normal/both mode.
     if run_mode in {"normal", "both"}:
         for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
-        if opportunity.get("platform") == "youtube":
-            video_path, manifest_path = create_youtube_commentary_video(opportunity, index)
-            script = {
-                "generation_mode": "real_footage_commentary",
-                "commentary_mode": os.getenv("YOUTUBE_COMMENTARY_MODE", "voice"),
-            }
-        else:
             script = generate_script(
-                opportunity["trend"], opportunity["hook"],
+                opportunity["trend"],
+                opportunity["hook"],
                 opportunity.get("format", "short_explainer"),
                 opportunity.get("summary", ""),
                 opportunity.get("source_url", ""),
             )
             script = direct_script(
-                opportunity["trend"], opportunity["hook"],
+                opportunity["trend"],
+                opportunity["hook"],
                 opportunity.get("format", "short_explainer"),
                 opportunity.get("summary", ""),
                 script,
@@ -62,64 +58,59 @@ def main():
                 raise RuntimeError(f"Manifest quality gate failed for video #{index}")
 
             result["videos"].append({
-            "trend": opportunity["trend"],
-            "source": opportunity.get("source", "unknown"),
-            "sources": opportunity.get("sources", []),
-            "video": video_path,
-            "manifest": manifest_path,
-            "generation_mode": script.get("generation_mode", "template"),
-            "platform": opportunity.get("platform", "shorts"),
-            "format": opportunity.get("format", "short_explainer"),
-            "confidence": opportunity.get("confidence", 0),
-            "script": script,
-            "publishing": {"status": "pending_quality_control"},
-        })
+                "trend": opportunity["trend"],
+                "source": opportunity.get("source", "unknown"),
+                "sources": opportunity.get("sources", []),
+                "video": video_path,
+                "manifest": manifest_path,
+                "generation_mode": script.get("generation_mode", "template"),
+                "platform": "shorts",
+                "format": opportunity.get("format", "short_explainer"),
+                "confidence": opportunity.get("confidence", 0),
+                "script": script,
+                "publishing": {"status": "pending_quality_control"},
+            })
 
         if len(result["videos"]) != VIDEO_COUNT:
             raise RuntimeError(
-                f"Pipeline quality gate failed: expected exactly {VIDEO_COUNT} primary videos, "
+                f"Pipeline quality gate failed: expected exactly {VIDEO_COUNT} normal videos, "
                 f"created {len(result['videos'])}"
             )
-    else:
-        result["videos"] = []
 
-    # Separate YouTube set: three dedicated Top-10 listicles, independent of
-    # live trend availability. This guarantees the YouTube deliverable exists
-    # even when trend feeds return only one usable opportunity.
+    # YouTube gets its own independent 3-video Top-10 batch.
     youtube_topics = [
         "funniest moments caught on camera",
         "scariest moments caught on camera",
         "wildest unexpected moments",
     ]
     youtube_outputs = []
+
     if run_mode in {"youtube", "both"}:
         for youtube_index, topic in enumerate(youtube_topics, 1):
             youtube_opportunity = {
-            "trend": topic,
-            "source": "evergreen_listicle",
-            "sources": ["Pexels", "Pixabay", "Wikimedia Commons", "Internet Archive"],
-            "summary": "Evergreen Top-10 concept selected as a resilient YouTube fallback.",
-            "hook": f"Top 10 {topic}.",
-            "format": "youtube_top10",
-            "platform": "youtube",
-            "confidence": 0.9,
-            "status": "ready",
-        }
+                "trend": topic,
+                "source": "evergreen_listicle",
+                "sources": ["Pexels", "Pixabay", "Wikimedia Commons", "Internet Archive"],
+                "summary": "Evergreen Top-10 concept selected as a resilient YouTube topic.",
+                "hook": f"Top 10 {topic}.",
+                "format": "youtube_top10",
+                "platform": "youtube",
+                "confidence": 0.9,
+                "status": "ready",
+            }
             try:
                 youtube_path, youtube_manifest = create_youtube_commentary_video(
-                youtube_opportunity, youtube_index
-            )
+                    youtube_opportunity, youtube_index
+                )
                 youtube_outputs.append({
-                "trend": topic,
-                "video": youtube_path,
-                "manifest": youtube_manifest,
-                "platform": "youtube",
-                "format": "top_10_listicle",
-                "generation_mode": "real_footage_commentary",
-            })
+                    "trend": topic,
+                    "video": youtube_path,
+                    "manifest": youtube_manifest,
+                    "platform": "youtube",
+                    "format": "top_10_listicle",
+                    "generation_mode": "real_footage_commentary",
+                })
             except Exception as error:
-            # Keep the primary pipeline intact, but record the exact YouTube
-            # failure so the workflow quality gate can report it clearly.
                 youtube_outputs.append({
                     "trend": topic,
                     "video": "",
@@ -130,15 +121,22 @@ def main():
                     "error": str(error),
                 })
 
+        if len(youtube_outputs) != 3:
+            raise RuntimeError(
+                f"YouTube quality gate failed: expected exactly 3 listicles, created {len(youtube_outputs)}"
+            )
+
     result["youtube_videos"] = youtube_outputs
-    if run_mode == "youtube" and len(youtube_outputs) != 3:
-        raise RuntimeError(f"YouTube quality gate failed: expected 3 listicles, created {len(youtube_outputs)}")
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(OUTPUT_DIR, "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
-    qc = quality_check(result["videos"])
+    if run_mode in {"normal", "both"}:
+        qc = quality_check(result["videos"])
+    else:
+        qc = {"passed": True, "results": [], "mode": "youtube_only"}
+
     with open(os.path.join(OUTPUT_DIR, "quality_report.json"), "w", encoding="utf-8") as f:
         json.dump(qc, f, ensure_ascii=False, indent=2)
 
@@ -165,10 +163,10 @@ def main():
 
     notify(
         f"🚀 Viral Video Automation complete\n"
-        f"Trends scanned: {result['trend_count']} | Videos: {len(result['videos'])}\n"
+        f"Mode: {run_mode} | Trends scanned: {result['trend_count']} | "
+        f"Normal videos: {len(result['videos'])} | YouTube videos: {len(youtube_outputs)}\n"
         f"Sources represented: {', '.join(sorted(source_counts)) or 'none'}\n"
-        f"YouTube mode: real reusable footage + commentary\n"
-        f"Publishing: OFF (YouTube API is intentionally the final integration)"
+        f"Publishing: OFF"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
