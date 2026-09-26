@@ -19,22 +19,21 @@ def _category(text):
 
 
 def _format_for_run(index, source, category="general", trend=""):
-    """Choose a format from the topic instead of cycling blindly."""
     category = str(category).lower()
     source = str(source).lower()
     state = load_state()
-    avoid_story = state.get('qc_failures', {}).get('too_long', 0) > 1
+    avoid_story = state.get("qc_failures", {}).get("too_long", 0) > 1
     if category == "sports":
-        choices = ["youtube_ranked_breakdown", "tiktok_cantina_story"]
+        choices = ["youtube_real_commentary", "tiktok_cantina_story"]
     elif category == "entertainment":
         choices = ["tiktok_cantina_story", "short_explainer"]
     elif category == "technology":
-        choices = ["youtube_quick_explainer", "short_explainer"]
+        choices = ["youtube_real_commentary", "short_explainer"]
     elif category == "politics":
-        choices = ["youtube_quick_explainer", "short_explainer"]
+        choices = ["youtube_real_commentary", "short_explainer"]
     else:
-        choices = ["short_explainer", "youtube_quick_explainer", "tiktok_cantina_story"]
-    if 'tiktok' in source and 'tiktok_cantina_story' in choices and not avoid_story:
+        choices = ["youtube_real_commentary", "short_explainer", "tiktok_cantina_story"]
+    if "tiktok" in source and "tiktok_cantina_story" in choices and not avoid_story:
         return "tiktok_cantina_story"
     return choices[(index + len(str(trend))) % len(choices)]
 
@@ -49,9 +48,8 @@ def _platform_for_format(format_name):
 
 def build_opportunities(trends):
     hooks = {
-        "youtube_ranked_breakdown": "Three quick things to know about {trend}.",
+        "youtube_real_commentary": "A real-life moment connected to {trend}.",
         "tiktok_cantina_story": "Wait — here is why {trend} is suddenly everywhere.",
-        "youtube_quick_explainer": "Here is the simple explanation behind {trend}.",
         "short_explainer": "Here is the quick breakdown of {trend}.",
     }
     opportunities = []
@@ -80,12 +78,12 @@ def build_opportunities(trends):
     if len(selected) >= 2:
         for i, item in enumerate(selected):
             if i % 2 == 0:
-                item['platform'] = 'youtube'
-                item['format'] = 'youtube_ranked_breakdown' if item['category'] == 'sports' else 'youtube_quick_explainer'
+                item["platform"] = "youtube"
+                item["format"] = "youtube_real_commentary"
             else:
-                item['platform'] = 'tiktok'
-                item['format'] = 'tiktok_cantina_story'
-            item['hook'] = hooks[item['format']].format(trend=item['trend'])
+                item["platform"] = "tiktok"
+                item["format"] = "tiktok_cantina_story"
+            item["hook"] = hooks[item["format"]].format(trend=item["trend"])
     return selected
 
 
