@@ -239,7 +239,7 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
             src = src.crop((0, top, sw, top + crop_h))
         photo = src.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS).convert("RGBA")
 
-    mode = index % 6
+    mode = (index + style * 2) % 10
     canvas = photo.copy()
 
     # Every few shots gets a different editorial treatment instead of a repeated card.
@@ -280,6 +280,38 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
         canvas = colorized
         tint = Image.new("RGBA", (WIDTH, HEIGHT), (*bg, 70))
         canvas.alpha_composite(tint)
+    elif mode == 6:
+        # Magazine split: image dominates, headline sits in a narrow editorial rail.
+        canvas = photo
+        d = ImageDraw.Draw(canvas)
+        d.rectangle((0, 0, 1080, 250), fill=(*bg, 215))
+        d.rectangle((0, 0, 18, HEIGHT), fill=(*hot, 255))
+        d.rectangle((900, 0, 1080, HEIGHT), fill=(*bg, 185))
+    elif mode == 7:
+        # Breaking-news treatment: giant number + compact headline, intentionally different from cards.
+        canvas = photo.filter(ImageFilter.GaussianBlur(1))
+        d = ImageDraw.Draw(canvas)
+        d.rectangle((0, 0, WIDTH, 300), fill=(*bg, 220))
+        d.rectangle((0, 0, WIDTH, 18), fill=(*hot, 255))
+        d.text((70, 85), "JUST IN", font=_font(34), fill=(*hot, 255))
+        d.text((770, 55), f"{index+1:02d}", font=_font(145), fill=(*ink, 245))
+    elif mode == 8:
+        # Picture-in-picture editorial layout with a strong negative-space zone.
+        base = photo.filter(ImageFilter.GaussianBlur(12))
+        base.alpha_composite(Image.new("RGBA", (WIDTH, HEIGHT), (*bg, 95)))
+        canvas = base
+        crop = photo.crop((120, 180, 960, 1420)).resize((820, 1210), Image.Resampling.LANCZOS)
+        mask = Image.new("L", crop.size, 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, crop.width, crop.height), radius=48, fill=255)
+        canvas.paste(crop, (130, 250), mask)
+    elif mode == 9:
+        # Minimal documentary treatment: no card, only a bold lower-third and accent rule.
+        canvas = photo
+        overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+        od = ImageDraw.Draw(overlay)
+        od.rectangle((0, 1280, WIDTH, HEIGHT), fill=(*bg, 205))
+        od.rectangle((68, 1270, 1012, 1280), fill=(*hot, 255))
+        canvas.alpha_composite(overlay)
     elif mode == 4:
         # Two-frame collage: same source, two different crops, no giant opaque UI.
         base = photo.filter(ImageFilter.GaussianBlur(18))
@@ -303,7 +335,7 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
 
     d = ImageDraw.Draw(canvas)
     safe = 68
-    labels = ["HOOK", "CONTEXT", "DETAIL", "REACTION", "CHANGE", "PAYOFF"]
+    labels = ["HOOK", "CONTEXT", "DETAIL", "REACTION", "CHANGE", "PAYOFF", "ANGLE", "JUST IN", "FOCUS", "TAKEAWAY"]
     label = labels[min(mode, len(labels)-1)]
     headline = _phrase(hook if index == 0 else scene, 8 if index else 9)
     title_clean = _phrase(title, 7)
@@ -326,6 +358,29 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
             d.text((safe if mode == 2 else 70, y), line, font=_font(fsz),
                    fill=(*ink, 255), stroke_width=1, stroke_fill=(*bg, 170))
             y += fsz + 10
+    elif mode == 6:
+        # Magazine rail.
+        y = 360
+        for line in _wrap(d, headline, _font(55), 760)[:4]:
+            d.text((safe, y), line, font=_font(55), fill=(*ink, 255))
+            y += 64
+    elif mode == 7:
+        # Breaking-news lower-third.
+        box = (55, 1350, 1025, 1785)
+        d.rounded_rectangle(box, radius=36, fill=(*bg, 220), outline=(*hot, 230), width=3)
+        y = 1410
+        for line in _wrap(d, headline, _font(54), 900)[:4]:
+            d.text((85, y), line, font=_font(54), fill=(*ink, 255))
+            y += 62
+    elif mode == 8:
+        # Picture-in-picture headline under the image.
+        d.rounded_rectangle((70, 1510, 1010, 1800), radius=32, fill=(*bg, 220))
+        for j, line in enumerate(_wrap(d, headline, _font(48), 850)[:4]):
+            d.text((105, 1545+j*56), line, font=_font(48), fill=(*ink, 255))
+    elif mode == 9:
+        # Documentary lower third.
+        for j, line in enumerate(_wrap(d, headline, _font(56), 860)[:4]):
+            d.text((70, 1340+j*64), line, font=_font(56), fill=(*ink, 255))
     else:
         # One restrained story card, not a second duplicate headline.
         box = (safe, 1450, WIDTH-safe, 1770)
@@ -682,7 +737,7 @@ def create_video(opportunity, script, index=1):
     scenes = [str(x).strip() for x in (script.get("scenes") or []) if str(x).strip()]
     if not scenes:
         scenes = [str(script.get("hook") or opportunity.get("trend", "Current topic"))]
-    target = max(6, min(10, math.ceil(duration / 2.6)))
+    # Faster visual rhythm: 8-10 scenes gives each idea room without becoming a slideshow.\n    target = max(8, min(10, math.ceil(duration / 2.35)))
     base = list(scenes)
     while len(scenes) < target:
         scenes.append(base[len(scenes) % len(base)])
@@ -776,7 +831,7 @@ def create_video(opportunity, script, index=1):
         "audio": True,
         "captions": True,
         "original_content": True,
-        "visual_engine": "real_topic_imagery_plus_kinetic_motion_v4_optional_ai_hero",
+        "visual_engine": "viral_editorial_v4_10_scene_archetypes_topic_assets_kinetic_motion_optional_ai_hero",
         "art_direction": f"palette-{(index-1)%len(PALETTES)+1}/layout-set-{style+1}",
         "script": script,
         "video_file": str(out),
