@@ -19,14 +19,20 @@ from youtube_commentary import create_youtube_commentary_video
 def main():
     run_self_test()
     print("Learning context:", learning_context())
+    run_mode = os.getenv("RUN_MODE", "both").strip().lower()
+    if run_mode not in {"youtube", "normal", "both"}:
+        raise RuntimeError(f"Invalid RUN_MODE: {run_mode}")
+    print(f"RUN_MODE={run_mode}")
+
     result = run_pipeline()
     result["videos"] = []
 
     if not result["opportunities"]:
         raise RuntimeError("No trend opportunities were found. Nothing was generated.")
 
-    # Primary output set: always create VIDEO_COUNT normal videos.
-    for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
+    # Normal output set. In YouTube-only mode this entire section is skipped.
+    if run_mode in {"normal", "both"}:
+        for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
         if opportunity.get("platform") == "youtube":
             video_path, manifest_path = create_youtube_commentary_video(opportunity, index)
             script = {
@@ -50,12 +56,12 @@ def main():
             video_path = create_video(opportunity, script, index)
             manifest_path = write_manifest(opportunity, script, video_path)
 
-        if not os.path.exists(video_path) or os.path.getsize(video_path) < 50_000:
-            raise RuntimeError(f"Output quality gate failed for video #{index}")
-        if not os.path.exists(manifest_path):
-            raise RuntimeError(f"Manifest quality gate failed for video #{index}")
+            if not os.path.exists(video_path) or os.path.getsize(video_path) < 50_000:
+                raise RuntimeError(f"Output quality gate failed for video #{index}")
+            if not os.path.exists(manifest_path):
+                raise RuntimeError(f"Manifest quality gate failed for video #{index}")
 
-        result["videos"].append({
+            result["videos"].append({
             "trend": opportunity["trend"],
             "source": opportunity.get("source", "unknown"),
             "sources": opportunity.get("sources", []),
@@ -69,11 +75,13 @@ def main():
             "publishing": {"status": "pending_quality_control"},
         })
 
-    if len(result["videos"]) != VIDEO_COUNT:
-        raise RuntimeError(
-            f"Pipeline quality gate failed: expected exactly {VIDEO_COUNT} primary videos, "
-            f"created {len(result['videos'])}"
-        )
+        if len(result["videos"]) != VIDEO_COUNT:
+            raise RuntimeError(
+                f"Pipeline quality gate failed: expected exactly {VIDEO_COUNT} primary videos, "
+                f"created {len(result['videos'])}"
+            )
+    else:
+        result["videos"] = []
 
     # Separate YouTube set: three dedicated Top-10 listicles, independent of
     # live trend availability. This guarantees the YouTube deliverable exists
@@ -84,8 +92,9 @@ def main():
         "wildest unexpected moments",
     ]
     youtube_outputs = []
-    for youtube_index, topic in enumerate(youtube_topics, 1):
-        youtube_opportunity = {
+    if run_mode in {"youtube", "both"}:
+        for youtube_index, topic in enumerate(youtube_topics, 1):
+            youtube_opportunity = {
             "trend": topic,
             "source": "evergreen_listicle",
             "sources": ["Pexels", "Pixabay", "Wikimedia Commons", "Internet Archive"],
@@ -96,11 +105,11 @@ def main():
             "confidence": 0.9,
             "status": "ready",
         }
-        try:
-            youtube_path, youtube_manifest = create_youtube_commentary_video(
+            try:
+                youtube_path, youtube_manifest = create_youtube_commentary_video(
                 youtube_opportunity, youtube_index
             )
-            youtube_outputs.append({
+                youtube_outputs.append({
                 "trend": topic,
                 "video": youtube_path,
                 "manifest": youtube_manifest,
@@ -108,20 +117,22 @@ def main():
                 "format": "top_10_listicle",
                 "generation_mode": "real_footage_commentary",
             })
-        except Exception as error:
+            except Exception as error:
             # Keep the primary pipeline intact, but record the exact YouTube
             # failure so the workflow quality gate can report it clearly.
-            youtube_outputs.append({
-                "trend": topic,
-                "video": "",
-                "manifest": "",
-                "platform": "youtube",
-                "format": "top_10_listicle",
-                "generation_mode": "failed",
-                "error": str(error),
-            })
+                youtube_outputs.append({
+                    "trend": topic,
+                    "video": "",
+                    "manifest": "",
+                    "platform": "youtube",
+                    "format": "top_10_listicle",
+                    "generation_mode": "failed",
+                    "error": str(error),
+                })
 
     result["youtube_videos"] = youtube_outputs
+    if run_mode == "youtube" and len(youtube_outputs) != 3:
+        raise RuntimeError(f"YouTube quality gate failed: expected 3 listicles, created {len(youtube_outputs)}")
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(OUTPUT_DIR, "run_summary.json"), "w", encoding="utf-8") as f:
