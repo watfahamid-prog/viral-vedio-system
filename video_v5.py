@@ -150,7 +150,8 @@ def create_video(opportunity, script, index=1):
     category = str(opportunity.get("category", "general"))
     palette = v4.PALETTES[(index - 1) % len(v4.PALETTES)]
     style = (index - 1) % 6
-    scene_time = duration / target
+    transition = min(0.14, max(0.08, (duration / target) * 0.07))
+    scene_time = (duration + transition * (target - 1)) / target
 
     assets, credits = v4._fetch_visual_assets(opportunity, work)
     keys = []
@@ -221,10 +222,7 @@ def create_video(opportunity, script, index=1):
         print(f"AI motion scene enhancement skipped: {error}")
 
     silent = work / "silent.mp4"
-    _concat_with_transitions(
-        segments, str(silent),
-        transition=min(0.14, max(0.08, scene_time * 0.07)),
-    )
+    _concat_with_transitions(segments, str(silent), transition=transition)
 
     audio = _make_polished_audio(script, work, duration)
     if not audio:
