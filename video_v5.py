@@ -192,10 +192,33 @@ def create_video(opportunity, script, index=1):
     scene_time = (duration + transition * (target - 1)) / target
 
     assets, credits = v4._fetch_visual_assets(opportunity, work)
+    # Prefer original AI keyframes when the legitimate low-cost media key is configured.
+    # The router is bounded per video, so a run cannot silently explode media spend.
+    ai_keyframes = []
+    try:
+        from media_engine import generate_image, MAX_IMAGES_PER_VIDEO
+        for i in range(min(target, MAX_IMAGES_PER_VIDEO)):
+            prompt = (
+                "Vertical 9:16 cinematic editorial still for a short-form video. "
+                + visuals[i] + " Photorealistic, coherent subject and environment, natural lighting, "
+                "strong depth, realistic anatomy, no readable text, no logos, no watermark."
+            )
+            generated = generate_image(prompt, str(work / f"ai_key_{i:02d}.jpg"), index=i)
+            if generated:
+                ai_keyframes.append(generated)
+        print(f"Pollinations AI keyframes used: {len(ai_keyframes)}")
+    except Exception as error:
+        print(f"AI keyframe generation skipped: {error}")
+
     keys = []
     for i, scene in enumerate(scenes):
         key = work / f"key_{i:02d}.jpg"
-        if assets:
+        if i < len(ai_keyframes):
+            v4._photo_frame(
+                str(key), ai_keyframes[i], title, hook, visuals[i], category,
+                i, target, palette, (style + i) % 6,
+            )
+        elif assets:
             asset = assets[i % len(assets)]
             v4._photo_frame(
                 str(key), asset, title, hook, visuals[i], category,
