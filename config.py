@@ -23,4 +23,11 @@ AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
 AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "90"))
 AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))
 
+# Gemini free-tier models are enabled by default. Paid Gemini models are opt-in only.
+GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "true").lower() == "true"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+GEMINI_ALLOW_PAID = os.getenv("GEMINI_ALLOW_PAID", "false").lower() == "true"
+GEMINI_VISUAL_QC_ENABLED = os.getenv("GEMINI_VISUAL_QC_ENABLED", "true").lower() == "true"
+
 # Optional premium engines are activated only when their GitHub Actions secrets exist.
