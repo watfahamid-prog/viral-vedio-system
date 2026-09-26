@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 51,
-  "videos": 148,
+  "runs": 52,
+  "videos": 149,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -16,6 +16,10 @@
     "tiktok": {
       "checked": 50,
       "passed": 47
+    },
+    "shorts": {
+      "checked": 1,
+      "passed": 1
     }
   },
   "formats": {
@@ -33,13 +37,16 @@
     },
     "youtube_top10": {
       "created": 4
+    },
+    "short_explainer": {
+      "created": 1
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-26T16:26:44.132858+00:00",
+  "last_updated": "2026-09-26T16:30:38.471175+00:00",
   "creative_history": [
     {
       "trend": "Example technology trend",
@@ -453,6 +460,27 @@
       "format": "tiktok_cantina_story",
       "category": "technology",
       "platform": "tiktok"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "jeremy boyce",
+      "hook": "Here is the quick breakdown of jeremy boyce.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
     }
   ]
 }
