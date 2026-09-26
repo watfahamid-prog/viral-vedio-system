@@ -44,10 +44,15 @@ jobs:
 
       - name: Verify Gemini API secret
         env:
+          ZERO_COST_MODE: "true"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: "gemini-3.8-flash"
         run: |
           set -euo pipefail
+          if [ "${ZERO_COST_MODE:-false}" = "true" ]; then
+            echo "ZERO_COST_MODE enabled; skipping external Gemini API verification."
+            exit 0
+          fi
           if [ -z "${GEMINI_API_KEY:-}" ]; then
             echo "GEMINI_API_KEY is not configured; continuing with the local/template fallback."
             exit 0
