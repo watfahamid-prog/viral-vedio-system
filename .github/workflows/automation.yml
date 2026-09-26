@@ -172,8 +172,9 @@ jobs:
           set -e
           test -f output/run_summary.json
           test -f output/quality_report.json
-          count="$(find output -maxdepth 1 -name '*.mp4' -type f | wc -l)"
+          count="$(find output -maxdepth 1 -name '*.mp4' -type f ! -name 'youtube_commentary_*.mp4' | wc -l)"
           test "$count" -eq 3
+          echo "Main videos found: $count"
           for video in output/*.mp4; do
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
             ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
