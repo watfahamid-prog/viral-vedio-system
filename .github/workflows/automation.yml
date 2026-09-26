@@ -150,7 +150,7 @@ jobs:
           ELEVENLABS_MODEL: "eleven_flash_v2_5"
           YOUTUBE_ENABLED: "true"
           YOUTUBE_COMMENTARY_MODE: "voice"
-          YOUTUBE_CLIPS_PER_VIDEO: "7"
+          YOUTUBE_CLIPS_PER_VIDEO: "10"
           YOUTUBE_CLIP_SECONDS: "6"
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
