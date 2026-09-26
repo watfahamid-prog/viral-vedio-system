@@ -63,69 +63,6 @@
       "platform": "youtube"
     },
     {
-      "trend": "Katastroftillstånd i Bangkok efter kraftiga regn",
-      "hook": "A real-life moment connected to Katastroftillstånd i Bangkok efter kraftiga regn.",
-      "format": "youtube_real_commentary",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
-      "trend": "hammarby mot eskilstuna",
-      "hook": "Wait — here is why hammarby mot eskilstuna is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "general",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "Putin: Förbereder inte konflikt med Europa",
-      "hook": "A real-life moment connected to Putin: Förbereder inte konflikt med Europa.",
-      "format": "youtube_real_commentary",
-      "category": "sports",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Putin: Förbereder inte konflikt med Europa",
-      "hook": "A real-life moment connected to Putin: Förbereder inte konflikt med Europa.",
-      "format": "youtube_real_commentary",
-      "category": "sports",
-      "platform": "youtube"
-    },
-    {
-      "trend": "AI-agenter försökte hacka myndighetssidor – publicerade bilder",
-      "hook": "Wait — here is why AI-agenter försökte hacka myndighetssidor – publicerade bilder is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "technology",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
       "trend": "Rakhmat Akilov missköter sig i fängelset",
       "hook": "A real-life moment connected to Rakhmat Akilov missköter sig i fängelset.",
       "format": "youtube_real_commentary",
@@ -739,6 +676,69 @@
       "hook": "Here is the quick breakdown of rysslands utrikesminister.",
       "format": "short_explainer",
       "category": "politics",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Svensk kriminell gripen i Marocko",
+      "hook": "Here is the quick breakdown of Svensk kriminell gripen i Marocko.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Lavrov: Vi ska nå våra militära mål i Ukraina",
+      "hook": "Here is the quick breakdown of Lavrov: Vi ska nå våra militära mål i Ukraina.",
+      "format": "short_explainer",
+      "category": "technology",
       "platform": "shorts"
     },
     {
