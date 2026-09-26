@@ -241,7 +241,7 @@ TITLE_SECONDS = max(1.2, float(os.getenv("YOUTUBE_TITLE_SECONDS", "1.5")))
 
 
 def _drawtext_filter(text, fontsize, y, box=False):
-    safe = str(text).replace("\", "\\").replace(":", "\:").replace("'", "\'")
+    safe = str(text).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
     box_part = ":box=1:boxcolor=black@0.62:boxborderw=18" if box else ""
     return (
         f"drawtext=text='{safe}':fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
