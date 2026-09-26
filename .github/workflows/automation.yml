@@ -151,7 +151,7 @@ jobs:
           YOUTUBE_ENABLED: "true"
           YOUTUBE_COMMENTARY_MODE: "voice"
           YOUTUBE_CLIPS_PER_VIDEO: "10"
-          YOUTUBE_CLIP_SECONDS: "6"
+          YOUTUBE_CLIP_SECONDS: "5"
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           INTERNET_ARCHIVE_ENABLED: "true"
