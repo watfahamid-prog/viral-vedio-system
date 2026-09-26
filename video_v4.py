@@ -124,6 +124,90 @@ def _draw_category_icon(d, category, cx, cy, size, accent, hot):
             d.ellipse((cx-r, cy-r, cx+r, cy+r), outline=accent, width=w)
         d.ellipse((cx-18, cy-18, cx+18, cy+18), fill=hot)
 
+def _topic_tokens(text, limit=5):
+    words = re.findall(r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", str(text))
+    stop = {"here","this","that","with","behind","what","why","the","and","from","into","about","simple","actual","change"}
+    out = []
+    for word in words:
+        low = word.lower()
+        if len(low) >= 3 and low not in stop and low not in out:
+            out.append(low)
+    return out[:limit]
+
+
+def _draw_subject_visual(d, category, scene_index, trend, accent, hot, ink, bg):
+    """Create a large subject-focused illustration so scenes are not text-only cards."""
+    cx, cy = 540, 820
+    cat = str(category).lower()
+    tokens = _topic_tokens(trend)
+    # Solid panels avoid the old transparent-RGBA-to-RGB white-box bug.
+    panel = tuple(int(bg[i] * 0.72 + ink[i] * 0.28) for i in range(3))
+    panel2 = tuple(int(bg[i] * 0.45 + accent[i] * 0.55) for i in range(3))
+    d.rounded_rectangle((70, 520, 1010, 1370), radius=58, fill=panel, outline=(*accent, 210), width=4)
+
+    if cat == "sports":
+        # Track lanes + runner silhouette + stadium lights.
+        for off in (-260, -130, 0, 130, 260):
+            d.line((120, 1170+off//3, 960, 960+off//3), fill=(*accent, 170), width=7)
+        d.ellipse((455, 675, 525, 745), fill=(*ink, 255))
+        d.line((490, 745, 450, 900), fill=(*ink, 255), width=28)
+        d.line((460, 800, 370, 850), fill=(*ink, 255), width=22)
+        d.line((462, 805, 570, 760), fill=(*ink, 255), width=22)
+        d.line((450, 900, 345, 1030), fill=(*ink, 255), width=24)
+        d.line((450, 900, 585, 1010), fill=(*ink, 255), width=24)
+        for x in (150, 880):
+            d.polygon([(x,600),(x-55,850),(x+55,850)], fill=(*hot, 45))
+            d.ellipse((x-16,580,x+16,612), fill=(*hot,255))
+    elif cat == "technology":
+        # Device + circuit/network visualization.
+        d.rounded_rectangle((300, 625, 780, 1080), radius=45, fill=panel2, outline=(*ink, 230), width=8)
+        d.rounded_rectangle((335, 660, 745, 980), radius=25, fill=(*bg, 255), outline=(*accent, 180), width=4)
+        d.ellipse((505, 1005, 575, 1075), fill=(*accent,255))
+        nodes=[(180,720),(900,700),(170,1120),(910,1120),(250,900),(830,930)]
+        for x,y in nodes:
+            d.line((x,y,540,820), fill=(*accent,150), width=5)
+            d.ellipse((x-22,y-22,x+22,y+22), fill=(*hot,255))
+    elif cat == "politics":
+        # Neutral civic/document visual, without depicting a real politician.
+        d.polygon([(290,1030),(790,1030),(740,800),(340,800)], fill=panel2)
+        d.rectangle((325,1030,755,1100), fill=(*ink,230))
+        for x in (390,470,550,630,710):
+            d.rectangle((x,860,x+28,1030), fill=(*ink,210))
+        d.polygon([(260,800),(540,650),(820,800)], fill=(*accent,220))
+        d.rectangle((415,570,665,680), fill=(*ink,245))
+        d.line((455,620,625,620), fill=(*hot,255), width=8)
+        d.text((95, 1180), "DOCUMENTED UPDATE", font=_font(30), fill=(*hot,255))
+    elif cat == "entertainment":
+        # Cinema/stage visual with film strip and spotlight.
+        d.rectangle((245,650,835,1010), fill=(*ink,230), outline=(*accent,220), width=6)
+        d.polygon([(290,965),(790,965),(690,735),(390,735)], fill=panel2)
+        d.ellipse((500,800,580,880), fill=(*hot,255))
+        d.polygon([(540,875),(470,960),(610,960)], fill=(*hot,190))
+        d.polygon([(120,560),(420,560),(470,650),(70,650)], fill=(*accent,100))
+        d.polygon([(660,560),(960,560),(1010,650),(610,650)], fill=(*accent,100))
+    else:
+        # General-purpose visual: object, orbit, timeline and highlighted focal point.
+        d.ellipse((320,610,760,1050), outline=(*accent,210), width=10)
+        d.ellipse((400,690,680,970), outline=(*hot,180), width=7)
+        d.ellipse((505,795,575,865), fill=(*hot,255))
+        for angle in range(0,360,60):
+            rad=math.radians(angle)
+            x=int(540+350*math.cos(rad)); y=int(830+260*math.sin(rad))
+            d.ellipse((x-18,y-18,x+18,y+18), fill=(*accent,255))
+        d.line((160,1110,920,1110), fill=(*ink,150), width=6)
+        d.ellipse((250,1085,285,1120), fill=(*hot,255))
+        d.ellipse((530,1085,565,1120), fill=(*accent,255))
+        d.ellipse((800,1085,835,1120), fill=(*ink,255))
+
+    if tokens:
+        chip_x = 95
+        for token in tokens[:3]:
+            w = min(260, 35 + len(token)*19)
+            d.rounded_rectangle((chip_x, 1250, chip_x+w, 1315), radius=25, fill=(*bg,230), outline=(*hot,180), width=2)
+            d.text((chip_x+18, 1268), token.upper(), font=_font(24), fill=(*ink,240))
+            chip_x += w + 14
+
+
 def _render_frame(path, title, hook, scene, category, index, total, palette, style):
     bg, ink, accent, hot = palette
     img = Image.new("RGBA", (WIDTH, HEIGHT), (*bg, 255))
@@ -143,13 +227,10 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
             d.text((70, y), line, font=_font(88), fill=(*ink, 255))
             y += 105
         _draw_category_icon(d, category, 825, 700, 125, accent, hot)
-        d.rounded_rectangle((70, 1050, 1010, 1435), radius=42, fill=(*ink, 18), outline=(*accent, 170), width=3)
-        d.text((105, 1105), "WHY THIS MATTERS", font=_font(28), fill=(*accent, 255))
-        lines = _wrap(d, _phrase(scene, 22), _font(52), 820)[:5]
-        y = 1170
-        for line in lines:
-            d.text((105, y), line, font=_font(52), fill=(*ink, 255))
-            y += 68
+        _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
+        d.text((70, 1400), "WHY THIS MATTERS", font=_font(28), fill=(*accent, 255))
+        for j, line in enumerate(_wrap(d, _phrase(scene, 12), _font(52), 880)[:3]):
+            d.text((70, 1455 + j*64), line, font=_font(52), fill=(*ink, 255))
     elif index == total - 1:
         d.text((70, 170), "THE PAYOFF", font=_font(32), fill=(*hot, 255))
         for r in (330, 250, 170):
@@ -197,19 +278,14 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
                 d.text((70, 1230+j*63), line, font=_regular(45), fill=(*ink, 225))
         else:
             d.text((70, 160), "BREAKDOWN", font=_font(30), fill=(*hot, 255))
-            d.rounded_rectangle((70, 235, 1010, 625), radius=48, fill=(*ink, 16), outline=(*accent, 170), width=3)
-            d.text((110, 285), "01", font=_font(90), fill=(*accent, 255))
-            d.text((275, 305), _phrase(scene, 7), font=_font(58), fill=(*ink, 255))
-            d.line((110, 700, 970, 700), fill=(*accent, 170), width=4)
-            d.text((110, 770), "AND HERE IS WHY", font=_font(29), fill=(*hot, 255))
-            y = 840
-            for line in _wrap(d, _phrase(hook, 18), _font(62), 840)[:6]:
-                d.text((110, y), line, font=_font(62), fill=(*ink, 255))
-                y += 78
+            _draw_subject_visual(d, category, index, title, accent, hot, ink, bg)
+            d.text((70, 1400), "WHAT TO NOTICE", font=_font(28), fill=(*accent, 255))
+            for j, line in enumerate(_wrap(d, _phrase(scene, 11), _font(52), 880)[:3]):
+                d.text((70, 1455 + j*64), line, font=_font(52), fill=(*ink, 255))
 
     # Persistent but subtle progress indicator.
     bar_y = 1740
-    d.rounded_rectangle((70, bar_y, 1010, bar_y+12), radius=6, fill=(*ink, 45))
+    d.rounded_rectangle((70, bar_y, 1010, bar_y+12), radius=6, fill=tuple(int(bg[i] * 0.55 + ink[i] * 0.45) for i in range(3)))
     progress = (index + 1) / total
     d.rounded_rectangle((70, bar_y, int(70 + 940*progress), bar_y+12), radius=6, fill=(*hot, 255))
     d.text((70, 1790), _phrase(title, 9).upper(), font=_font(25), fill=(*ink, 175))
