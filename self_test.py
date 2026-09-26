@@ -13,10 +13,10 @@ def main():
         "confidence": 0.8,
     }]
     opportunities = build_opportunities(sample)
-    assert len(opportunities) == 1
+    assert len(opportunities) == 3
     opportunity = opportunities[0]
     assert opportunity["category"] == "technology"
-    assert opportunity["format"] in {"youtube_real_commentary", "short_explainer", "tiktok_cantina_story"}
+    assert opportunity["format"] == "short_explainer"
 
     script = generate_script(
         opportunity["trend"],
