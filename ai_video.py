@@ -1,3 +1,5 @@
+import base64
+import mimetypes
 import os
 import time
 from pathlib import Path
@@ -6,19 +8,17 @@ import requests
 AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
 VIDEO_ENGINE = os.getenv("VIDEO_ENGINE", "auto").lower()
 AI_VIDEO_MODEL = os.getenv("AI_VIDEO_MODEL", "gen4.5").strip()
-AI_VIDEO_TIMEOUT = max(15, min(90, int(os.getenv("AI_VIDEO_TIMEOUT", "60"))))
+AI_VIDEO_TIMEOUT = max(20, min(180, int(os.getenv("AI_VIDEO_TIMEOUT", "120"))))
 AI_VIDEO_MAX_CLIPS = max(0, min(8, int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))))
 RUNWAY_API_KEY = os.getenv("RUNWAY_API_KEY", "").strip()
 LUMA_API_KEY = os.getenv("LUMA_API_KEY", "").strip()
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 HF_PROVIDER = os.getenv("AI_VIDEO_PROVIDER", "fal-ai").strip()
 
-# Open models that can be routed through Hugging Face/fal when available.
 HF_VIDEO_MODELS = [
     "Wan-AI/Wan2.1-T2V-1.3B",
     "Lightricks/LTX-Video",
 ]
-
 
 def available_engines():
     if not AI_VIDEO_ENABLED:
@@ -35,7 +35,6 @@ def available_engines():
 def engine_available():
     return bool(available_engines())
 
-
 def _scene_class(prompt):
     p = prompt.lower()
     if any(x in p for x in ("person", "people", "man ", "woman ", "child", "crowd", "running", "walking", "talking")):
@@ -48,29 +47,21 @@ def _scene_class(prompt):
         return "detail"
     return "cinematic"
 
-
 def selected_engine_order(prompt=""):
     kind = _scene_class(prompt)
     if VIDEO_ENGINE == "runway":
         return ["runway", "luma", "hf"]
     if VIDEO_ENGINE == "luma":
         return ["luma", "runway", "hf"]
-    if VIDEO_ENGINE in {"hf", "hf_wan"}:
+    if VIDEO_ENGINE in {"hf", "hf_wan", "hf_ltx"}:
         return ["hf", "runway", "luma"]
-    if VIDEO_ENGINE == "hf_ltx":
-        return ["hf", "luma", "runway"]
-
-    # Auto-routing deliberately varies engines by shot type.
     if kind == "human_motion":
         return ["runway", "luma", "hf"]
     if kind == "fast_motion":
         return ["luma", "runway", "hf"]
-    if kind == "environment":
-        return ["runway", "luma", "hf"]
     if kind == "detail":
-        return ["luma", "runway", "hf"]
+        return ["runway", "luma", "hf"]
     return ["runway", "luma", "hf"]
-
 
 def _download(url, output_path):
     response = requests.get(url, timeout=AI_VIDEO_TIMEOUT, stream=True)
@@ -86,19 +77,29 @@ def _download(url, output_path):
         raise RuntimeError("Downloaded video is suspiciously small")
     return str(path)
 
+def _image_data_uri(image_path):
+    path = Path(image_path)
+    mime = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
 
-def _runway(prompt, output_path, duration=5):
+def _runway(prompt, output_path, duration=5, image_path=None):
     if not RUNWAY_API_KEY:
         return None
     try:
         from runwayml import RunwayML
         client = RunwayML(api_key=RUNWAY_API_KEY)
-        task = client.image_to_video.create(
-            model=AI_VIDEO_MODEL if AI_VIDEO_MODEL in {"gen4.5", "gen4_turbo"} else "gen4.5",
-            prompt_text=prompt,
-            ratio="720:1280",
-            duration=max(2, min(10, int(duration))),
-        ).wait_for_task_output()
+        kwargs = {
+            "model": AI_VIDEO_MODEL if AI_VIDEO_MODEL in {"gen4.5", "gen4_turbo"} else "gen4.5",
+            "prompt_text": prompt,
+            "ratio": "720:1280",
+            "duration": max(2, min(10, int(duration))),
+        }
+        # Real image-to-video: the generated scene keyframe is passed into Runway,
+        # rather than merely asking the model for text-to-video.
+        if image_path and Path(image_path).exists():
+            kwargs["prompt_image"] = _image_data_uri(image_path)
+        task = client.image_to_video.create(**kwargs).wait_for_task_output()
         outputs = getattr(task, "output", None) or []
         if not outputs:
             raise RuntimeError("Runway returned no output URL")
@@ -107,11 +108,12 @@ def _runway(prompt, output_path, duration=5):
         print(f"Runway engine failed: {error}")
         return None
 
-
-def _luma(prompt, output_path, duration=5):
+def _luma(prompt, output_path, duration=5, image_path=None):
     if not LUMA_API_KEY:
         return None
     try:
+        # Luma currently requires an externally hosted image URL for image-to-video.
+        # If no hosted URL is supplied, use its native text-to-video mode as a fallback.
         headers = {
             "Authorization": f"Bearer {LUMA_API_KEY}",
             "Content-Type": "application/json",
@@ -120,13 +122,16 @@ def _luma(prompt, output_path, duration=5):
         payload = {
             "prompt": prompt,
             "model": "ray-2",
+            "aspect_ratio": "9:16",
             "resolution": "720p",
             "duration": "5s" if duration <= 5 else "9s",
-            "aspect_ratio": "9:16",
         }
+        hosted = os.getenv("LUMA_IMAGE_URL", "").strip()
+        if image_path and hosted:
+            payload["keyframes"] = {"frame0": {"type": "image", "url": hosted}}
         response = requests.post(
             "https://api.lumalabs.ai/dream-machine/v1/generations/video",
-            headers=headers, json=payload, timeout=30,
+            headers=headers, json=payload, timeout=45,
         )
         response.raise_for_status()
         generation_id = response.json().get("id")
@@ -136,7 +141,7 @@ def _luma(prompt, output_path, duration=5):
         while time.time() < deadline:
             status = requests.get(
                 f"https://api.lumalabs.ai/dream-machine/v1/generations/{generation_id}",
-                headers=headers, timeout=30,
+                headers=headers, timeout=45,
             )
             status.raise_for_status()
             data = status.json()
@@ -154,14 +159,12 @@ def _luma(prompt, output_path, duration=5):
         print(f"Luma engine failed: {error}")
         return None
 
-
-def _hf(prompt, output_path, duration=5):
+def _hf(prompt, output_path, duration=5, image_path=None):
     if not HF_TOKEN:
         return None
     try:
         from huggingface_hub import InferenceClient
         client = InferenceClient(provider=HF_PROVIDER, api_key=HF_TOKEN, timeout=AI_VIDEO_TIMEOUT)
-
         preferred = []
         if VIDEO_ENGINE == "hf_ltx":
             preferred = ["Lightricks/LTX-Video", "Wan-AI/Wan2.1-T2V-1.3B"]
@@ -169,7 +172,6 @@ def _hf(prompt, output_path, duration=5):
             preferred = [AI_VIDEO_MODEL, "Lightricks/LTX-Video", "Wan-AI/Wan2.1-T2V-1.3B"]
         else:
             preferred = HF_VIDEO_MODELS
-
         for model in dict.fromkeys(preferred):
             try:
                 print(f"Trying HF video model: {model}")
@@ -184,14 +186,11 @@ def _hf(prompt, output_path, duration=5):
         print(f"Hugging Face engine failed: {error}")
     return None
 
-
-def generate_clip(prompt, output_path, duration=5, force_engine=None):
+def generate_clip(prompt, output_path, duration=5, image_path=None, force_engine=None):
     if not engine_available():
         return None
-
     order = [force_engine] if force_engine else selected_engine_order(prompt)
     engines = {"runway": _runway, "luma": _luma, "hf": _hf}
-
     for name in order:
         if name not in engines:
             continue
@@ -201,8 +200,8 @@ def generate_clip(prompt, output_path, duration=5, force_engine=None):
             continue
         if name == "hf" and not HF_TOKEN:
             continue
-        print(f"Trying AI video engine: {name} | scene={_scene_class(prompt)}")
-        result = engines[name](prompt, output_path, duration)
+        print(f"Trying AI video engine: {name} | scene={_scene_class(prompt)} | image_to_video={bool(image_path)}")
+        result = engines[name](prompt, output_path, duration, image_path=image_path)
         if result:
             print(f"AI video generated successfully with {name}")
             return result
