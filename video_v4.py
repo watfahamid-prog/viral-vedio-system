@@ -258,16 +258,17 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
         d.rounded_rectangle((safe,1440,WIDTH-safe,1585),radius=30,fill=(*bg,175),outline=(*hot,160),width=2)
         d.text((safe+28,1475),_phrase(headline,11),font=_font(50),fill=(*ink,255))
     else:
-        # Asymmetric split: only a narrow information rail, with the image still dominant.
-        d.rectangle((0,0,360,HEIGHT),fill=(*bg,185))
-        d.text((50,95),label,font=_font(28),fill=(*hot,255))
-        d.text((50,170),f"{index+1:02d}",font=_font(140),fill=(*accent,75))
-        y=465
-        for line in _wrap(d,headline,_font(56),270)[:5]:
-            d.text((50,y),line,font=_font(56),fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,190))
-            y+=67
-        d.line((50,835,285,835),fill=(*hot,255),width=6)
-        d.text((50,875),_phrase(title,6).upper(),font=_font(22),fill=(*ink,225))
+        # Cinematic split-screen variant without the heavy side rail.
+        d.rectangle((0,0,WIDTH,HEIGHT),fill=(*bg,28))
+        d.text((safe,82),label,font=_font(28),fill=(*hot,255))
+        d.text((WIDTH-185,82),f"{index+1:02d}",font=_font(28),fill=(*ink,230))
+        d.rounded_rectangle((safe,1390,WIDTH-safe,1740),radius=38,fill=(*bg,165),outline=(*accent,140),width=2)
+        d.line((safe+30,1435,safe+30,1685),fill=(*hot,255),width=6)
+        y=1430
+        for line in _wrap(d,headline,_font(58),820)[:4]:
+            d.text((safe+65,y),line,font=_font(58),fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,175))
+            y+=68
+        d.text((safe+65,1685),_phrase(title,6).upper(),font=_font(22),fill=(*ink,215))
 
     d=ImageDraw.Draw(canvas)
     d.text((safe,1852),"ORIGINAL EDIT",font=_font(17),fill=(*ink,165))
