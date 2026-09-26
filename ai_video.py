@@ -20,8 +20,20 @@ HF_VIDEO_MODELS = [
 ]
 
 
+def available_engines():
+    if not AI_VIDEO_ENABLED:
+        return []
+    engines = []
+    if RUNWAY_API_KEY:
+        engines.append("runway")
+    if LUMA_API_KEY:
+        engines.append("luma")
+    if HF_TOKEN:
+        engines.append("hf")
+    return engines
+
 def engine_available():
-    return AI_VIDEO_ENABLED and bool(RUNWAY_API_KEY or LUMA_API_KEY or HF_TOKEN)
+    return bool(available_engines())
 
 
 def _scene_class(prompt):
