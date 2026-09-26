@@ -61,8 +61,7 @@ def get_news_trends():
                 title = item.find("title")
                 if title is not None and title.text:
                     value = title.text.strip()
-                    if " - " in value:
-                        publisher = ""
+                    publisher = ""
                     if " - " in value:
                         value, publisher = value.rsplit(" - ", 1)
                     description = item.findtext("description") or ""
@@ -143,6 +142,18 @@ def get_trends():
         freshness_bonus = 4.0 if "google_trends" in sources else 0.0
         item["score"] = round(min(100.0, item.get("score", 0.0) + cross_platform_bonus + engagement_bonus + freshness_bonus), 3)
         item["confidence"] = round(min(1.0, 0.42 + 0.16 * len(sources) + min(0.4, item["score"] / 250)), 3)
+
+    # Network feeds can temporarily return 5xx/empty RSS. Do not crash the
+    # whole video pipeline; use clearly marked fallback topic seeds instead.
+    if not combined:
+        fallback_topics = [
+            ("funniest moments caught on camera", "fallback"),
+            ("scariest moments caught on camera", "fallback"),
+            ("wildest unexpected moments", "fallback"),
+        ]
+        for rank, (topic, source) in enumerate(fallback_topics, 1):
+            _add(combined, topic, source, 35.0 - rank, {"rank": rank},
+                 {"summary": "Fallback topic seed used because live trend feeds were unavailable."})
 
     # Favor fresh, cross-source topics while keeping source/category diversity.
     now = datetime.now(timezone.utc)
