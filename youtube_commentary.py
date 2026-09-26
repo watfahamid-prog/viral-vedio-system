@@ -349,14 +349,51 @@ def _short_detail(source):
 
 
 def _listicle_commentary(rank, opportunity, source):
+    """Create short, natural listicle narration with reactions, not just labels."""
     trend = opportunity.get("trend", "this topic")
     theme = _listicle_theme(trend)
     detail = _short_detail(source)
+    number = 11 - rank
+
     if rank == 1:
         return f"Top 10 {theme} real-life moments. Starting at number 10."
+
+    reactions = {
+        "funniest": [
+            "Okay, I did not see that coming.",
+            "Just when you think it cannot get funnier.",
+            "That reaction was absolutely priceless.",
+            "Wait for what happens next.",
+            "And somehow, it gets even better.",
+        ],
+        "scariest": [
+            "I really did not see that coming.",
+            "Watch closely, because this gets creepy fast.",
+            "And this is where things get seriously unsettling.",
+            "You might want to watch this one twice.",
+            "That happened way too fast.",
+        ],
+        "wildest": [
+            "I definitely did not see that coming.",
+            "And then everything changed in seconds.",
+            "Wait for the next part.",
+            "That escalated incredibly fast.",
+            "You cannot make this stuff up.",
+        ],
+        "most interesting": [
+            "I did not expect that at all.",
+            "Watch what happens next.",
+            "And then things take a turn.",
+            "That was definitely unexpected.",
+            "Keep watching this one.",
+        ],
+    }
+    pool = reactions.get(theme, reactions["most interesting"])
+    reaction = pool[(number - 2) % len(pool)]
+
     if detail:
-        return f"Number {11-rank}. {detail}."
-    return f"Number {11-rank}. Watch this one closely."
+        return f"Number {number}. {detail}. {reaction}"
+    return f"Number {number}. Watch this one closely. {reaction}"
 
 
 def _source_score(source, query):
