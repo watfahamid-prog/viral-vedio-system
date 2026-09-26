@@ -1,4 +1,5 @@
 import json
+import html
 import math
 import os
 import re
@@ -56,7 +57,10 @@ def _wrap(draw, text, fnt, width):
     return lines
 
 def _phrase(text, max_words=10):
-    words = re.findall(r"[A-Za-zÅÄÖåäö0-9’'\-]+", str(text))
+    # Source feeds can contain HTML entities/tags; never let those leak into the video.
+    cleaned = html.unescape(re.sub(r"<[^>]+>", " ", str(text)))
+    cleaned = cleaned.replace("\\n", " ").replace("&nbsp;", " ")
+    words = re.findall(r"[A-Za-zÅÄÖåäö0-9’'\-]+", cleaned)
     value = " ".join(words[:max_words]).strip()
     return value or "Here is what is happening"
 
@@ -64,10 +68,11 @@ def _slug(text):
     return re.sub(r"[^a-zA-Z0-9]+", "-", str(text)).strip("-").lower()[:45] or "trend"
 
 def _speech(script):
-    text = str(script.get("script", "")).strip()
+    text = html.unescape(str(script.get("script", "")).strip())
     if not text:
         text = " ".join(map(str, script.get("scenes", [])))
-    return " ".join(text.split())
+    text = re.sub(r"<[^>]+>", " ", text)
+    return " ".join(text.replace("&nbsp;", " ").split())
 
 def duration_for(script, opportunity):
     words = len(_speech(script).split())
@@ -157,121 +162,126 @@ def _fetch_visual_assets(opportunity, work):
     return assets[:6], credits[:6]
 
 def _photo_frame(path, image_path, title, hook, scene, category, index, total, palette, style):
-    """Premium full-bleed editorial frame with varied composition and minimal UI."""
+    """Editorial photo frame with strong hierarchy, varied composition and clean typography."""
     bg, ink, accent, hot = palette
     with Image.open(image_path).convert("RGB") as src:
-        # Remove obvious letterbox bars from downloaded article/video stills.
-        gray=src.convert("L")
-        rows=[]
-        for y in range(gray.height):
-            sample=sum(gray.crop((0,y,gray.width,y+1)).resize((1,1)).getdata())/1
-            rows.append(sample)
-        top=0; bottom=src.height
-        while top < bottom-1 and rows[top] < 12: top += 1
-        while bottom > top+1 and rows[bottom-1] < 12: bottom -= 1
-        if bottom-top > src.height*0.55:
-            src=src.crop((0,top,src.width,bottom))
-        sw,sh=src.size
-        ratio=WIDTH/HEIGHT
-        if sw/sh > ratio:
-            # Landscape source: crop width to the 9:16 window and keep the full height.
-            crop_w=max(1,int(sh*ratio))
-            bias=((index*0.19)+(style*0.07))%1.0
-            left=max(0,min(sw-crop_w,int((sw-crop_w)*bias)))
-            src=src.crop((left,0,left+crop_w,sh))
+        sw, sh = src.size
+        ratio = WIDTH / HEIGHT
+        # Use a deterministic but visibly different crop per scene.
+        if sw / max(1, sh) > ratio:
+            crop_w = max(1, int(sh * ratio))
+            bias = ((index * 0.31) + (style * 0.13)) % 1.0
+            left = max(0, min(sw - crop_w, int((sw - crop_w) * bias)))
+            src = src.crop((left, 0, left + crop_w, sh))
         else:
-            # Portrait source: crop height to the 9:16 window and keep the full width.
-            crop_h=max(1,int(sw/ratio))
-            bias=((index*0.23)+(style*0.11))%1.0
-            top=max(0,min(sh-crop_h,int((sh-crop_h)*bias)))
-            src=src.crop((0,top,sw,top+crop_h))
-        photo=src.resize((WIDTH,HEIGHT),Image.Resampling.LANCZOS).convert("RGBA")
+            crop_h = max(1, int(sw / ratio))
+            bias = ((index * 0.27) + (style * 0.17)) % 1.0
+            top = max(0, min(sh - crop_h, int((sh - crop_h) * bias)))
+            src = src.crop((0, top, sw, top + crop_h))
+        photo = src.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS).convert("RGBA")
 
-    # Full-bleed base plus subtle depth/grade. Dark source art gets a designed backdrop
-    # so black-background logos/maps never turn into a dead black screen.
-    small=photo.convert("L").resize((48,48))
-    dark_fraction=sum(1 for px in small.getdata() if px < 22)/max(1,48*48)
-    if dark_fraction > 0.30:
-        canvas=Image.new("RGBA",(WIDTH,HEIGHT),(*bg,255))
-        gd=ImageDraw.Draw(canvas)
-        for yy in range(HEIGHT):
-            mix=yy/max(1,HEIGHT-1)
-            col=tuple(int(bg[k]*(1-mix)+accent[k]*mix*0.55) for k in range(3))
-            gd.line((0,yy,WIDTH,yy),fill=(*col,255))
-        blurred=photo.filter(ImageFilter.GaussianBlur(35))
-        blurred.putalpha(95)
-        canvas.alpha_composite(blurred)
-        card=photo.resize((860,860),Image.Resampling.LANCZOS)
-        mask=Image.new("L",(860,860),0)
-        ImageDraw.Draw(mask).rounded_rectangle((0,0,860,860),radius=52,fill=255)
-        canvas.paste(card,(110,420),mask)
-    else:
-        canvas=photo.copy()
-        grade=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
-        gd=ImageDraw.Draw(grade)
-        gd.rectangle((0,0,WIDTH,620),fill=(*bg,105))
-        gd.rectangle((0,1300,WIDTH,HEIGHT),fill=(*bg,75))
-        canvas.alpha_composite(grade)
-    safe=68
-    label=["HOOK","CONTEXT","DETAIL","REACTION","CHANGE","EVIDENCE","ESCALATION","PAYOFF"][min(index,7)]
-    headline=_phrase(hook if index==0 else scene,9)
-    d=ImageDraw.Draw(canvas)
+    mode = index % 6
+    canvas = photo.copy()
 
-    if index%4==0:
-        # Hero frame: image first, text second.
-        d.text((safe,72),label,font=_font(28),fill=(*hot,255))
-        d.text((WIDTH-175,72),f"{index+1:02d}",font=_font(28),fill=(*ink,230))
-        y=145
-        fnt=_font(76 if index==0 else 62)
-        for line in _wrap(d,headline,fnt,900)[:4]:
-            d.text((safe,y),line,font=fnt,fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,165))
-            y+=84 if index==0 else 72
-        d.rounded_rectangle((safe,1615,WIDTH-safe,1735),radius=28,fill=(*bg,145),outline=(*accent,150),width=2)
-        d.text((safe+24,1650),_phrase(title,8).upper(),font=_font(26),fill=(*ink,245))
-    elif index%4==1:
-        # Cinematic lower-third: image remains visible behind the story line.
-        d.text((safe,72),f"{index+1:02d}",font=_font(28),fill=(*accent,255))
-        d.text((safe+75,72),label,font=_font(28),fill=(*hot,255))
-        # Small readable story card instead of a full-width opaque panel.
-        box=(safe,1450,WIDTH-safe,1770)
-        d.rounded_rectangle(box,radius=34,fill=(*bg,165),outline=(*accent,120),width=2)
-        for j,line in enumerate(_wrap(d,headline,_font(55),880)[:4]):
-            d.text((safe+28,1490+j*65),line,font=_font(55),fill=(*ink,255))
-        d.text((safe+28,1740),_phrase(title,7).upper(),font=_font(22),fill=(*ink,210))
-    elif index%4==2:
-        # Magazine inset: sharp photo over a blurred version of the same scene.
-        blurred=photo.filter(ImageFilter.GaussianBlur(26))
-        dark=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,70))
-        blurred.alpha_composite(dark)
-        canvas=blurred
-        card_w,card_h=900,1160; x0,y0=90,235
-        card=photo.resize((card_w,card_h),Image.Resampling.LANCZOS)
-        shadow=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
-        sd=ImageDraw.Draw(shadow)
-        sd.rounded_rectangle((x0+12,y0+20,x0+card_w+12,y0+card_h+20),radius=48,fill=(0,0,0,155))
+    # Every few shots gets a different editorial treatment instead of a repeated card.
+    if mode == 0:
+        # Full-bleed hero.
+        overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+        od = ImageDraw.Draw(overlay)
+        od.rectangle((0, 0, WIDTH, 680), fill=(*bg, 150))
+        od.rectangle((0, 1460, WIDTH, HEIGHT), fill=(*bg, 125))
+        canvas.alpha_composite(overlay)
+    elif mode == 1:
+        # Blurred depth + sharp portrait crop.
+        backdrop = photo.filter(ImageFilter.GaussianBlur(24))
+        tint = Image.new("RGBA", (WIDTH, HEIGHT), (*bg, 90))
+        backdrop.alpha_composite(tint)
+        canvas = backdrop
+        card_w, card_h = 880, 1220
+        x0, y0 = 100, 250
+        card = photo.resize((card_w, card_h), Image.Resampling.LANCZOS)
+        shadow = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(shadow)
+        sd.rounded_rectangle((x0+14, y0+22, x0+card_w+14, y0+card_h+22), radius=42, fill=(0,0,0,145))
         canvas.alpha_composite(shadow)
-        mask=Image.new("L",(card_w,card_h),0)
-        ImageDraw.Draw(mask).rounded_rectangle((0,0,card_w,card_h),radius=48,fill=255)
-        canvas.paste(card,(x0,y0),mask)
-        d=ImageDraw.Draw(canvas)
-        d.text((safe,72),label,font=_font(28),fill=(*accent,255))
-        d.rounded_rectangle((safe,1440,WIDTH-safe,1585),radius=30,fill=(*bg,175),outline=(*hot,160),width=2)
-        d.text((safe+28,1475),_phrase(headline,11),font=_font(50),fill=(*ink,255))
+        mask = Image.new("L", (card_w, card_h), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0,0,card_w,card_h), radius=42, fill=255)
+        canvas.paste(card, (x0, y0), mask)
+    elif mode == 2:
+        # Large offset crop with a clean side panel.
+        canvas = photo.filter(ImageFilter.GaussianBlur(2))
+        d = ImageDraw.Draw(canvas)
+        d.rectangle((0, 0, 355, HEIGHT), fill=(*bg, 205))
+        d.rectangle((35, 300, 390, 1610), outline=(*accent, 220), width=3)
+    elif mode == 3:
+        # Monochrome editorial shot with a color accent.
+        gray = photo.convert("L").convert("RGBA")
+        colorized = Image.new("RGBA", (WIDTH, HEIGHT), (*ink, 255))
+        colorized.alpha_composite(gray)
+        canvas = colorized
+        tint = Image.new("RGBA", (WIDTH, HEIGHT), (*bg, 70))
+        canvas.alpha_composite(tint)
+    elif mode == 4:
+        # Two-frame collage: same source, two different crops, no giant opaque UI.
+        base = photo.filter(ImageFilter.GaussianBlur(18))
+        base.alpha_composite(Image.new("RGBA", (WIDTH, HEIGHT), (*bg, 90)))
+        canvas = base
+        left = photo.crop((0, 0, WIDTH, HEIGHT)).resize((610, 1220), Image.Resampling.LANCZOS)
+        right = photo.crop((260, 280, 900, 1500)).resize((400, 1220), Image.Resampling.LANCZOS)
+        canvas.paste(left, (45, 330))
+        canvas.paste(right, (635, 330))
+        d = ImageDraw.Draw(canvas)
+        d.rounded_rectangle((45, 330, 655, 1550), radius=34, outline=(*ink, 180), width=3)
+        d.rounded_rectangle((635, 330, 1035, 1550), radius=34, outline=(*accent, 220), width=3)
     else:
-        # Cinematic split-screen variant without the heavy side rail.
-        d.text((safe,82),label,font=_font(28),fill=(*hot,255))
-        d.text((WIDTH-185,82),f"{index+1:02d}",font=_font(28),fill=(*ink,230))
-        d.rounded_rectangle((safe,1390,WIDTH-safe,1740),radius=38,fill=(*bg,165),outline=(*accent,140),width=2)
-        d.line((safe+30,1435,safe+30,1685),fill=(*hot,255),width=6)
-        y=1430
-        for line in _wrap(d,headline,_font(58),820)[:4]:
-            d.text((safe+65,y),line,font=_font(58),fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,175))
-            y+=68
-        d.text((safe+65,1685),_phrase(title,6).upper(),font=_font(22),fill=(*ink,215))
+        # Clean lower-third documentary frame.
+        overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0,0,0,0))
+        od = ImageDraw.Draw(overlay)
+        for y in range(1050, HEIGHT):
+            a = int(15 + 170 * ((y-1050) / max(1, HEIGHT-1050)))
+            od.line((0,y,WIDTH,y), fill=(*bg,a))
+        canvas.alpha_composite(overlay)
 
-    d=ImageDraw.Draw(canvas)
-    d.text((safe,1852),"ORIGINAL EDIT",font=_font(17),fill=(*ink,165))
-    canvas.convert("RGB").save(path,quality=95,optimize=True)
+    d = ImageDraw.Draw(canvas)
+    safe = 68
+    labels = ["HOOK", "CONTEXT", "DETAIL", "REACTION", "CHANGE", "PAYOFF"]
+    label = labels[min(mode, len(labels)-1)]
+    headline = _phrase(hook if index == 0 else scene, 8 if index else 9)
+    title_clean = _phrase(title, 7)
+
+    # Compact, high-contrast top hierarchy.
+    d.text((safe, 70), label, font=_font(25), fill=(*hot, 255))
+    d.text((WIDTH-165, 70), f"{index+1:02d}", font=_font(25), fill=(*ink, 230))
+    if index == 0:
+        y = 135
+        for line in _wrap(d, headline, _font(70), 900)[:3]:
+            d.text((safe, y), line, font=_font(70), fill=(*ink, 255),
+                   stroke_width=2, stroke_fill=(*bg, 180))
+            y += 78
+    elif mode in (2, 3):
+        # Text on the editorial panel.
+        y = 420 if mode == 2 else 1120
+        max_w = 275 if mode == 2 else 900
+        fsz = 42 if mode == 2 else 60
+        for line in _wrap(d, headline, _font(fsz), max_w)[:5]:
+            d.text((safe if mode == 2 else 70, y), line, font=_font(fsz),
+                   fill=(*ink, 255), stroke_width=1, stroke_fill=(*bg, 170))
+            y += fsz + 10
+    else:
+        # One restrained story card, not a second duplicate headline.
+        box = (safe, 1450, WIDTH-safe, 1770)
+        d.rounded_rectangle(box, radius=30, fill=(*bg, 165), outline=(*accent, 150), width=2)
+        lines = _wrap(d, headline, _font(52), 860)[:4]
+        for j, line in enumerate(lines):
+            d.text((safe+26, 1490+j*61), line, font=_font(52), fill=(*ink, 255))
+        d.text((safe+26, 1735), title_clean.upper(), font=_font(21), fill=(*ink, 190))
+
+    # Small scene marker; avoid the previous oversized repeated UI.
+    d.text((safe, 1848), "ORIGINAL EDIT", font=_font(17), fill=(*ink, 175))
+    d.rounded_rectangle((WIDTH-265, 1838, WIDTH-68, 1850), radius=6, fill=(*ink, 80))
+    d.rounded_rectangle((WIDTH-265, 1838, WIDTH-265 + int(197*((index+1)/max(1,total))), 1850),
+                        radius=6, fill=(*hot, 230))
+    canvas.convert("RGB").save(path, quality=95, optimize=True)
 
 def _draw_category_icon(d, category, cx, cy, size, accent, hot):
     cat = str(category).lower()
@@ -522,38 +532,51 @@ def _make_audio(script, work, duration):
         return None
 
 def _make_captions(script, duration, work):
-    """Clean lower-third captions that complement the visual headline."""
-    path=Path(work)/"captions.ass"
-    scenes=[str(x).strip() for x in (script.get("scenes") or []) if str(x).strip()]
-    if not scenes: scenes=[str(script.get("hook",""))]
-    weights=[max(1,len(s.split())) for s in scenes]
-    total=sum(weights) or 1
+    """Short, readable captions designed for mobile viewing and safe-area compliance."""
+    path = Path(work) / "captions.ass"
+    scenes = [str(x).strip() for x in (script.get("scenes") or []) if str(x).strip()]
+    if not scenes:
+        scenes = [str(script.get("hook", ""))]
+    weights = [max(1, len(s.split())) for s in scenes]
+    total = sum(weights) or 1
+
     def stamp(value):
-        cs=int((value-int(value))*100)
+        cs = int(round((value - int(value)) * 100))
         return f"0:{int(value)//60:02d}:{int(value)%60:02d}.{cs:02d}"
+
     def esc(value):
+        value = html.unescape(re.sub(r"<[^>]+>", " ", str(value)))
+        value = value.replace("&nbsp;", " ")
         return str(value).replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
-    with path.open("w",encoding="utf-8") as f:
+
+    with path.open("w", encoding="utf-8") as f:
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\n")
         f.write("Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n")
-        f.write("Style: Viral,DejaVu Sans,50,&H00FFFFFF,&H00FFFFFF,&H00000000,&HCC000000,-1,0,0,0,100,100,0,0,3,2,1,2,70,70,155,1\n\n")
+        f.write("Style: Viral,DejaVu Sans,48,&H00FFFFFF,&H00FFFFFF,&H00101010,&HAA101010,-1,0,0,0,100,100,0,0,3,2,1,2,80,80,180,1\n\n")
         f.write("[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n")
-        cursor=0.0
-        for i,scene in enumerate(scenes):
-            step=duration*weights[i]/total
-            start,end=cursor,min(duration,cursor+step); cursor=end
-            words=scene.split()
-            if len(words)>12:
-                mid=len(words)//2
-                scene=" ".join(words[:mid])+"\\N"+" ".join(words[mid:])
-            f.write(f"Dialogue: 0,{stamp(start)},{stamp(end)},Viral,,0,0,0,,{esc(scene)}\n")
+        cursor = 0.0
+        for i, scene in enumerate(scenes):
+            step = duration * weights[i] / total
+            start, end = cursor, min(duration, cursor + step)
+            cursor = end
+            # Captions are deliberately shorter than the spoken sentence.
+            words = re.findall(r"[A-Za-zÅÄÖåäö0-9’'\-]+", html.unescape(scene))
+            if len(words) > 9:
+                words = words[:9]
+            caption = " ".join(words).strip()
+            if not caption:
+                continue
+            if len(words) > 5:
+                mid = (len(words)+1)//2
+                caption = " ".join(words[:mid]) + "\\N" + " ".join(words[mid:])
+            f.write(f"Dialogue: 0,{stamp(start)},{stamp(end)},Viral,,0,0,0,,{esc(caption)}\n")
     return str(path)
 
 def _build_segment(keyframe, output, seconds, direction, first=False, last=False):
     """Add a visible camera move to every still instead of making a static slideshow."""
     frames=max(1,int(round(seconds*FPS)))
-    zoom_step=0.00145 if direction>0 else 0.00125
+    zoom_step=0.00185 if direction>0 else 0.00155
     zoom=f"min(zoom+{zoom_step:.5f},1.16)"
     if direction>0:
         x="iw/2-(iw/zoom/2)+((iw-iw/zoom)*0.28)"
@@ -617,9 +640,10 @@ def create_video(opportunity, script, index=1):
     for i, scene in enumerate(scenes):
         key = work / f"key_{i:02d}.jpg"
         if assets:
-            # Keep a coherent visual identity: use the primary topic image and vary
-            # framing/motion rather than cutting to unrelated search-result imagery.
-            _photo_frame(str(key), assets[0], title, hook, scene, category, i, len(scenes), palette, style)
+            # Use different topic assets when available. If there is only one, the renderer
+            # still creates six materially different editorial treatments.
+            asset = assets[i % len(assets)]
+            _photo_frame(str(key), asset, title, hook, scene, category, i, len(scenes), palette, style)
         else:
             _render_frame(str(key), title, hook, scene, category, i, len(scenes), palette, style)
         keys.append(str(key))
