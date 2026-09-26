@@ -181,7 +181,7 @@ jobs:
           youtube_count="$(find output -maxdepth 1 -name 'youtube_commentary_*.mp4' -type f | wc -l)"
           test "$youtube_count" -ge 1
           for video in output/youtube_commentary_*.mp4; do
-            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1920,1080'
+            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1080,1920'
           done
           echo "Generated exactly 3 videos; YouTube uses real reusable footage + commentary:"
           ls -lh output/*.mp4
