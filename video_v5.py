@@ -177,7 +177,7 @@ def create_video(opportunity, script, index=1):
     if not scenes:
         scenes = [str(script.get("hook") or opportunity.get("trend", "Current topic"))]
 
-    target = max(8, min(14, math.ceil(duration / 2.25)))
+    target = max(8, min(10, math.ceil(duration / 2.35)))
     while len(scenes) < target:
         scenes.append(scenes[-1])
     scenes = scenes[:target]
@@ -225,16 +225,16 @@ def create_video(opportunity, script, index=1):
         if engine_available():
             max_ai = min(6, max(0, int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))))
             # Spread AI motion across the timeline so the short opens, escalates and finishes with real motion.
-            if target <= 6:
+            # AI-first: distribute generated motion across the whole story.
+            max_ai = min(max_ai, target)
+            if max_ai >= target:
                 candidate_indexes = list(range(target))
             else:
-                candidate_indexes = sorted(set([
-                    0, 1,
-                    round(target * 0.28),
-                    round(target * 0.50),
-                    round(target * 0.72),
-                    max(1, target - 2),
-                ]))
+                candidate_indexes = []
+                for n in range(max_ai):
+                    idx = round(n * (target - 1) / max(1, max_ai - 1))
+                    if idx not in candidate_indexes:
+                        candidate_indexes.append(idx)
             used = []
             for ai_i in candidate_indexes:
                 if len(used) >= max_ai or ai_i >= target or ai_i in used:
