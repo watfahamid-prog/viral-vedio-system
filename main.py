@@ -1,11 +1,12 @@
 import json
 import os
 from pipeline import run_pipeline
-from video_v4 import create_video, write_manifest
+from video_v5 import create_video
+from video_v4 import write_manifest
 from script_generator import generate_script
 from publish import publish
 from discord import notify
-from config import OUTPUT_DIR, VIDEO_COUNT, VIDEO_ENGINE
+from config import OUTPUT_DIR, VIDEO_COUNT
 from performance import record_run
 from self_test import main as run_self_test
 from quality_control import quality_check
@@ -57,17 +58,24 @@ def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(OUTPUT_DIR, "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
-    qc = quality_check(result['videos'])
-    with open(os.path.join(OUTPUT_DIR, 'quality_report.json'), 'w', encoding='utf-8') as f:
+
+    qc = quality_check(result["videos"])
+    with open(os.path.join(OUTPUT_DIR, "quality_report.json"), "w", encoding="utf-8") as f:
         json.dump(qc, f, ensure_ascii=False, indent=2)
+
     state = record_learning(result, qc)
     save_learning_summary(state, OUTPUT_DIR)
-    if not qc['passed']:
-        failed = [item for item in qc['results'] if not item['passed']]
-        details = '; '.join(f"video={item.get('video')}: {','.join(item.get('errors', []))}" for item in failed)
-        raise RuntimeError(f'Quality control blocked Discord: {details}')
-    for item in result['videos']:
-        item['publishing'] = publish(item['video'], item.get('script', {}))
+
+    if not qc["passed"]:
+        failed = [item for item in qc["results"] if not item["passed"]]
+        details = "; ".join(
+            f"video={item.get('video')}: {','.join(item.get('errors', []))}"
+            for item in failed
+        )
+        raise RuntimeError(f"Quality control blocked Discord: {details}")
+
+    for item in result["videos"]:
+        item["publishing"] = publish(item["video"], item.get("script", {}))
 
     record_run(result)
 
@@ -80,7 +88,7 @@ def main():
         f"🚀 Viral Video Automation complete\n"
         f"Trends scanned: {result['trend_count']} | Videos: {len(result['videos'])}\n"
         f"Sources represented: {', '.join(sorted(source_counts)) or 'none'}\n"
-        f"Video styles: kinetic motion v4 + optional AI hero\n"
+        f"Video engine: v5 multi-scene + crossfades + kinetic motion + optional AI motion\n"
         f"Publishing: OFF (YouTube API is intentionally the final integration)"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
