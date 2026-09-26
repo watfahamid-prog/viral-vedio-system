@@ -11,8 +11,8 @@ from config import OUTPUT_DIR, TTS_ENGINE, TTS_VOICE
 
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
-CLIPS_PER_VIDEO = max(2, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "4")))
-CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "7")))
+CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "7"))))
+CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "6")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 
 
@@ -125,13 +125,29 @@ def create_youtube_commentary_video(opportunity, index):
     root = Path(OUTPUT_DIR) / f"youtube_{index}"
     root.mkdir(parents=True, exist_ok=True)
     query = opportunity.get("trend") or "interesting real life moment"
-    sources = _commons_video_search(query, limit=max(CLIPS_PER_VIDEO * 2, 8))
+    # Search broadly enough to collect 5–10 reusable clips. We keep the
+    # requested count configurable, but never allow fewer than five.
+    search_limit = max(CLIPS_PER_VIDEO * 3, 20)
+    queries = [query, f"{query} real life", "people real life", "interesting people"]
+    sources = []
+    seen = set()
+    for search_query in queries:
+        try:
+            for item in _commons_video_search(search_query, limit=search_limit):
+                key = item.get("source_url") or item.get("url")
+                if key and key not in seen:
+                    seen.add(key)
+                    sources.append(item)
+                if len(sources) >= CLIPS_PER_VIDEO:
+                    break
+        except requests.RequestException as error:
+            print(f"YouTube source search failed for '{search_query}': {error}")
+        if len(sources) >= CLIPS_PER_VIDEO:
+            break
     if len(sources) < CLIPS_PER_VIDEO:
-        # A broad real-life fallback keeps the YouTube path deterministic without
-        # touching the existing AI-video engine.
-        sources = _commons_video_search("people real life", limit=max(CLIPS_PER_VIDEO * 2, 8))
-    if len(sources) < CLIPS_PER_VIDEO:
-        raise RuntimeError(f"Not enough reusable real-life video clips found for YouTube video #{index}")
+        raise RuntimeError(
+            f"Only {len(sources)} reusable clips found; need {CLIPS_PER_VIDEO} for YouTube video #{index}"
+        )
 
     clips = []
     manifest = []
@@ -148,8 +164,8 @@ def create_youtube_commentary_video(opportunity, index):
         clips.append(segment)
         manifest.append(source)
 
-    if len(clips) < 2:
-        raise RuntimeError(f"YouTube video #{index} did not produce enough usable clips")
+    if len(clips) < CLIPS_PER_VIDEO:
+        raise RuntimeError(f"YouTube video #{index} produced only {len(clips)} usable clips; need {CLIPS_PER_VIDEO}")
 
     combined = root / "combined.mp4"
     _concat(clips, combined)
@@ -164,7 +180,7 @@ def create_youtube_commentary_video(opportunity, index):
         subprocess.run([
             "ffmpeg", "-y", "-i", str(combined), "-i", audio_path,
             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
-            "-af", "apad", "-shortest", "-movflags", "+faststart", str(final)
+            "-shortest", "-movflags", "+faststart", str(final)
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         mode = "ai_voice"
     else:
