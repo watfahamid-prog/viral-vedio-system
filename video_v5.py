@@ -212,47 +212,72 @@ def create_video(opportunity, script, index=1):
     scene_time = (duration + transition * (target - 1)) / target
 
     assets, credits = v4._fetch_visual_assets(opportunity, work)
-    # Zero-cost mode still permits openly licensed Wikimedia imagery. If the exact
-    # trend query produced no usable image, retry once with a shorter topic query
-    # rather than failing the entire run. This fallback never creates text cards.
+
+    # Build a scene-specific visual pool even when the broad trend search succeeds.
+    # This is important for quality: otherwise one small set of trend images can be
+    # recycled across every scene, creating a slideshow instead of a story.
+    scene_assets = []
+    scene_asset_seen = set()
+
+    raw_trend = str(opportunity.get("trend", "")).strip()
     if not assets:
         retry_opportunity = dict(opportunity)
-        raw_trend = str(opportunity.get("trend", "")).strip()
         words = [w for w in re.findall(r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", raw_trend) if len(w) >= 4]
         retry_opportunity["trend"] = " ".join(words[:5])
         if retry_opportunity["trend"] and retry_opportunity["trend"] != raw_trend:
             assets, retry_credits = v4._fetch_visual_assets(retry_opportunity, work / "trend_retry")
             credits.extend(retry_credits)
 
-    # The trend itself is not always a searchable image topic. In zero-cost mode,
-    # search the actual scene descriptions one-by-one before giving up. This keeps
-    # the final video image-based and text-free without requiring a paid generator.
-    if not assets:
-        scene_terms = []
-        for scene in scenes:
-            words = [w.lower() for w in re.findall(
+    # Search scene topics one-by-one in zero-cost mode. Keep unique source files so
+    # different scenes can actually show different subjects/locations/objects.
+    scene_terms = []
+    stop = {
+        "about","after","again","also","because","before","being","could","from",
+        "have","into","more","most","over","that","their","there","these","this",
+        "through","under","what","when","where","which","while","with","would",
+        "scene","show","shows","shot","camera","video","vertical","original",
+        "realistic","natural","cinematic","footage","image","images","maintain",
+        "continuity","dynamic","close","wide","medium","slow","gentle","shot",
+    }
+    for scene in scenes:
+        words = [
+            w.lower() for w in re.findall(
                 r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", scene
-            ) if len(w) >= 5]
-            query = " ".join(list(dict.fromkeys(words))[:6])
-            if query and query not in scene_terms:
-                scene_terms.append(query)
-        for n, query in enumerate(scene_terms[:target]):
-            scene_work = work / f"scene_search_{n:02d}"
-            scene_work.mkdir(parents=True, exist_ok=True)
-            scene_opportunity = dict(opportunity)
-            scene_opportunity["trend"] = query
-            found, found_credits = v4._fetch_visual_assets(scene_opportunity, scene_work)
-            credits.extend(found_credits)
-            for src in found:
-                dst = work / f"scene_asset_{len(assets):02d}.jpg"
-                try:
-                    shutil.copyfile(src, dst)
-                    assets.append(str(dst))
-                except Exception:
-                    pass
-            if len(assets) >= target:
-                break
-        print(f"Zero-cost visual search: {len(assets)} usable assets found.")
+            )
+            if len(w) >= 5 and w.lower() not in stop
+        ]
+        query_words = list(dict.fromkeys(words))[:6]
+        query = " ".join(query_words)
+        if query and query not in scene_terms:
+            scene_terms.append(query)
+
+    for n, query in enumerate(scene_terms[:target]):
+        scene_work = work / f"scene_search_{n:02d}"
+        scene_work.mkdir(parents=True, exist_ok=True)
+        scene_opportunity = dict(opportunity)
+        scene_opportunity["trend"] = query
+        found, found_credits = v4._fetch_visual_assets(scene_opportunity, scene_work)
+        credits.extend(found_credits)
+        for src in found:
+            try:
+                source_key = str(Path(src).resolve())
+            except Exception:
+                source_key = str(src)
+            if source_key in scene_asset_seen:
+                continue
+            dst = work / f"scene_asset_{len(scene_assets):02d}.jpg"
+            try:
+                shutil.copyfile(src, dst)
+                scene_assets.append(str(dst))
+                scene_asset_seen.add(source_key)
+            except Exception:
+                pass
+
+    # Prefer scene-specific assets; broad trend assets remain a fallback. This
+    # prevents repetitive faces/covers from occupying the entire timeline.
+    if scene_assets:
+        assets = scene_assets + [a for a in assets if a not in scene_assets]
+    print(f"Zero-cost visual search: {len(scene_assets)} scene-specific + {len(assets)} total usable assets.")
     # Prefer original AI keyframes when the legitimate low-cost media key is configured.
     # The router is bounded per video, so a run cannot silently explode media spend.
     ai_keyframes = []
