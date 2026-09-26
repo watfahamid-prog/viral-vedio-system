@@ -69,3 +69,48 @@ def direct_script(trend, hook, format_name, source_summary, base_script):
     except Exception as error:
         print("Gemini director skipped:", error)
         return base_script
+
+def originality_review(candidates, history):
+    if not (GEMINI_ENABLED and GEMINI_API_KEY) or not candidates:
+        return None
+    previous = "\n".join(
+        f"- {item.get('trend','')} | {item.get('hook','')} | {item.get('format','')}"
+        for item in history[-100:]
+    ) or "(none)"
+    new_items = "\n".join(
+        f"{i}. {item.get('trend','')} | {item.get('hook','')} | {item.get('format','')}"
+        for i, item in enumerate(candidates)
+    )
+    prompt = """You are the originality editor for an automated video channel.
+Compare the NEW candidates with PREVIOUS videos. Reject candidates that are substantially repetitive in topic, angle, hook, or format.
+Broad categories can repeat, but the actual idea should feel fresh.
+Return ONLY JSON: {"keep":[0,1],"reason":"brief"}.
+Keep at least one candidate if possible.
+
+PREVIOUS:
+""" + previous + "\n\nNEW:\n" + new_items
+    url = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent"
+    try:
+        response = requests.post(
+            url,
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json={"contents":[{"role":"user","parts":[{"text":prompt}]}],
+                  "generationConfig":{"temperature":0.1,"responseMimeType":"application/json","maxOutputTokens":120}},
+            timeout=45,
+        )
+        if not response.ok:
+            print(f"Gemini originality review skipped: HTTP {response.status_code}")
+            return None
+        data=response.json()
+        text="".join(str(p.get("text","")) for p in data.get("candidates",[{}])[0].get("content",{}).get("parts",[])).strip()
+        start,end=text.find("{"),text.rfind("}")
+        if start<0 or end<=start:
+            return None
+        result=json.loads(text[start:end+1])
+        keep=[int(i) for i in result.get("keep",[]) if str(i).isdigit() and 0<=int(i)<len(candidates)]
+        if keep:
+            print(f"Gemini originality review kept {keep}: {result.get('reason','')}")
+            return set(keep)
+    except Exception as error:
+        print("Gemini originality review skipped:", error)
+    return None
