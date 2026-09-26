@@ -51,6 +51,9 @@ jobs:
           VIDEO_MIN_SECONDS: "15"
           VIDEO_MAX_SECONDS: "60"
           AI_MODE: "openai"
+          GEMINI_ENABLED: "true"
+          GEMINI_MODEL: "gemini-2.5-flash"
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "auto"
           AI_VIDEO_ENABLED: "true"
           AI_VIDEO_PROVIDER: "fal-ai"
