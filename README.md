@@ -59,6 +59,19 @@ The workflow supports Hugging Face Inference Providers for text-to-video. The de
 Add a GitHub Actions secret named HF_TOKEN before enabling provider inference. Never commit the token to the repository.
 
 
+## Video engine v5
+
+The production renderer now builds a real multi-scene short instead of one repeated visual:
+- 7–10 distinct scene beats per video, based on narration and visual directions.
+- Different crops/layouts and alternating push/pull camera motion between scenes.
+- Crossfade transitions between scenes so changes feel like an edited video rather than a static slideshow.
+- Optional AI-generated motion can replace up to three strategically spaced scenes when a supported provider key is configured.
+- Narration is normalized and mixed with a very quiet original ambient bed.
+- Captions remain burned into the final 9:16 output.
+- The renderer keeps a local deterministic fallback, so AI video generation is an enhancement rather than a single point of failure.
+
+CapCut is not required for the automated pipeline. If a future test shows a specific CapCut feature materially improves the output, it can be added as an optional finishing stage.
+
 ## Current production defaults
 
 The automation is designed to stay fast and reliable on GitHub Actions:
