@@ -56,8 +56,18 @@ def _build_segment_v5(keyframe, output, seconds, direction, first=False, last=Fa
     else:
         x = "iw/2-(iw/zoom/2)-((iw-iw/zoom)*0.30)"
         y = "ih/2-(ih/zoom/2)-((ih-ih/zoom)*0.16)"
+    # Controlled editorial treatment keeps zero-cost mode from looking like a raw slideshow.
+    grade = [
+        "eq=contrast=1.045:saturation=1.06:brightness=0.008",
+        "eq=contrast=1.02:saturation=1.10:brightness=-0.004",
+        "eq=contrast=1.055:saturation=0.98:brightness=0.012",
+        "eq=contrast=1.035:saturation=1.08:brightness=-0.008",
+    ][abs(direction) % 4]
     filters = [
         f"zoompan=z='{zoom}':x='{x}':y='{y}':d={frames}:s={WIDTH}x{HEIGHT}:fps={FPS}",
+        grade,
+        "unsharp=5:5:0.32:5:5:0",
+        "vignette=PI/5",
         "format=yuv420p",
     ]
     if first:
@@ -100,8 +110,10 @@ def _concat_with_transitions(segments, output, transition=0.12):
     for i in range(1, len(segments)):
         elapsed += durations[i - 1] - transition
         out = f"v{i}"
+        transition_names = ["fade", "smoothleft", "smoothright", "slideright", "slideleft", "circleopen", "dissolve", "fadeblack"]
+        transition_name = transition_names[(i - 1) % len(transition_names)]
         graph.append(
-            f"[{current}][{i}:v]xfade=transition=fade:duration={transition}:offset={elapsed:.3f}[{out}]"
+            f"[{current}][{i}:v]xfade=transition={transition_name}:duration={transition}:offset={elapsed:.3f}[{out}]"
         )
         current = out
 
@@ -208,7 +220,7 @@ def create_video(opportunity, script, index=1):
     category = str(opportunity.get("category", "general"))
     palette = v4.PALETTES[(index - 1) % len(v4.PALETTES)]
     style = (index - 1) % 6
-    transition = min(0.14, max(0.08, (duration / target) * 0.07))
+    transition = min(0.16, max(0.10, (duration / target) * 0.075))
     scene_time = (duration + transition * (target - 1)) / target
 
     assets, credits = v4._fetch_visual_assets(opportunity, work)
@@ -508,12 +520,12 @@ def create_video(opportunity, script, index=1):
         "audio": True,
         "captions": False,
         "original_content": True,
-        "visual_engine": "viral_v7_hybrid_ai_motion_editorial_engine",
+        "visual_engine": "viral_v8_zero_cost_editorial_engine",
         "ai_motion_scenes": len(used) if "used" in locals() else 0,
         "ai_engines_available": __import__("ai_video").available_engines() if __import__("ai_video").engine_available() else [],
         "scene_changes": target - 1,
         "transition": "crossfade",
-        "camera_motion": "alternating_push_pull",
+        "camera_motion": "alternating_push_pull + varied_editorial_transitions",
         "visual_directions_used": len(visuals),
         "creative_qc_enabled": bool(visual_review.get("enabled")),
         "creative_qc_score": visual_review.get("score_1_to_10"),
