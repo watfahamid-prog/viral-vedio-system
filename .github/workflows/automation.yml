@@ -1,4 +1,4 @@
-name: Viral Video Automation v4 inspection
+name: Viral Video Automation v5 free-engine stack
 
 on:
   workflow_dispatch:
@@ -60,6 +60,10 @@ jobs:
           TTS_ENGINE: "espeak-ng"
           TTS_VOICE: "en-US-GuyNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ELEVENLABS_ENABLED: "true"
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          ELEVENLABS_MODEL: "eleven_multilingual_v2"
           YOUTUBE_ENABLED: "false"
           TIKTOK_ENABLED: "false"
           PUBLISH_ENABLED: "false"
