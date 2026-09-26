@@ -299,12 +299,11 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
             for j, line in enumerate(_wrap(d, _phrase(scene, 11), _font(52), 880)[:3]):
                 d.text((70, 1455 + j*64), line, font=_font(52), fill=(*ink, 255))
 
-    # Persistent but subtle progress indicator.
-    bar_y = 1740
-    d.rounded_rectangle((70, bar_y, 1010, bar_y+12), radius=6, fill=tuple(int(bg[i] * 0.55 + ink[i] * 0.45) for i in range(3)))
+    # Minimal top progress indicator leaves a dedicated clean subtitle zone at the bottom.
+    bar_y = 112
+    d.rounded_rectangle((70, bar_y, 1010, bar_y+8), radius=4, fill=tuple(int(bg[i] * 0.55 + ink[i] * 0.45) for i in range(3)))
     progress = (index + 1) / total
-    d.rounded_rectangle((70, bar_y, int(70 + 940*progress), bar_y+12), radius=6, fill=(*hot, 255))
-    d.text((70, 1790), _phrase(title, 9).upper(), font=_font(25), fill=(*ink, 220))
+    d.rounded_rectangle((70, bar_y, int(70 + 940*progress), bar_y+8), radius=4, fill=(*hot, 255))
     img.convert("RGB").save(path, quality=95, optimize=True)
 
 def _make_audio(script, work, duration):
@@ -355,7 +354,7 @@ def _make_captions(script, duration, work):
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\n")
         f.write("Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n")
-        f.write("Style: Viral,DejaVu Sans,38,&H00FFFFFF,&H00FFFFFF,&H00101010,&HDD101010,-1,0,0,0,100,100,0,0,3,2,0,2,70,70,280,1\n\n")
+        f.write("Style: Viral,DejaVu Sans,36,&H00FFFFFF,&H00FFFFFF,&H00101010,&HDD101010,-1,0,0,0,100,100,0,0,3,2,0,2,70,70,95,1\n\n")
         f.write("[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n")
         cursor = 0.0
         for i, scene in enumerate(scenes):
