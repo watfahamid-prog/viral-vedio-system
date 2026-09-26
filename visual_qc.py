@@ -41,7 +41,7 @@ def review_video(video_path, script, scene_count=None):
                 json={"contents":[{"role":"user","parts":parts}],
                       "generationConfig":{"temperature":0.2,"responseMimeType":"application/json"}},timeout=75)
             if not response.ok:
-                return {"enabled":True,"passed":True,"warning":"Gemini visual QC HTTP "+str(response.status_code),"scene_reviews":[]}
+                return {"enabled":True,"passed":False,"warning":"Gemini visual QC HTTP "+str(response.status_code),"scene_reviews":[],"quality_gate":"regenerate_or_review"}
             data=response.json(); text=""
             for candidate in data.get("candidates",[]):
                 for part in candidate.get("content",{}).get("parts",[]): text += part.get("text","")
@@ -66,4 +66,4 @@ def review_video(video_path, script, scene_count=None):
             result["quality_gate"]="pass" if result["passed"] else "regenerate_or_review"
             return result
         except Exception as error:
-            return {"enabled":True,"passed":True,"warning":"Gemini visual QC skipped: "+str(error),"scene_reviews":[]}
+            return {"enabled":True,"passed":False,"warning":"Gemini visual QC skipped: "+str(error),"scene_reviews":[],"quality_gate":"regenerate_or_review"}
