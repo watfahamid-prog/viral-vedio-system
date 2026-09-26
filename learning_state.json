@@ -103,6 +103,41 @@
       "format": "youtube_real_commentary",
       "category": "sports",
       "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Totalstopp på E18 mellan Järfälla och Kungsängen",
+      "hook": "A real-life moment connected to Totalstopp på E18 mellan Järfälla och Kungsängen.",
+      "format": "youtube_real_commentary",
+      "category": "general",
+      "platform": "youtube"
+    },
+    {
+      "trend": "hammarby mot eskilstuna",
+      "hook": "Wait — here is why hammarby mot eskilstuna is suddenly everywhere.",
+      "format": "tiktok_cantina_story",
+      "category": "general",
+      "platform": "tiktok"
+    },
+    {
+      "trend": "Dödliga ryska attacker i Ukraina",
+      "hook": "A real-life moment connected to Dödliga ryska attacker i Ukraina.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
     }
   ]
 }
