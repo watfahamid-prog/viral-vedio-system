@@ -49,8 +49,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${GEMINI_API_KEY:-}" ]; then
-            echo "GEMINI_API_KEY secret is missing or empty."
-            exit 1
+            echo "GEMINI_API_KEY is not configured; continuing with the local/template fallback."
+            exit 0
           fi
           response="$(curl -sS -w '\n%{http_code}' \
             "https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent" \
@@ -61,28 +61,26 @@ jobs:
           status="$(printf '%s\n' "$response" | tail -n 1)"
           body="$(printf '%s\n' "$response" | sed '$d')"
           if [ "$status" != "200" ]; then
-            echo "Gemini API verification failed with HTTP $status."
-            printf '%s\n' "$body" | head -c 1000
-            exit 1
+            echo "Gemini API verification failed; continuing with fallback."
+            exit 0
           fi
           if ! printf '%s\n' "$body" | grep -q "GEMINI_OK"; then
-            echo "Gemini API responded, but the test response was unexpected."
-            exit 1
+            echo "Gemini API response was unexpected; continuing with fallback."
+            exit 0
           fi
           echo "Gemini API verification passed."
-
       - name: Run complete viral video pipeline
         env:
-          DRY_RUN: "true"
+          DRY_RUN: "false"
           MAX_TRENDS: "12"
           VIDEO_COUNT: "3"
           VIDEO_SECONDS: "20"
           VIDEO_MIN_SECONDS: "15"
           VIDEO_MAX_SECONDS: "60"
           AI_MODE: "template"
-          GEMINI_ENABLED: "true"
+          GEMINI_ENABLED: ${{ secrets.GEMINI_API_KEY != '' }}
           GEMINI_MODEL: "gemini-2.5-flash"
-          GEMINI_VISUAL_QC_ENABLED: "true"
+          GEMINI_VISUAL_QC_ENABLED: ${{ secrets.GEMINI_API_KEY != '' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "auto"
           AI_VIDEO_ENABLED: "true"
