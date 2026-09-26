@@ -32,7 +32,14 @@ def _commons_video_search(query, limit=8):
         "iiprop": "url|mime|size|extmetadata",
         "format": "json",
     }
-    response = requests.get(COMMONS_API, params=params, timeout=30)
+    response = requests.get(
+        COMMONS_API,
+        params=params,
+        headers={
+            "User-Agent": "ViralVideoAutomationBot/1.0 (Wikimedia Commons)"
+        },
+        timeout=30,
+    )
     response.raise_for_status()
     pages = response.json().get("query", {}).get("pages", {})
     results = []
@@ -45,7 +52,6 @@ def _commons_video_search(query, limit=8):
         meta = info.get("extmetadata", {})
         license_name = (meta.get("LicenseShortName") or {}).get("value", "")
         usage = (meta.get("UsageTerms") or {}).get("value", "")
-        # Commons is the source; keep the license metadata beside every downloaded clip.
         results.append({
             "title": page.get("title", ""),
             "url": url,
@@ -96,7 +102,6 @@ def _concat(clips, output):
 
 
 def _commentary(opportunity, source):
-    title = source.get("title", "").replace("File:", "").strip()
     description = re.sub(r"\s+", " ", source.get("description", "")).strip()
     trend = opportunity.get("trend", "this clip")
     if description:
@@ -125,8 +130,6 @@ def create_youtube_commentary_video(opportunity, index):
     root = Path(OUTPUT_DIR) / f"youtube_{index}"
     root.mkdir(parents=True, exist_ok=True)
     query = opportunity.get("trend") or "interesting real life moment"
-    # Search broadly enough to collect 5–10 reusable clips. We keep the
-    # requested count configurable, but never allow fewer than five.
     search_limit = max(CLIPS_PER_VIDEO * 3, 20)
     queries = [query, f"{query} real life", "people real life", "interesting people"]
     sources = []
@@ -184,8 +187,6 @@ def create_youtube_commentary_video(opportunity, index):
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         mode = "ai_voice"
     else:
-        # Text mode burns short commentary cards onto the footage and adds a silent
-        # AAC track so the result remains a normal YouTube-ready MP4.
         subtitle = root / "commentary.srt"
         cursor = 0
         lines = []
