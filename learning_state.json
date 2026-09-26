@@ -56,69 +56,6 @@
       "platform": "youtube"
     },
     {
-      "trend": "hammarby mot eskilstuna",
-      "hook": "A real-life moment connected to hammarby mot eskilstuna.",
-      "format": "youtube_real_commentary",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
-      "trend": "DN Direkt – USA och Kina öppnar direktlinje om AI-incidenter",
-      "hook": "Wait — here is why DN Direkt – USA och Kina öppnar direktlinje om AI-incidenter is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "technology",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "Putin: Förbereder inte konflikt med Europa",
-      "hook": "A real-life moment connected to Putin: Förbereder inte konflikt med Europa.",
-      "format": "youtube_real_commentary",
-      "category": "sports",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Totalstopp på E18 mellan Järfälla och Kungsängen",
-      "hook": "A real-life moment connected to Totalstopp på E18 mellan Järfälla och Kungsängen.",
-      "format": "youtube_real_commentary",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
-      "trend": "hammarby mot eskilstuna",
-      "hook": "Wait — here is why hammarby mot eskilstuna is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "general",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "Dödliga ryska attacker i Ukraina",
-      "hook": "A real-life moment connected to Dödliga ryska attacker i Ukraina.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "A real-life moment connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
       "trend": "Example technology trend",
       "hook": "A real-life moment connected to Example technology trend.",
       "format": "youtube_real_commentary",
@@ -746,6 +683,69 @@
       "hook": "Here is the quick breakdown of Dödliga ryska attacker i Ukraina.",
       "format": "short_explainer",
       "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "pablo daniel osvaldo",
+      "hook": "Here is the quick breakdown of pablo daniel osvaldo.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "rysslands utrikesminister",
+      "hook": "Here is the quick breakdown of rysslands utrikesminister.",
+      "format": "short_explainer",
+      "category": "politics",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
       "platform": "shorts"
     }
   ]
