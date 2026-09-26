@@ -1,4 +1,4 @@
-import json, math, os, subprocess
+import json, math, os, subprocess, re
 from pathlib import Path
 from PIL import Image
 import video_v4 as v4
@@ -212,6 +212,17 @@ def create_video(opportunity, script, index=1):
     scene_time = (duration + transition * (target - 1)) / target
 
     assets, credits = v4._fetch_visual_assets(opportunity, work)
+    # Zero-cost mode still permits openly licensed Wikimedia imagery. If the exact
+    # trend query produced no usable image, retry once with a shorter topic query
+    # rather than failing the entire run. This fallback never creates text cards.
+    if not assets:
+        retry_opportunity = dict(opportunity)
+        raw_trend = str(opportunity.get("trend", "")).strip()
+        words = [w for w in re.findall(r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", raw_trend) if len(w) >= 4]
+        retry_opportunity["trend"] = " ".join(words[:5])
+        if retry_opportunity["trend"] and retry_opportunity["trend"] != raw_trend:
+            assets, retry_credits = v4._fetch_visual_assets(retry_opportunity, work)
+            credits.extend(retry_credits)
     # Prefer original AI keyframes when the legitimate low-cost media key is configured.
     # The router is bounded per video, so a run cannot silently explode media spend.
     ai_keyframes = []
@@ -238,8 +249,13 @@ def create_video(opportunity, script, index=1):
         # Never use the old editorial frame renderer here: it burns template
         # labels, hooks and scene descriptions into the actual video.
         source = ai_keyframes[i] if i < len(ai_keyframes) else (assets[i % len(assets)] if assets else None)
+        if not source:
+            # Keep the pipeline alive without ever falling back to instruction text.
+            # A single licensed asset can safely supply multiple clean cinematic crops.
+            if assets:
+                source = assets[i % len(assets)]
         if not source or not _clean_visual_frame(str(key), source):
-            raise RuntimeError("No clean visual asset available; refusing to render text-only fallback scenes.")
+            raise RuntimeError("No clean visual asset available after Wikimedia fallback search.")
         keys.append(str(key))
 
     segments = []
