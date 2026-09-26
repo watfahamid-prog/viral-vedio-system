@@ -298,6 +298,24 @@ def _build_segment(keyframe, output, seconds, direction, first=False, last=False
         "-pix_fmt", "yuv420p", "-movflags", "+faststart", output
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+
+def _try_ai_hero(opportunity, script, work, duration):
+    """Use one optional real generative-video hero shot when credentials exist."""
+    try:
+        from ai_video import generate_clip
+        visual = (script.get("visual_scenes") or [])[0]
+        prompt = (
+            f"Vertical 9:16 original cinematic footage. {visual} "
+            "No readable text, no logos, no watermark, no celebrity likeness, "
+            "natural motion, realistic lighting, clean composition."
+        )
+        path = work / "ai_hero.mp4"
+        return generate_clip(prompt, str(path), duration=min(5, max(3, duration)))
+    except Exception as error:
+        print(f"Optional AI hero unavailable; using native renderer: {error}")
+        return None
+
+
 def create_video(opportunity, script, index=1):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     slug = _slug(opportunity.get("trend", "trend"))
@@ -329,6 +347,21 @@ def create_video(opportunity, script, index=1):
         keys.append(str(key))
 
     segments = []
+    ai_hero = _try_ai_hero(opportunity, script, work, scene_time)
+    if ai_hero and Path(ai_hero).exists():
+        hero = work / "hero_normalized.mp4"
+        try:
+            subprocess.run([
+                "ffmpeg", "-y", "-i", ai_hero,
+                "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT},fps={FPS},format=yuv420p",
+                "-an", "-t", f"{min(scene_time, 5):.3f}",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
+                "-movflags", "+faststart", str(hero)
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            segments.append(str(hero))
+        except Exception as error:
+            print(f"AI hero normalization failed; continuing with native visuals: {error}")
+
     for i, key in enumerate(keys):
         seg = work / f"seg_{i:02d}.mp4"
         _build_segment(
@@ -379,7 +412,7 @@ def create_video(opportunity, script, index=1):
         "audio": True,
         "captions": True,
         "original_content": True,
-        "visual_engine": "kinetic_motion_v4",
+        "visual_engine": "kinetic_motion_v4_optional_ai_hero",
         "art_direction": f"palette-{(index-1)%len(PALETTES)+1}/layout-set-{style+1}",
         "script": script,
         "video_file": str(out),
