@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
+import re
 from config import DRY_RUN, MAX_TRENDS, VIDEO_COUNT
 from trends import get_trends
 from learning import load_state
 
 
 def _category(text):
-    value = str(text).lower()
-    if any(w in value for w in ["football", "soccer", "match", "goal", "sport", "league", "nba", "nfl", "fifa"]):
+    value = re.sub(r"^(källor|sources)[:\s]+", "", str(text).lower())
+    if any(w in value for w in ["football", "soccer", "match", "goal", "sport", "league", "nba", "nfl", "fifa", "liding", "loppet", "marathon", "running", "race"]):
         return "sports"
     if any(w in value for w in ["iphone", "android", "ai", "tech", "app", "google", "microsoft", "openai", "robot"]):
         return "technology"
@@ -65,6 +66,9 @@ def build_opportunities(trends):
             "sources": item.get("sources", [source]) if isinstance(item, dict) else [source],
             "score": item.get("score", 0) if isinstance(item, dict) else 0,
             "metrics": item.get("metrics", {}) if isinstance(item, dict) else {},
+            "summary": item.get("context", {}).get("summary", "") if isinstance(item, dict) else "",
+            "source_url": item.get("context", {}).get("source_url", "") if isinstance(item, dict) else "",
+            "publisher": item.get("context", {}).get("publisher", "") if isinstance(item, dict) else "",
             "category": category,
             "hook": hooks[format_name].format(trend=trend),
             "format": format_name,
