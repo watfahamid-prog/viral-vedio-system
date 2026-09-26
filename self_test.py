@@ -16,7 +16,7 @@ def main():
     assert len(opportunities) == 1
     opportunity = opportunities[0]
     assert opportunity["category"] == "technology"
-    assert opportunity["format"] in {"youtube_quick_explainer", "short_explainer"}
+    assert opportunity["format"] in {"youtube_real_commentary", "short_explainer", "tiktok_cantina_story"}
 
     script = generate_script(
         opportunity["trend"],
