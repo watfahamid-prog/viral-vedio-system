@@ -186,15 +186,39 @@ def _draw_subject_visual(d, category, scene_index, trend, accent, hot, ink, bg):
         d.polygon([(120,560),(420,560),(470,650),(70,650)], fill=(*accent,100))
         d.polygon([(660,560),(960,560),(1010,650),(610,650)], fill=(*accent,100))
     else:
-        # General-purpose visual: object, orbit, timeline and highlighted focal point.
-        d.ellipse((320,610,760,1050), outline=(*accent,210), width=10)
-        d.ellipse((400,690,680,970), outline=(*hot,180), width=7)
-        d.ellipse((505,795,575,865), fill=(*hot,255))
-        for angle in range(0,360,60):
-            rad=math.radians(angle)
-            x=int(540+350*math.cos(rad)); y=int(830+260*math.sin(rad))
-            d.ellipse((x-18,y-18,x+18,y+18), fill=(*accent,255))
-        d.line((160,1110,920,1110), fill=(*ink,150), width=6)
+        # General visual changes by scene so the same abstract graphic is never repeated.
+        variant = scene_index % 4
+        if variant == 0:
+            d.ellipse((320,610,760,1050), outline=(*accent,210), width=10)
+            d.ellipse((400,690,680,970), outline=(*hot,180), width=7)
+            d.ellipse((505,795,575,865), fill=(*hot,255))
+            for angle in range(0,360,60):
+                rad=math.radians(angle)
+                x=int(540+350*math.cos(rad)); y=int(830+260*math.sin(rad))
+                d.ellipse((x-18,y-18,x+18,y+18), fill=(*accent,255))
+        elif variant == 1:
+            d.line((150,1040,930,1040), fill=(*ink,180), width=8)
+            points=[(190,980),(380,870),(560,930),(750,760),(900,820)]
+            for a,b in zip(points,points[1:]):
+                d.line((*a,*b), fill=(*accent,230), width=14)
+            for n,(x,y) in enumerate(points):
+                d.ellipse((x-34,y-34,x+34,y+34), fill=(*hot if n==len(points)-1 else accent,255))
+            d.text((150,590), "CHANGE →", font=_font(58), fill=(*ink,255))
+        elif variant == 2:
+            d.ellipse((300,650,760,1110), outline=(*accent,230), width=18)
+            d.ellipse((420,770,640,990), outline=(*hot,220), width=10)
+            d.line((760,1110,900,1240), fill=(*ink,255), width=35)
+            d.ellipse((485,835,575,925), fill=(*accent,255))
+            d.text((150,580), "ZOOM IN", font=_font(58), fill=(*hot,255))
+        else:
+            d.rounded_rectangle((180,650,900,1030), radius=45, fill=panel2, outline=(*accent,230), width=6)
+            d.line((540,650,540,1030), fill=(*ink,180), width=5)
+            d.text((250,735), "BEFORE", font=_font(34), fill=(*ink,255))
+            d.text((635,735), "NOW", font=_font(34), fill=(*ink,255))
+            d.ellipse((300,830,430,960), outline=(*hot,230), width=9)
+            d.ellipse((650,820,800,970), fill=(*hot,210), outline=(*ink,220), width=6)
+            d.polygon([(500,820),(580,820),(580,880),(650,880),(540,980),(430,880),(500,880)], fill=(*accent,230))
+        d.line((160,1110,920,1110), fill=(*ink,180), width=6)
         d.ellipse((250,1085,285,1120), fill=(*hot,255))
         d.ellipse((530,1085,565,1120), fill=(*accent,255))
         d.ellipse((800,1085,835,1120), fill=(*ink,255))
