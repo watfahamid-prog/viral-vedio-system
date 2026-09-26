@@ -9,16 +9,39 @@ OUTPUT_DIR = v4.OUTPUT_DIR
 def _scene_prompts(script, count):
     visual = [str(x).strip() for x in (script.get("visual_scenes") or []) if str(x).strip()]
     scenes = [str(x).strip() for x in (script.get("scenes") or []) if str(x).strip()]
+    plan = script.get("shot_plan") or []
+    bible = script.get("continuity_bible") or {}
     out = []
+    camera_variants = [
+        "wide establishing shot with a slow push-in",
+        "tight close-up with handheld micro-movement",
+        "medium tracking shot moving laterally",
+        "low-angle reveal with foreground depth",
+        "over-shoulder shot with a gentle rack-focus feel",
+        "high-angle top-down detail shot",
+        "macro insert with controlled camera drift",
+        "dynamic follow shot with clear subject motion",
+        "static composed wide shot followed by subject movement",
+        "three-quarter profile with a slow orbit",
+    ]
     for i in range(count):
-        if i < len(visual):
-            out.append(visual[i])
-        elif visual:
-            out.append(visual[i % len(visual)])
-        elif scenes:
-            out.append(scenes[i % len(scenes)])
-        else:
-            out.append("Dynamic documentary scene")
+        base = visual[i] if i < len(visual) else (visual[i % len(visual)] if visual else (scenes[i % len(scenes)] if scenes else "Dynamic documentary scene"))
+        if i < len(plan) and isinstance(plan[i], dict):
+            item = plan[i]
+            base = str(item.get("visual_prompt") or base).strip()
+            details = " ".join([
+                str(item.get("shot_type", "")),
+                str(item.get("camera", "")),
+                str(item.get("action", "")),
+            ]).strip()
+            if details:
+                base += " " + details
+        continuity = " ".join(str(v) for v in bible.values() if v)
+        if continuity:
+            base += " Maintain continuity: " + continuity
+        base += " Camera variation: " + camera_variants[i % len(camera_variants)] + "."
+        base += " Original footage, realistic physics, no readable text, no logos, no watermark."
+        out.append(base)
     return out
 
 
