@@ -190,25 +190,29 @@ jobs:
         if: success()
         run: |
           set -euo pipefail
-          rm -rf output/previews
-          mkdir -p output/previews
+          rm -rf preview_artifact
+          mkdir -p preview_artifact
+          count=0
           for video in output/*.mp4; do
+            [ -f "$video" ] || continue
+            count=$((count + 1))
             base="$(basename "$video" .mp4)"
-            ffmpeg -y -loglevel error -i "$video" \\
-              -vf "scale=640:-2:force_original_aspect_ratio=decrease" \\
-              -c:v libx264 -preset veryfast -crf 30 -pix_fmt yuv420p \\
-              -c:a aac -b:a 64k -movflags +faststart \\
-              "output/previews/${base}_preview.mp4"
+            ffmpeg -y -loglevel error -i "$video" \
+              -vf "scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2" \
+              -c:v libx264 -preset veryfast -crf 32 -maxrate 350k -bufsize 700k \
+              -pix_fmt yuv420p -c:a aac -b:a 48k -movflags +faststart \
+              "preview_artifact/${base}_preview.mp4"
           done
-          echo "Created compact previews for visual inspection:"
-          ls -lh output/previews/*.mp4
-
+          test "$count" -gt 0
+          echo "Created compact previews:"
+          ls -lh preview_artifact/*.mp4
+          du -sh preview_artifact
       - name: Save compact previews for visual inspection
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: viral-video-previews-run-${{ github.run_number }}
-          path: output/previews/
+          path: preview_artifact/
           if-no-files-found: warn
           retention-days: 7
 
