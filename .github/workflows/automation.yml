@@ -52,11 +52,11 @@ jobs:
           VIDEO_MAX_SECONDS: "60"
           AI_MODE: "openai"
           VIDEO_ENGINE: "auto"
-          AI_VIDEO_ENABLED: "false"
+          AI_VIDEO_ENABLED: "true"
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
           AI_VIDEO_TIMEOUT: "45"
-          AI_VIDEO_MAX_CLIPS: "1"
+          AI_VIDEO_MAX_CLIPS: "3"
           TTS_ENGINE: "espeak-ng"
           TTS_VOICE: "en-US-GuyNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
