@@ -13,11 +13,12 @@ from performance import record_run
 from self_test import main as run_self_test
 from quality_control import quality_check
 from learning import record_learning, save_learning_summary, learning_context
+from youtube_commentary import create_youtube_commentary_video
 
 
 def main():
     run_self_test()
-    print('Learning context:', learning_context())
+    print("Learning context:", learning_context())
     result = run_pipeline()
     result["videos"] = []
 
@@ -25,21 +26,28 @@ def main():
         raise RuntimeError("No trend opportunities were found. Nothing was generated.")
 
     for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
-        script = generate_script(
-            opportunity["trend"], opportunity["hook"],
-            opportunity.get("format", "short_explainer"),
-            opportunity.get("summary", ""),
-            opportunity.get("source_url", ""),
-        )
-        script = direct_script(
-            opportunity["trend"], opportunity["hook"],
-            opportunity.get("format", "short_explainer"),
-            opportunity.get("summary", ""),
-            script,
-        )
-        script = optimize_scene_plan(script, opportunity)
-        video_path = create_video(opportunity, script, index)
-        manifest_path = write_manifest(opportunity, script, video_path)
+        if opportunity.get("platform") == "youtube":
+            video_path, manifest_path = create_youtube_commentary_video(opportunity, index)
+            script = {
+                "generation_mode": "real_footage_commentary",
+                "commentary_mode": os.getenv("YOUTUBE_COMMENTARY_MODE", "voice"),
+            }
+        else:
+            script = generate_script(
+                opportunity["trend"], opportunity["hook"],
+                opportunity.get("format", "short_explainer"),
+                opportunity.get("summary", ""),
+                opportunity.get("source_url", ""),
+            )
+            script = direct_script(
+                opportunity["trend"], opportunity["hook"],
+                opportunity.get("format", "short_explainer"),
+                opportunity.get("summary", ""),
+                script,
+            )
+            script = optimize_scene_plan(script, opportunity)
+            video_path = create_video(opportunity, script, index)
+            manifest_path = write_manifest(opportunity, script, video_path)
 
         if not os.path.exists(video_path) or os.path.getsize(video_path) < 50_000:
             raise RuntimeError(f"Output quality gate failed for video #{index}")
@@ -97,7 +105,7 @@ def main():
         f"🚀 Viral Video Automation complete\n"
         f"Trends scanned: {result['trend_count']} | Videos: {len(result['videos'])}\n"
         f"Sources represented: {', '.join(sorted(source_counts)) or 'none'}\n"
-        f"Video engine: v5 multi-scene + crossfades + kinetic motion + optional AI motion + Gemini director\n"
+        f"YouTube mode: real reusable footage + commentary\n"
         f"Publishing: OFF (YouTube API is intentionally the final integration)"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
