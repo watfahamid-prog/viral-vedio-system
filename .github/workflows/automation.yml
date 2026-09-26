@@ -131,6 +131,9 @@ jobs:
           YOUTUBE_COMMENTARY_MODE: "voice"
           YOUTUBE_CLIPS_PER_VIDEO: "7"
           YOUTUBE_CLIP_SECONDS: "6"
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          INTERNET_ARCHIVE_ENABLED: "true"
           TIKTOK_ENABLED: "false"
           PUBLISH_ENABLED: "false"
           YOUTUBE_ACCESS_TOKEN: ${{ secrets.YOUTUBE_ACCESS_TOKEN }}
