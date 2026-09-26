@@ -12,13 +12,13 @@ def _pick(options, seed):
 
 def _category(trend):
     lower = trend.lower()
-    if any(w in lower for w in ["football", "soccer", "match", "goal", "sport", "nba", "nfl", "fifa"]):
+    if any(w in lower for w in ["football", "soccer", "match", "goal", "sport", "nba", "nfl", "fifa", "liding", "loppet", "marathon", "running", "race", "run"]):
         return "sports"
     if any(w in lower for w in ["iphone", "ai", "tech", "app", "google", "microsoft", "apple", "robot"]):
         return "technology"
     if any(w in lower for w in ["movie", "film", "series", "actor", "music", "song", "celebrity", "show"]):
         return "entertainment"
-    if any(w in lower for w in ["election", "government", "minister", "president", "parliament"]):
+    if any(w in lower for w in ["election", "government", "minister", "president", "parliament", "trump", "iran", "ukraine", "russia"]):
         return "politics"
     return "general"
 
