@@ -164,14 +164,33 @@ def create_youtube_commentary_video(opportunity, index):
         subprocess.run([
             "ffmpeg", "-y", "-i", str(combined), "-i", audio_path,
             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
-            "-shortest", "-movflags", "+faststart", str(final)
+            "-af", "apad", "-shortest", "-movflags", "+faststart", str(final)
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         mode = "ai_voice"
     else:
-        # Text mode is deliberately simple: no permanent captions are injected
-        # into the source clips. A clean metadata file carries the commentary text.
-        subprocess.run(["ffmpeg", "-y", "-i", str(combined), "-c", "copy", str(final)],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Text mode burns short commentary cards onto the footage and adds a silent
+        # AAC track so the result remains a normal YouTube-ready MP4.
+        subtitle = root / "commentary.srt"
+        cursor = 0
+        lines = []
+        for n, comment in enumerate(comments, 1):
+            start, end = cursor, cursor + CLIP_SECONDS
+            def stamp(seconds):
+                h = int(seconds // 3600)
+                m = int((seconds % 3600) // 60)
+                s = int(seconds % 60)
+                ms = int((seconds - int(seconds)) * 1000)
+                return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+            lines.append(f"{n}\n{stamp(start)} --> {stamp(end)}\n{comment}\n")
+            cursor = end
+        subtitle.write_text("\n".join(lines), encoding="utf-8")
+        subprocess.run([
+            "ffmpeg", "-y", "-i", str(combined),
+            "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+            "-vf", f"subtitles={subtitle.as_posix()}:force_style='FontSize=26,Alignment=2,MarginV=80'",
+            "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-preset", "veryfast",
+            "-c:a", "aac", "-shortest", "-movflags", "+faststart", str(final)
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         mode = "text"
 
     metadata = {
