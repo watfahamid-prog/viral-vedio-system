@@ -1,5 +1,6 @@
 import json, math, os, subprocess
 from pathlib import Path
+from PIL import Image
 import video_v4 as v4
 
 WIDTH, HEIGHT, FPS = v4.WIDTH, v4.HEIGHT, v4.FPS
@@ -167,6 +168,23 @@ def _make_polished_audio(script, work, duration):
     return str(mixed)
 
 
+def _clean_visual_frame(output, source, target_size=(WIDTH, HEIGHT)):
+    """Create a clean full-frame visual with ZERO generated/template text overlays."""
+    try:
+        img = Image.open(source).convert("RGB")
+        w, h = target_size
+        scale = max(w / img.width, h / img.height)
+        nw, nh = max(w, int(img.width * scale)), max(h, int(img.height * scale))
+        img = img.resize((nw, nh), Image.Resampling.LANCZOS)
+        left = max(0, (nw - w) // 2)
+        top = max(0, (nh - h) // 2)
+        img = img.crop((left, top, left + w, top + h))
+        img.save(output, quality=95, optimize=True)
+        return True
+    except Exception:
+        return False
+
+
 def create_video(opportunity, script, index=1):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     slug = v4._slug(opportunity.get("trend", "trend"))
@@ -217,22 +235,11 @@ def create_video(opportunity, script, index=1):
     keys = []
     for i, scene in enumerate(scenes):
         key = work / f"key_{i:02d}.jpg"
-        if i < len(ai_keyframes):
-            v4._photo_frame(
-                str(key), ai_keyframes[i], title, hook, visuals[i], category,
-                i, target, palette, (style + i) % 6,
-            )
-        elif assets:
-            asset = assets[i % len(assets)]
-            v4._photo_frame(
-                str(key), asset, title, hook, visuals[i], category,
-                i, target, palette, (style + i) % 6,
-            )
-        else:
-            v4._render_frame(
-                str(key), title, hook, visuals[i], category,
-                i, target, palette, (style + i) % 6,
-            )
+        # Never use the old editorial frame renderer here: it burns template
+        # labels, hooks and scene descriptions into the actual video.
+        source = ai_keyframes[i] if i < len(ai_keyframes) else (assets[i % len(assets)] if assets else None)
+        if not source or not _clean_visual_frame(str(key), source):
+            raise RuntimeError("No clean visual asset available; refusing to render text-only fallback scenes.")
         keys.append(str(key))
 
     segments = []
@@ -403,13 +410,12 @@ def create_video(opportunity, script, index=1):
     except Exception as error:
         print(f"Local transition SFX skipped: {error}")
 
-    captions = v4._make_captions(script, duration, work)
+    # Captions are OFF by default. Narration carries the story; no script,
+    # hook, scene description, template label, or instruction is burned into video.
     final_tmp = work / "final.mp4"
-    subtitle_filter = captions.replace("\\", "/").replace(":", "\\:")
     subprocess.run(
         [
             "ffmpeg", "-y", "-i", str(silent), "-i", audio,
-            "-vf", f"ass='{subtitle_filter}'",
             "-map", "0:v:0", "-map", "1:a:0",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
@@ -429,7 +435,7 @@ def create_video(opportunity, script, index=1):
         "duration_seconds": duration,
         "scene_count": target,
         "audio": True,
-        "captions": True,
+        "captions": False,
         "original_content": True,
         "visual_engine": "viral_v7_hybrid_ai_motion_editorial_engine",
         "ai_motion_scenes": len(used) if "used" in locals() else 0,
