@@ -157,97 +157,100 @@ def _fetch_visual_assets(opportunity, work):
     return assets[:6], credits[:6]
 
 def _photo_frame(path, image_path, title, hook, scene, category, index, total, palette, style):
-    """Premium editorial frame: the topic image is the hero, not a background card."""
+    """Premium full-bleed editorial frame with varied composition and minimal UI."""
     bg, ink, accent, hot = palette
     with Image.open(image_path).convert("RGB") as src:
-        sw, sh = src.size
-        target_ratio = WIDTH / HEIGHT
-        src_ratio = sw / max(1, sh)
-        if src_ratio > target_ratio:
-            crop_h = int(sw / target_ratio)
-            bias = ((index * 0.19) + (style * 0.07)) % 1.0
-            top = max(0, min(sh - crop_h, int((sh - crop_h) * bias)))
-            src = src.crop((0, top, sw, top + crop_h))
+        # Remove obvious letterbox bars from downloaded article/video stills.
+        gray=src.convert("L")
+        rows=[]
+        for y in range(gray.height):
+            sample=sum(gray.crop((0,y,gray.width,y+1)).resize((1,1)).getdata())/1
+            rows.append(sample)
+        top=0; bottom=src.height
+        while top < bottom-1 and rows[top] < 12: top += 1
+        while bottom > top+1 and rows[bottom-1] < 12: bottom -= 1
+        if bottom-top > src.height*0.55:
+            src=src.crop((0,top,src.width,bottom))
+        sw,sh=src.size
+        ratio=WIDTH/HEIGHT
+        if sw/sh > ratio:
+            crop_h=max(1,int(sw/ratio))
+            bias=((index*0.19)+(style*0.07))%1.0
+            top=max(0,min(sh-crop_h,int((sh-crop_h)*bias)))
+            src=src.crop((0,top,sw,top+crop_h))
         else:
-            crop_w = int(sh * target_ratio)
-            bias = ((index * 0.23) + (style * 0.11)) % 1.0
-            left = max(0, min(sw - crop_w, int((sw - crop_w) * bias)))
-            src = src.crop((left, 0, left + crop_w, sh))
-        photo = src.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS).convert("RGBA")
+            crop_w=max(1,int(sh*ratio))
+            bias=((index*0.23)+(style*0.11))%1.0
+            left=max(0,min(sw-crop_w,int((sw-crop_w)*bias)))
+            src=src.crop((left,0,left+crop_w,sh))
+        photo=src.resize((WIDTH,HEIGHT),Image.Resampling.LANCZOS).convert("RGBA")
 
-    # Full-screen depth layer prevents the old large black lower half.
-    canvas = photo.copy().filter(ImageFilter.GaussianBlur(20))
-    veil = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-    vd = ImageDraw.Draw(veil)
-    vd.rectangle((0, 0, WIDTH, HEIGHT), fill=(*bg, 95))
-    vd.rectangle((0, 0, WIDTH, 760), fill=(*bg, 165))
-    vd.rectangle((0, 1320, WIDTH, HEIGHT), fill=(*bg, 125))
-    canvas.alpha_composite(veil)
-    canvas.alpha_composite(photo)
-    safe = 68
-    label = ["HOOK","CONTEXT","DETAIL","REACTION","CHANGE","EVIDENCE","ESCALATION","PAYOFF"][min(index, 7)]
-    headline = _phrase(hook if index == 0 else scene, 10)
-    d = ImageDraw.Draw(canvas)
+    # Full-bleed base plus subtle depth/grade. No giant black lower panel.
+    canvas=photo.copy()
+    grade=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
+    gd=ImageDraw.Draw(grade)
+    gd.rectangle((0,0,WIDTH,620),fill=(*bg,105))
+    gd.rectangle((0,1300,WIDTH,HEIGHT),fill=(*bg,75))
+    canvas.alpha_composite(grade)
+    safe=68
+    label=["HOOK","CONTEXT","DETAIL","REACTION","CHANGE","EVIDENCE","ESCALATION","PAYOFF"][min(index,7)]
+    headline=_phrase(hook if index==0 else scene,9)
+    d=ImageDraw.Draw(canvas)
 
-    # Four distinct editorial compositions, cycling through the scenes.
-    if index % 4 == 0:
-        grad = Image.new("RGBA", (WIDTH, HEIGHT), (0,0,0,0))
-        gd = ImageDraw.Draw(grad)
-        gd.rectangle((0, 0, WIDTH, 650), fill=(*bg, 195))
-        gd.rectangle((0, 1430, WIDTH, HEIGHT), fill=(*bg, 180))
-        canvas.alpha_composite(grad)
-        d = ImageDraw.Draw(canvas)
-        d.text((safe, 70), label, font=_font(28), fill=(*hot,255))
-        d.text((WIDTH-185,70), f"{index+1:02d}", font=_font(30), fill=(*ink,235))
-        y=150
-        fnt=_font(78 if index==0 else 66)
-        for line in _wrap(d, headline, fnt, 900)[:4]:
-            d.text((safe,y), line, font=fnt, fill=(*ink,255), stroke_width=2, stroke_fill=(*bg,190))
-            y += 88 if index==0 else 76
-        d.rounded_rectangle((safe,1600,WIDTH-safe,1755),radius=28,fill=(*bg,205),outline=(*accent,175),width=2)
-        d.text((safe+28,1635),_phrase(title,8).upper(),font=_font(28),fill=(*ink,245))
-    elif index % 4 == 1:
-        # Magazine split: photo remains dominant, with a clean lower rail.
-        d.rectangle((0, 1390, WIDTH, HEIGHT), fill=(*bg, 232))
-        d.text((safe, 70), f"{index+1:02d}", font=_font(28), fill=(*accent,255))
-        d.text((safe+78,70), label, font=_font(28), fill=(*hot,255))
-        for j,line in enumerate(_wrap(d,headline,_font(58),890)[:3]):
-            d.text((safe,1450+j*68),line,font=_font(58),fill=(*ink,255))
-        d.rounded_rectangle((safe,1760,WIDTH-safe,1825),radius=24,fill=(*accent,230))
-        d.text((safe+24,1777),_phrase(title,7).upper(),font=_font(24),fill=(*bg,255))
-    elif index % 4 == 2:
-        # Floating sharp image over blurred depth layer.
-        card_w, card_h = 900, 1160
-        x0, y0 = 90, 260
-        card = photo.resize((card_w,card_h),Image.Resampling.LANCZOS)
-        shadow = Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
+    if index%4==0:
+        # Hero frame: image first, text second.
+        d.text((safe,72),label,font=_font(28),fill=(*hot,255))
+        d.text((WIDTH-175,72),f"{index+1:02d}",font=_font(28),fill=(*ink,230))
+        y=145
+        fnt=_font(76 if index==0 else 62)
+        for line in _wrap(d,headline,fnt,900)[:4]:
+            d.text((safe,y),line,font=fnt,fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,165))
+            y+=84 if index==0 else 72
+        d.rounded_rectangle((safe,1615,WIDTH-safe,1735),radius=28,fill=(*bg,145),outline=(*accent,150),width=2)
+        d.text((safe+24,1650),_phrase(title,8).upper(),font=_font(26),fill=(*ink,245))
+    elif index%4==1:
+        # Cinematic lower-third: image remains visible behind the story line.
+        d.text((safe,72),f"{index+1:02d}",font=_font(28),fill=(*accent,255))
+        d.text((safe+75,72),label,font=_font(28),fill=(*hot,255))
+        # Small readable story card instead of a full-width opaque panel.
+        box=(safe,1450,WIDTH-safe,1770)
+        d.rounded_rectangle(box,radius=34,fill=(*bg,165),outline=(*accent,120),width=2)
+        for j,line in enumerate(_wrap(d,headline,_font(55),880)[:4]):
+            d.text((safe+28,1490+j*65),line,font=_font(55),fill=(*ink,255))
+        d.text((safe+28,1740),_phrase(title,7).upper(),font=_font(22),fill=(*ink,210))
+    elif index%4==2:
+        # Magazine inset: sharp photo over a blurred version of the same scene.
+        blurred=photo.filter(ImageFilter.GaussianBlur(26))
+        dark=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,70))
+        blurred.alpha_composite(dark)
+        canvas=blurred
+        card_w,card_h=900,1160; x0,y0=90,235
+        card=photo.resize((card_w,card_h),Image.Resampling.LANCZOS)
+        shadow=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
         sd=ImageDraw.Draw(shadow)
-        sd.rounded_rectangle((x0+12,y0+20,x0+card_w+12,y0+card_h+20),radius=48,fill=(0,0,0,150))
+        sd.rounded_rectangle((x0+12,y0+20,x0+card_w+12,y0+card_h+20),radius=48,fill=(0,0,0,155))
         canvas.alpha_composite(shadow)
         mask=Image.new("L",(card_w,card_h),0)
-        md=ImageDraw.Draw(mask); md.rounded_rectangle((0,0,card_w,card_h),radius=48,fill=255)
+        ImageDraw.Draw(mask).rounded_rectangle((0,0,card_w,card_h),radius=48,fill=255)
         canvas.paste(card,(x0,y0),mask)
         d=ImageDraw.Draw(canvas)
-        d.text((safe,76),label,font=_font(28),fill=(*accent,255))
-        d.text((safe,1360),_phrase(headline,11),font=_font(55),fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,210))
-        d.rounded_rectangle((safe,1470,WIDTH-safe,1570),radius=30,fill=(*hot,235))
-        d.text((safe+30,1498),"KEY DETAIL",font=_font(28),fill=(*bg,255))
+        d.text((safe,72),label,font=_font(28),fill=(*accent,255))
+        d.rounded_rectangle((safe,1440,WIDTH-safe,1585),radius=30,fill=(*bg,175),outline=(*hot,160),width=2)
+        d.text((safe+28,1475),_phrase(headline,11),font=_font(50),fill=(*ink,255))
     else:
-        # Asymmetric magazine cover composition.
-        d.rectangle((0,0,430,HEIGHT),fill=(*bg,205))
-        d.text((55,100),label,font=_font(28),fill=(*hot,255))
-        d.text((55,175),f"{index+1:02d}",font=_font(150),fill=(*accent,70))
-        y=470
-        for line in _wrap(d,headline,_font(60),320)[:5]:
-            d.text((55,y),line,font=_font(60),fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,220))
-            y+=70
-        d.line((55,850,290,850),fill=(*hot,255),width=7)
-        d.text((55,890),_phrase(title,6).upper(),font=_font(24),fill=(*ink,235))
+        # Asymmetric split: only a narrow information rail, with the image still dominant.
+        d.rectangle((0,0,360,HEIGHT),fill=(*bg,185))
+        d.text((50,95),label,font=_font(28),fill=(*hot,255))
+        d.text((50,170),f"{index+1:02d}",font=_font(140),fill=(*accent,75))
+        y=465
+        for line in _wrap(d,headline,_font(56),270)[:5]:
+            d.text((50,y),line,font=_font(56),fill=(*ink,255),stroke_width=2,stroke_fill=(*bg,190))
+            y+=67
+        d.line((50,835,285,835),fill=(*hot,255),width=6)
+        d.text((50,875),_phrase(title,6).upper(),font=_font(22),fill=(*ink,225))
 
-    # Keep branding subtle; do not waste screen space on a template disclaimer.
     d=ImageDraw.Draw(canvas)
-    d.rounded_rectangle((safe,1845,WIDTH-safe,1885),radius=16,fill=(*bg,150))
-    d.text((safe+16,1853),"ORIGINAL EDIT",font=_font(18),fill=(*ink,185))
+    d.text((safe,1852),"ORIGINAL EDIT",font=_font(17),fill=(*ink,165))
     canvas.convert("RGB").save(path,quality=95,optimize=True)
 
 def _draw_category_icon(d, category, cx, cy, size, accent, hot):
