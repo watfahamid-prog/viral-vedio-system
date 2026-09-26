@@ -17,7 +17,7 @@ IA_ADVANCEDSEARCH = "https://archive.org/advancedsearch.php"
 IA_METADATA = "https://archive.org/metadata/{identifier}"
 
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
-CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "7"))))
+CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "6")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
@@ -264,14 +264,25 @@ def _concat(clips, output):
     return output
 
 
-def _commentary(opportunity, source):
+def _listicle_theme(trend):
+    text = str(trend).lower()
+    if any(w in text for w in ("horror", "scary", "creepy", "terrifying", "ghost", "haunted", "spooky")):
+        return "scariest"
+    if any(w in text for w in ("funny", "funniest", "comedy", "laugh", "fail", "fails", "hilarious")):
+        return "funniest"
+    if any(w in text for w in ("crazy", "wild", "unexpected", "insane", "shocking")):
+        return "wildest"
+    return "most interesting"
+
+
+def _listicle_commentary(rank, opportunity, source):
     description = re.sub(r"\s+", " ", source.get("description", "")).strip()
-    trend = opportunity.get("trend", "this clip")
+    trend = opportunity.get("trend", "this topic")
     provider = source.get("provider", "a licensed source")
-    if description:
-        detail = description[:180].rstrip(".")
-        return f"Here is something interesting about {trend}. This {provider} clip shows {detail}. Watch closely — the real moment is what makes this one interesting."
-    return f"Here is a real-life moment connected to {trend}. Watch closely — the interesting part happens quickly."
+    detail = description[:150].rstrip(".") if description else "a real-life moment"
+    if rank == 1:
+        return f"Here are 10 {_listicle_theme(trend)} real-life moments connected to {trend}. Starting at number 10. This {provider} clip shows {detail}. Stay to the end because the final moments are the most unexpected."
+    return f"Number {11-rank}. This {provider} clip shows {detail}. Watch closely — the next moment is coming up."
 
 
 def _tts(text, path):
@@ -326,9 +337,17 @@ def _tts(text, path):
 def create_youtube_commentary_video(opportunity, index):
     root = Path(OUTPUT_DIR) / f"youtube_{index}"
     root.mkdir(parents=True, exist_ok=True)
-    query = opportunity.get("trend") or "interesting real life moment"
+    query = opportunity.get("trend") or "interesting real life moments"
+    theme = _listicle_theme(query)
     search_limit = max(CLIPS_PER_VIDEO * 4, 30)
-    queries = [query, f"{query} real life", "people real life", "interesting people"]
+    if theme == "funniest":
+        queries = [f"{query} funny people", "funny real life moments", "funny fails people"]
+    elif theme == "scariest":
+        queries = [f"{query} scary real life", "creepy real life moments", "scary public domain video"]
+    elif theme == "wildest":
+        queries = [f"{query} wild real life", "unexpected real life moments", "crazy public domain video"]
+    else:
+        queries = [query, f"{query} real life", "interesting real life moments", "people real life"]
     sources, seen = [], set()
 
     for search_query in queries:
@@ -377,7 +396,7 @@ def create_youtube_commentary_video(opportunity, index):
     combined = root / "combined.mp4"
     _concat(clips, combined)
 
-    comments = [_commentary(opportunity, source) for source in manifest]
+    comments = [_listicle_commentary(rank, opportunity, source) for rank, source in enumerate(manifest, 1)]
     full_commentary = " ".join(comments)
     audio = root / "commentary.mp3"
     audio_path = _tts(full_commentary, audio)
@@ -415,7 +434,7 @@ def create_youtube_commentary_video(opportunity, index):
         mode = "text"
 
     metadata = {
-        "platform": "youtube", "mode": mode,
+        "platform": "youtube", "mode": mode, "format": "top_10_listicle",
         "trend": opportunity.get("trend", ""), "commentary": comments,
         "sources": manifest,
         "license_policy": (
