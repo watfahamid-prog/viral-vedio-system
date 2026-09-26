@@ -481,6 +481,20 @@
       "format": "short_explainer",
       "category": "general",
       "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
     }
   ]
 }
