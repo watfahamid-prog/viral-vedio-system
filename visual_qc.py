@@ -47,8 +47,23 @@ def review_video(video_path, script, scene_count=None):
                 for part in candidate.get("content",{}).get("parts",[]): text += part.get("text","")
             start,end=text.find("{"),text.rfind("}")
             if start<0 or end<=start: raise ValueError("No JSON from Gemini visual QC")
-            result=json.loads(text[start:end+1]); result["enabled"]=True
+            result=json.loads(text[start:end+1])
+            result["enabled"]=True
             result.setdefault("scene_reviews",[])
+            try:
+                score=float(result.get("score_1_to_10", 10))
+            except Exception:
+                score=10
+            weak_count=0
+            for item in result["scene_reviews"]:
+                try:
+                    if bool(item.get("weak")) or float(item.get("score_1_to_10", 10)) < 7:
+                        weak_count += 1
+                except Exception:
+                    pass
+            result["weak_scene_count"]=weak_count
+            result["passed"]=bool(result.get("passed", True)) and score >= 7 and weak_count <= max(2, len(files)//3)
+            result["quality_gate"]="pass" if result["passed"] else "regenerate_or_review"
             return result
         except Exception as error:
             return {"enabled":True,"passed":True,"warning":"Gemini visual QC skipped: "+str(error),"scene_reviews":[]}
