@@ -185,13 +185,31 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
             src=src.crop((left,0,left+crop_w,sh))
         photo=src.resize((WIDTH,HEIGHT),Image.Resampling.LANCZOS).convert("RGBA")
 
-    # Full-bleed base plus subtle depth/grade. No giant black lower panel.
-    canvas=photo.copy()
-    grade=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
-    gd=ImageDraw.Draw(grade)
-    gd.rectangle((0,0,WIDTH,620),fill=(*bg,105))
-    gd.rectangle((0,1300,WIDTH,HEIGHT),fill=(*bg,75))
-    canvas.alpha_composite(grade)
+    # Full-bleed base plus subtle depth/grade. Dark source art gets a designed backdrop
+    # so black-background logos/maps never turn into a dead black screen.
+    small=photo.convert("L").resize((48,48))
+    dark_fraction=sum(1 for px in small.getdata() if px < 22)/max(1,48*48)
+    if dark_fraction > 0.30:
+        canvas=Image.new("RGBA",(WIDTH,HEIGHT),(*bg,255))
+        gd=ImageDraw.Draw(canvas)
+        for yy in range(HEIGHT):
+            mix=yy/max(1,HEIGHT-1)
+            col=tuple(int(bg[k]*(1-mix)+accent[k]*mix*0.55) for k in range(3))
+            gd.line((0,yy,WIDTH,yy),fill=(*col,255))
+        blurred=photo.filter(ImageFilter.GaussianBlur(35))
+        blurred.putalpha(95)
+        canvas.alpha_composite(blurred)
+        card=photo.resize((860,860),Image.Resampling.LANCZOS)
+        mask=Image.new("L",(860,860),0)
+        ImageDraw.Draw(mask).rounded_rectangle((0,0,860,860),radius=52,fill=255)
+        canvas.paste(card,(110,420),mask)
+    else:
+        canvas=photo.copy()
+        grade=Image.new("RGBA",(WIDTH,HEIGHT),(0,0,0,0))
+        gd=ImageDraw.Draw(grade)
+        gd.rectangle((0,0,WIDTH,620),fill=(*bg,105))
+        gd.rectangle((0,1300,WIDTH,HEIGHT),fill=(*bg,75))
+        canvas.alpha_composite(grade)
     safe=68
     label=["HOOK","CONTEXT","DETAIL","REACTION","CHANGE","EVIDENCE","ESCALATION","PAYOFF"][min(index,7)]
     headline=_phrase(hook if index==0 else scene,9)
@@ -597,7 +615,9 @@ def create_video(opportunity, script, index=1):
     for i, scene in enumerate(scenes):
         key = work / f"key_{i:02d}.jpg"
         if assets:
-            _photo_frame(str(key), assets[i % len(assets)], title, hook, scene, category, i, len(scenes), palette, style)
+            # Keep a coherent visual identity: use the primary topic image and vary
+            # framing/motion rather than cutting to unrelated search-result imagery.
+            _photo_frame(str(key), assets[0], title, hook, scene, category, i, len(scenes), palette, style)
         else:
             _render_frame(str(key), title, hook, scene, category, i, len(scenes), palette, style)
         keys.append(str(key))
