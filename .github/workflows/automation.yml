@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: viral-video-automation
+  group: viral-video-automation-v2
   cancel-in-progress: true
 
 jobs:
