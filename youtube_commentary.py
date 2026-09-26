@@ -64,14 +64,35 @@ def _commons_video_search(query, limit=8):
 
 
 def _download(url, path):
-    with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT, headers={"User-Agent": "viral-video-system/1.0"}) as response:
-        response.raise_for_status()
-        with open(path, "wb") as handle:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    handle.write(chunk)
-    return path
-
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; ViralVideoAutomationBot/1.0)", "Accept": "*/*"}
+    last_error = None
+    for attempt in range(5):
+        try:
+            with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT, headers=headers) as response:
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After", "")
+                    try:
+                        wait = min(30, max(2, int(retry_after)))
+                    except ValueError:
+                        wait = min(30, 2 ** attempt)
+                    import time
+                    print(f"YouTube source rate-limited (429); retrying in {wait}s...")
+                    time.sleep(wait)
+                    continue
+                response.raise_for_status()
+                with open(path, "wb") as handle:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            handle.write(chunk)
+            return path
+        except requests.RequestException as error:
+            last_error = error
+            if attempt < 4:
+                import time
+                time.sleep(min(20, 2 ** attempt))
+            else:
+                raise
+    raise last_error
 
 def _probe_duration(path):
     result = subprocess.run(
@@ -157,15 +178,19 @@ def create_youtube_commentary_video(opportunity, index):
     for clip_index, source in enumerate(sources[:CLIPS_PER_VIDEO]):
         raw = root / f"source_{clip_index}_{_safe_name(source['title'])}.mp4"
         segment = root / f"segment_{clip_index}.mp4"
-        _download(source["url"], raw)
-        duration = _probe_duration(raw)
-        if duration < 2:
+        try:
+            _download(source["url"], raw)
+            duration = _probe_duration(raw)
+            if duration < 2:
+                continue
+            max_start = max(0.0, duration - CLIP_SECONDS)
+            start = min((clip_index * 1.7) % max(1.0, duration), max_start)
+            _make_clip(raw, segment, start, min(CLIP_SECONDS, duration))
+            clips.append(segment)
+            manifest.append(source)
+        except (requests.RequestException, subprocess.CalledProcessError, ValueError, OSError) as error:
+            print(f"YouTube clip skipped: {source.get('title','unknown')}: {error}")
             continue
-        max_start = max(0.0, duration - CLIP_SECONDS)
-        start = min((clip_index * 1.7) % max(1.0, duration), max_start)
-        _make_clip(raw, segment, start, min(CLIP_SECONDS, duration))
-        clips.append(segment)
-        manifest.append(source)
 
     if len(clips) < CLIPS_PER_VIDEO:
         raise RuntimeError(f"YouTube video #{index} produced only {len(clips)} usable clips; need {CLIPS_PER_VIDEO}")
