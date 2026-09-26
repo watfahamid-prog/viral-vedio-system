@@ -32,5 +32,42 @@
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-26T12:36:37.584147+00:00"
+  "last_updated": "2026-09-26T12:36:37.584147+00:00",
+  "creative_history": [
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Svensk i Bangkok: Regnandet bara fortsätter",
+      "hook": "A real-life moment connected to Svensk i Bangkok: Regnandet bara fortsätter.",
+      "format": "youtube_real_commentary",
+      "category": "general",
+      "platform": "youtube"
+    },
+    {
+      "trend": "boxning",
+      "hook": "Wait — here is why boxning is suddenly everywhere.",
+      "format": "tiktok_cantina_story",
+      "category": "general",
+      "platform": "tiktok"
+    },
+    {
+      "trend": "hammarby mot eskilstuna",
+      "hook": "A real-life moment connected to hammarby mot eskilstuna.",
+      "format": "youtube_real_commentary",
+      "category": "general",
+      "platform": "youtube"
+    }
+  ]
 }
