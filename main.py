@@ -4,6 +4,7 @@ from pipeline import run_pipeline
 from video_v5 import create_video
 from video_v4 import write_manifest
 from script_generator import generate_script
+from gemini_director import direct_script
 from publish import publish
 from discord import notify
 from config import OUTPUT_DIR, VIDEO_COUNT
@@ -28,6 +29,12 @@ def main():
             opportunity.get("format", "short_explainer"),
             opportunity.get("summary", ""),
             opportunity.get("source_url", ""),
+        )
+        script = direct_script(
+            opportunity["trend"], opportunity["hook"],
+            opportunity.get("format", "short_explainer"),
+            opportunity.get("summary", ""),
+            script,
         )
         video_path = create_video(opportunity, script, index)
         manifest_path = write_manifest(opportunity, script, video_path)
@@ -88,7 +95,7 @@ def main():
         f"🚀 Viral Video Automation complete\n"
         f"Trends scanned: {result['trend_count']} | Videos: {len(result['videos'])}\n"
         f"Sources represented: {', '.join(sorted(source_counts)) or 'none'}\n"
-        f"Video engine: v5 multi-scene + crossfades + kinetic motion + optional AI motion\n"
+        f"Video engine: v5 multi-scene + crossfades + kinetic motion + optional AI motion + Gemini director\n"
         f"Publishing: OFF (YouTube API is intentionally the final integration)"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
