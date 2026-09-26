@@ -25,6 +25,8 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
+AI_SELECTOR_CANDIDATES = max(8, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "15")))
+VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "12")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
@@ -388,6 +390,7 @@ def _gemini_rank_sources(sources, theme):
     """Optional AI judge for source metadata; falls back safely on errors."""
     if not YOUTUBE_AI_SELECTOR_ENABLED or not GEMINI_API_KEY or not sources:
         return sources
+    sources = sources[:AI_SELECTOR_CANDIDATES]
     candidates = [{"id": i, "title": str(s.get("title", ""))[:180],
                    "description": str(s.get("description", ""))[:300],
                    "provider": s.get("provider", "")} for i, s in enumerate(sources[:36])]
@@ -647,10 +650,14 @@ def create_youtube_commentary_video(opportunity, index):
         if len(sources) >= CLIPS_PER_VIDEO * 6:
             break
 
-    sources = _gemini_rank_sources(sources, theme)
+    # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
+    locally_ranked = _rank_and_diversify(sources, theme)
+    ai_pool = locally_ranked[:AI_SELECTOR_CANDIDATES]
+    sources = _gemini_rank_sources(ai_pool, theme)
     sources = _rank_and_diversify(sources, theme)
 
     clips, manifest = [], []
+    visual_qc_count = 0
     for clip_index, source in enumerate(sources):
         if len(clips) >= CLIPS_PER_VIDEO:
             break
@@ -661,18 +668,17 @@ def create_youtube_commentary_video(opportunity, index):
             duration = _probe_duration(raw)
             if duration < CLIP_SECONDS + 0.5:
                 continue
-            visual_ok, visual_reason = _visual_preflight(raw, duration)
+            if visual_qc_count < VISUAL_QC_LIMIT:
+                visual_qc_count += 1
+                visual_ok, visual_reason = _visual_preflight(raw, duration)
+            else:
+                visual_ok, visual_reason = True, "QC shortlist limit reached"
             if not visual_ok:
                 print(f"YouTube visual QC rejected source: {source.get('title','unknown')} ({visual_reason})")
                 continue
             max_start = max(0.0, duration - CLIP_SECONDS)
-
-            # Try several moments in each source instead of always taking a
-            # predictable timestamp. This increases the chance of catching the
-            # actual event rather than a boring lead-in.
             starts = [0.08 * duration, 0.28 * duration, 0.48 * duration, 0.68 * duration, 0.84 * duration]
             start = min(starts[clip_index % len(starts)], max_start)
-
             rank = CLIPS_PER_VIDEO - len(clips)
             _make_clip(raw, segment, start, CLIP_SECONDS, rank=rank)
             clips.append(segment)
@@ -763,9 +769,9 @@ def create_youtube_commentary_video(opportunity, index):
             "title_card_seconds": TITLE_SECONDS, "countdown": "#10 -> #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
-            "selection_engine": "theme-aware semantic scoring + optional Gemini AI judge + visual preflight QC",
+            "selection_engine": "local theme ranking -> top-candidate Gemini judge -> visual preflight shortlist",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
-            "visual_preflight": True,
+            "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT,
             "commentary_style": "fast_reactive",
         },
         "sources": manifest,
