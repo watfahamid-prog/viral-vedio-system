@@ -20,5 +20,7 @@ TTS_ENGINE = os.getenv("TTS_ENGINE", "edge").lower()
 TTS_VOICE = os.getenv("TTS_VOICE", "en-US-AriaNeural")
 VIDEO_COUNT = int(os.getenv("VIDEO_COUNT", "3"))
 AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
-AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "180"))
-AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "10"))
+AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "90"))
+AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))
+
+# Optional premium engines are activated only when their GitHub Actions secrets exist.\n
