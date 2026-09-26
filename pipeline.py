@@ -50,7 +50,8 @@ def _platform_for_format(format_name):
 
 def build_opportunities(trends):
     hooks = {
-        "youtube_real_commentary": "A real-life moment connected to {trend}.",
+        "youtube_real_commentary": "Top 10 real-life moments connected to {trend}.",
+        "youtube_top10": "Top 10 {trend} moments you need to see.",
         "tiktok_cantina_story": "Wait — here is why {trend} is suddenly everywhere.",
         "short_explainer": "Here is the quick breakdown of {trend}.",
     }
@@ -99,11 +100,11 @@ def build_opportunities(trends):
         for i, item in enumerate(selected):
             if i % 2 == 0:
                 item["platform"] = "youtube"
-                item["format"] = "youtube_real_commentary"
+                item["format"] = "youtube_top10"
             else:
                 item["platform"] = "tiktok"
                 item["format"] = "tiktok_cantina_story"
-            item["hook"] = hooks[item["format"]].format(trend=item["trend"])
+            item["hook"] = (hooks.get(item["format"], hooks["youtube_real_commentary"])).format(trend=item["trend"])
     history = state.setdefault("creative_history", [])
     for item in selected:
         history.append({"trend": item.get("trend",""), "hook": item.get("hook",""), "format": item.get("format",""), "category": item.get("category",""), "platform": item.get("platform","")})
