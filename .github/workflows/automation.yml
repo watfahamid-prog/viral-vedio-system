@@ -18,7 +18,7 @@ concurrency:
 jobs:
   create-videos:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -60,10 +60,12 @@ jobs:
           AI_VIDEO_PROVIDER: "fal-ai"
           AI_VIDEO_MODEL: "Wan-AI/Wan2.1-T2V-1.3B"
           AI_VIDEO_TIMEOUT: "45"
-          AI_VIDEO_MAX_CLIPS: "3"
+          AI_VIDEO_MAX_CLIPS: "4"
           TTS_ENGINE: "espeak-ng"
           TTS_VOICE: "en-US-GuyNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
+          LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
           ELEVENLABS_ENABLED: "true"
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
@@ -93,7 +95,7 @@ jobs:
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
             ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
           done
-          echo "Generated exactly 3 valid vertical videos:"
+          echo "Generated exactly 3 valid vertical videos with multi-engine routing/QC:"
           ls -lh output/*.mp4
 
       - name: Persist self-learning state
