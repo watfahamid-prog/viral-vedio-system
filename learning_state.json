@@ -1,21 +1,21 @@
 {
   "version": 1,
-  "runs": 50,
-  "videos": 146,
+  "runs": 51,
+  "videos": 148,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
-    "long_black_section": 2,
-    "wrong_youtube_resolution": 1
+    "long_black_section": 3,
+    "wrong_youtube_resolution": 2
   },
   "platforms": {
     "youtube": {
-      "checked": 97,
+      "checked": 98,
       "passed": 89
     },
     "tiktok": {
-      "checked": 49,
-      "passed": 46
+      "checked": 50,
+      "passed": 47
     }
   },
   "formats": {
@@ -23,7 +23,7 @@
       "created": 84
     },
     "tiktok_cantina_story": {
-      "created": 49
+      "created": 50
     },
     "youtube_ranked_breakdown": {
       "created": 2
@@ -32,14 +32,14 @@
       "created": 8
     },
     "youtube_top10": {
-      "created": 3
+      "created": 4
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-26T16:06:39.599855+00:00",
+  "last_updated": "2026-09-26T16:26:44.132858+00:00",
   "creative_history": [
     {
       "trend": "Example technology trend",
@@ -397,6 +397,34 @@
       "format": "youtube_real_commentary",
       "category": "general",
       "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "jeremy boyce",
+      "hook": "Top 10 jeremy boyce moments you need to see.",
+      "format": "youtube_top10",
+      "category": "general",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Dödliga ryska attacker i Ukraina",
+      "hook": "Wait — here is why Dödliga ryska attacker i Ukraina is suddenly everywhere.",
+      "format": "tiktok_cantina_story",
+      "category": "technology",
+      "platform": "tiktok"
     },
     {
       "trend": "Example technology trend",
