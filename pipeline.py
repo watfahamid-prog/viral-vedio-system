@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 import re
+from difflib import SequenceMatcher
 from config import DRY_RUN, MAX_TRENDS, VIDEO_COUNT
 from trends import get_trends
 from learning import load_state
+from gemini_director import originality_review
 
 
 def _category(text):
@@ -74,7 +76,25 @@ def build_opportunities(trends):
             "confidence": item.get("confidence", 0) if isinstance(item, dict) else 0,
             "status": "draft",
         })
-    selected = opportunities[:VIDEO_COUNT]
+    state = load_state()
+    history = state.get("creative_history", [])
+    candidates = []
+    for item in opportunities:
+        current = " ".join([item.get("trend",""), item.get("hook",""), item.get("format","")]).lower()
+        best = 0.0
+        for old in history[-100:]:
+            previous = " ".join([old.get("trend",""), old.get("hook",""), old.get("format","")]).lower()
+            if current and previous:
+                best = max(best, SequenceMatcher(None, current, previous).ratio())
+        item["originality_score"] = round(1.0 - best, 3)
+        if best < 0.72:
+            candidates.append(item)
+    if not candidates and opportunities:
+        candidates = [opportunities[0]]
+    ai_keep = originality_review(candidates, history)
+    if ai_keep is not None:
+        candidates = [item for i, item in enumerate(candidates) if i in ai_keep]
+    selected = candidates[:VIDEO_COUNT]
     if len(selected) >= 2:
         for i, item in enumerate(selected):
             if i % 2 == 0:
@@ -84,6 +104,14 @@ def build_opportunities(trends):
                 item["platform"] = "tiktok"
                 item["format"] = "tiktok_cantina_story"
             item["hook"] = hooks[item["format"]].format(trend=item["trend"])
+    history = state.setdefault("creative_history", [])
+    for item in selected:
+        history.append({"trend": item.get("trend",""), "hook": item.get("hook",""), "format": item.get("format",""), "category": item.get("category",""), "platform": item.get("platform","")})
+    state["creative_history"] = history[-100:]
+    with open("learning_state.json", "w", encoding="utf-8") as f:
+        import json
+        json.dump(state, f, ensure_ascii=False, indent=2)
+    print("Originality memory:", len(state["creative_history"]), "concepts")
     return selected
 
 
