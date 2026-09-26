@@ -355,7 +355,7 @@ def _make_captions(script, duration, work):
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\n")
         f.write("Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n")
-        f.write("Style: Viral,DejaVu Sans,48,&H00FFFFFF,&H00FFFFFF,&H00101010,&HAA101010,-1,0,0,0,100,100,0,0,3,3,1,2,80,80,230,1\n\n")
+        f.write("Style: Viral,DejaVu Sans,38,&H00FFFFFF,&H00FFFFFF,&H00101010,&HDD101010,-1,0,0,0,100,100,0,0,3,2,0,2,70,70,280,1\n\n")
         f.write("[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n")
         cursor = 0.0
         for i, scene in enumerate(scenes):
@@ -526,7 +526,7 @@ def write_manifest(opportunity, script_data, video_path):
         "audio": True,
         "captions": True,
         "original_content": True,
-        "visual_engine": "kinetic_motion_v4",
+        "visual_engine": "kinetic_motion_v4_optional_ai_hero",
         "script": script_data,
         "video_file": video_path,
     }
