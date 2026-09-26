@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 52,
-  "videos": 149,
+  "runs": 53,
+  "videos": 150,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -10,8 +10,8 @@
   },
   "platforms": {
     "youtube": {
-      "checked": 98,
-      "passed": 89
+      "checked": 99,
+      "passed": 90
     },
     "tiktok": {
       "checked": 50,
@@ -33,7 +33,7 @@
       "created": 2
     },
     "youtube_real_commentary": {
-      "created": 8
+      "created": 9
     },
     "youtube_top10": {
       "created": 4
@@ -46,7 +46,7 @@
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-26T16:30:38.471175+00:00",
+  "last_updated": "2026-09-26T16:36:17.659831+00:00",
   "creative_history": [
     {
       "trend": "Example technology trend",
@@ -494,6 +494,27 @@
       "hook": "Top 10 real-life moments connected to Example technology trend.",
       "format": "youtube_real_commentary",
       "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Katastrofläge efter två dagars regn i Bangkok",
+      "hook": "Top 10 real-life moments connected to Katastrofläge efter två dagars regn i Bangkok.",
+      "format": "youtube_real_commentary",
+      "category": "general",
       "platform": "youtube"
     }
   ]
