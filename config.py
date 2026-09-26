@@ -23,4 +23,4 @@ AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
 AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "90"))
 AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))
 
-# Optional premium engines are activated only when their GitHub Actions secrets exist.\n
+# Optional premium engines are activated only when their GitHub Actions secrets exist.
