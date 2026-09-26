@@ -18,7 +18,8 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
-CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "5")))
+# Four-second clips keep the countdown moving; the narration is deliberately shorter too.
+CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "4")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
@@ -107,8 +108,7 @@ def _pixabay_video_search(query, limit=15):
         return []
     response = requests.get(
         PIXABAY_API, params={"key": PIXABAY_API_KEY, "q": query, "per_page": min(limit, 200)},
-        headers={"User-Agent": "ViralVideoAutomationBot/1.0"},
-        timeout=30,
+        headers={"User-Agent": "ViralVideoAutomationBot/1.0"}, timeout=30,
     )
     response.raise_for_status()
     results = []
@@ -170,8 +170,7 @@ def _internet_archive_video_search(query, limit=15):
         results.append({
             "title": doc.get("title") or identifier,
             "url": f"https://archive.org/download/{quote(identifier)}/{quote(name)}",
-            "mime": "video/mp4",
-            "license": doc.get("licenseurl", ""),
+            "mime": "video/mp4", "license": doc.get("licenseurl", ""),
             "description": _clean(doc.get("description", "")),
             "source_url": f"https://archive.org/details/{quote(identifier)}",
             "provider": "Internet Archive",
@@ -180,7 +179,6 @@ def _internet_archive_video_search(query, limit=15):
 
 
 def _search_sources(query, limit):
-    # Ordered fallback: Commons first, then API-backed stock libraries, then Internet Archive.
     providers = [
         ("Wikimedia Commons", _commons_video_search),
         ("Pexels", _pexels_video_search),
@@ -243,7 +241,7 @@ TITLE_SECONDS = max(1.2, float(os.getenv("YOUTUBE_TITLE_SECONDS", "1.5")))
 
 
 def _drawtext_filter(text, fontsize, y, box=False):
-    safe = str(text).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+    safe = str(text).replace("\", "\\").replace(":", "\:").replace("'", "\'")
     box_part = ":box=1:boxcolor=black@0.62:boxborderw=18" if box else ""
     return (
         f"drawtext=text='{safe}':fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
@@ -262,10 +260,9 @@ def _make_clip(source, destination, start, duration, rank=None):
         filters.append(_drawtext_filter("TOP 10", 30, "h*0.14", box=False))
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start), "-i", str(source),
-        "-t", str(duration),
-        "-vf", ",".join(filters),
-        "-r", "30", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
-        "-movflags", "+faststart", str(destination)
+        "-t", str(duration), "-vf", ",".join(filters),
+        "-r", "30", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-preset", "veryfast", "-movflags", "+faststart", str(destination)
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -281,52 +278,18 @@ def _make_title_card(title, destination):
     subprocess.run([
         "ffmpeg", "-y", "-f", "lavfi", "-i",
         "color=c=black:s=1080x1920:r=30",
-        "-t", f"{TITLE_SECONDS:.3f}",
-        "-vf", ",".join(filters),
+        "-t", f"{TITLE_SECONDS:.3f}", "-vf", ",".join(filters),
         "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
         "-movflags", "+faststart", str(destination)
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def _normalize_audio(path):
-    subprocess.run([
-        "ffmpeg", "-y", "-i", str(path),
-        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
-        "-ar", "48000", "-c:a", "aac", "-b:a", "128k",
-        str(path.with_name(path.stem + "_norm.m4a"))
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return path.with_name(path.stem + "_norm.m4a")
-
-
-def _concat(clips, output):
-    if len(clips) == 1:
-        subprocess.run([
-            "ffmpeg", "-y", "-i", str(clips[0]), "-c", "copy", "-movflags", "+faststart", str(output)
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return output
-
-    inputs = []
-    filters = []
-    for i, clip in enumerate(clips):
-        inputs += ["-i", str(clip)]
-        filters.append(f"[{i}:v]settb=AVTB,setsar=1[v{i}]")
-
-    current = "v0"
-    offset = CLIP_SECONDS - 0.25
-    for i in range(1, len(clips)):
-        out = f"x{i}"
-        filters.append(f"[{current}][v{i}]xfade=transition=fade:duration=0.25:offset={offset:.2f}[{out}]")
-        current = out
-        offset += CLIP_SECONDS - 0.25
-
-    subprocess.run([
-        "ffmpeg", "-y", *inputs,
-        "-filter_complex", ";".join(filters),
-        "-map", f"[{current}]",
-        "-an", "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
-        "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(output)
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return output
+def _short_detail(source):
+    text = re.sub(r"\s+", " ", source.get("description", "") or "").strip()
+    if not text:
+        text = re.sub(r"\s+", " ", source.get("title", "") or "").strip()
+    words = re.findall(r"[A-Za-z0-9']+", text)
+    return " ".join(words[:6])
 
 
 def _listicle_theme(trend):
@@ -340,96 +303,164 @@ def _listicle_theme(trend):
     return "most interesting"
 
 
-def _short_detail(source):
-    text = re.sub(r"\\s+", " ", source.get("description", "") or "").strip()
-    if not text:
-        text = re.sub(r"\\s+", " ", source.get("title", "") or "").strip()
-    words = re.findall(r"[A-Za-z0-9']+", text)
-    return " ".join(words[:7])
+def _source_score(source, query):
+    """Semantic-ish source ranking with hard relevance gates.
+
+    This is intentionally deterministic/free: it uses the actual source metadata,
+    theme-specific positive signals, and strong negative signals. Generic wildlife,
+    landscapes, portraits and calm stock footage should not beat an actual event.
+    """
+    title = str(source.get("title", "")).lower()
+    description = str(source.get("description", "")).lower()
+    text = f"{title} {description}"
+    theme = _listicle_theme(query)
+
+    positives = {
+        "funniest": (
+            "funny", "funniest", "laugh", "hilarious", "comedy", "humor",
+            "prank", "fail", "fails", "reaction", "surprise", "awkward",
+            "silly", "crazy", "mistake", "fall", "unexpected",
+        ),
+        "scariest": (
+            "scary", "horror", "creepy", "ghost", "haunted", "terrifying",
+            "fear", "frightened", "dark", "spooky", "eerie", "paranormal",
+            "chase", "scream", "night", "strange", "unexplained",
+        ),
+        "wildest": (
+            "wild", "crazy", "unexpected", "insane", "shocking", "chaos",
+            "extreme", "surprise", "accident", "near miss", "stunt",
+            "crash", "speed", "collision", "dramatic", "reaction",
+        ),
+    }
+    negatives = {
+        "funniest": (
+            "tiger", "lion", "elephant", "giraffe", "zoo", "wildlife",
+            "safari", "nature", "landscape", "mountain", "sunset", "ocean",
+            "forest", "flower", "portrait", "fashion", "model", "cat", "dog",
+        ),
+        "scariest": (
+            "tiger", "lion", "zoo", "wildlife", "safari", "landscape",
+            "sunset", "flower", "fashion", "model", "portrait",
+        ),
+        "wildest": (
+            "sunset", "landscape", "flower", "portrait", "fashion", "model",
+            "calm", "peaceful", "meditation",
+        ),
+    }
+    event_words = (
+        "people", "person", "reaction", "caught", "moment", "camera", "crowd",
+        "street", "public", "fail", "accident", "surprise", "unexpected",
+        "chase", "fall", "crash", "prank", "scream", "stunt",
+    )
+
+    positive_hits = sum(1 for word in positives.get(theme, ()) if word in text)
+    negative_hits = sum(1 for word in negatives.get(theme, ()) if word in text)
+    event_hits = sum(1 for word in event_words if word in text)
+
+    score = positive_hits * 12 + event_hits * 3 - negative_hits * 18
+
+    # A funny list needs evidence of a funny/event-like situation.
+    # Generic wildlife/landscape clips are now pushed far below the threshold.
+    if theme in {"funniest", "scariest"} and positive_hits == 0:
+        score -= 30
+    if theme == "funniest" and event_hits == 0:
+        score -= 20
+    if theme == "scariest" and not any(w in text for w in ("scary", "horror", "creepy", "ghost", "haunted", "eerie", "paranormal", "scream", "fright")):
+        score -= 25
+    if theme == "wildest" and positive_hits == 0:
+        score -= 20
+
+    provider = source.get("provider")
+    if provider == "Wikimedia Commons":
+        score += 2
+    elif provider in {"Pexels", "Pixabay"}:
+        score += 1
+    if source.get("creator"):
+        score += 1
+    return score
+
+
+def _rank_and_diversify(sources, theme):
+    """Choose high-relevance clips first, while avoiding ten near-identical clips."""
+    ranked = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
+    chosen, used_titles = [], set()
+
+    for item in ranked:
+        score = item.get("_match_score", -999)
+        if score < -10:
+            continue
+        title = re.sub(r"[^a-z0-9]+", " ", str(item.get("title", "")).lower()).strip()
+        if title and title in used_titles:
+            continue
+        chosen.append(item)
+        if title:
+            used_titles.add(title)
+        if len(chosen) >= CLIPS_PER_VIDEO * 3:
+            break
+
+    # If a theme is difficult, keep only the strongest candidates rather than
+    # filling the countdown with obviously unrelated footage.
+    if len(chosen) < CLIPS_PER_VIDEO:
+        fallback = [x for x in ranked if x not in chosen and x.get("_match_score", -999) >= -25]
+        for item in fallback:
+            chosen.append(item)
+            if len(chosen) >= CLIPS_PER_VIDEO * 3:
+                break
+    return chosen
 
 
 def _listicle_commentary(rank, opportunity, source):
-    """Create short, natural listicle narration with reactions, not just labels."""
+    """Short, punchy commentary designed for fast Shorts pacing."""
     trend = opportunity.get("trend", "this topic")
     theme = _listicle_theme(trend)
     detail = _short_detail(source)
     number = 11 - rank
 
     if rank == 1:
-        return f"Top 10 {theme} real-life moments. Starting at number 10."
+        return f"Top 10 {theme} moments. Starting at number 10!"
 
     reactions = {
         "funniest": [
-            "Okay, I did not see that coming.",
-            "Just when you think it cannot get funnier.",
-            "That reaction was absolutely priceless.",
-            "Wait for what happens next.",
-            "And somehow, it gets even better.",
+            "No way! I did NOT see that coming!",
+            "Look at that! That is hilarious!",
+            "Wait—watch the reaction!",
+            "Okay, that got me!",
+            "And it gets even better!",
         ],
         "scariest": [
-            "I really did not see that coming.",
-            "Watch closely, because this gets creepy fast.",
-            "And this is where things get seriously unsettling.",
-            "You might want to watch this one twice.",
-            "That happened way too fast.",
+            "Nope! I did NOT expect that!",
+            "Wait—watch the background!",
+            "That changed FAST!",
+            "Okay, that is creepy!",
+            "And now it gets worse!",
         ],
         "wildest": [
-            "I definitely did not see that coming.",
-            "And then everything changed in seconds.",
-            "Wait for the next part.",
-            "That escalated incredibly fast.",
-            "You cannot make this stuff up.",
+            "WHAT?! That happened so fast!",
+            "No way! Watch what happens!",
+            "Wait for it!",
+            "That escalated FAST!",
+            "I did NOT expect that!",
         ],
         "most interesting": [
-            "I did not expect that at all.",
-            "Watch what happens next.",
-            "And then things take a turn.",
-            "That was definitely unexpected.",
-            "Keep watching this one.",
+            "Wait—watch this!",
+            "No way! Look at that!",
+            "That changed FAST!",
+            "I did NOT expect that!",
+            "Watch the next second!",
         ],
     }
     pool = reactions.get(theme, reactions["most interesting"])
     reaction = pool[(number - 2) % len(pool)]
 
+    # Keep the factual part tiny so the voice does not spend the whole clip
+    # reading a stock-video title.
     if detail:
-        return f"Number {number}. {detail}. {reaction}"
-    return f"Number {number}. Watch this one closely. {reaction}"
-
-
-def _source_score(source, query):
-    # Score actual source metadata only. Do not include the search query:
-    # otherwise every result receives the same theme points.
-    title = str(source.get("title", "")).lower()
-    description = str(source.get("description", "")).lower()
-    text = f"{title} {description}"
-    keyword_map = {
-        "funniest": ("funny", "funniest", "laugh", "hilarious", "fail", "fails", "comedy", "humor", "prank", "reaction"),
-        "scariest": ("scary", "horror", "creepy", "ghost", "haunted", "terrifying", "fear", "frightened", "dark", "spooky"),
-        "wildest": ("wild", "crazy", "unexpected", "insane", "shocking", "chaos", "extreme", "surprise", "accident"),
-    }
-    theme = _listicle_theme(query)
-    words = keyword_map.get(theme, ())
-    matches = sum(1 for word in words if word in text)
-    score = matches * 7
-    action_words = ("people", "person", "reaction", "caught", "moment", "camera", "crowd", "street", "animal")
-    score += sum(1 for word in action_words if word in text)
-    if source.get("provider") == "Pexels":
-        score += 1
-    elif source.get("provider") == "Pixabay":
-        score += 1
-    elif source.get("provider") == "Wikimedia Commons":
-        score += 2
-    if source.get("creator"):
-        score += 1
-    return score
+        detail_words = " ".join(detail.split()[:4])
+        return f"Number {number}! {detail_words}. {reaction}"
+    return f"Number {number}! {reaction}"
 
 
 def _tts(text, path):
-    """Generate narration with ElevenLabs first, then fall back to edge-tts.
-
-    ElevenLabs is optional. If its key is missing, rate-limited, unavailable,
-    or returns an invalid response, the free/local edge-tts path is used.
-    """
     if TTS_ENGINE in {"none", "text"}:
         return None
 
@@ -447,6 +478,14 @@ def _tts(text, path):
                 json={
                     "text": text,
                     "model_id": ELEVENLABS_MODEL,
+                    # Slightly faster, more energetic delivery.
+                    "voice_settings": {
+                        "stability": 0.34,
+                        "similarity_boost": 0.78,
+                        "style": 0.48,
+                        "use_speaker_boost": True,
+                    },
+                    "speed": 1.14,
                 },
                 timeout=120,
             )
@@ -454,7 +493,7 @@ def _tts(text, path):
             if not response.content.startswith(b"ID3") and not response.content.startswith(b"\xff\xfb"):
                 raise ValueError("ElevenLabs returned unexpected audio data")
             path.write_bytes(response.content)
-            print("YouTube TTS: ElevenLabs voice generated successfully.")
+            print("YouTube TTS: ElevenLabs fast/expressive voice generated successfully.")
             return str(path)
         except Exception as error:
             print(f"YouTube TTS: ElevenLabs failed; falling back to edge-tts: {error}")
@@ -464,9 +503,9 @@ def _tts(text, path):
             import asyncio
             import edge_tts
             async def make():
-                await edge_tts.Communicate(text, TTS_VOICE).save(str(path))
+                await edge_tts.Communicate(text, TTS_VOICE, rate="+18%").save(str(path))
             asyncio.run(make())
-            print("YouTube TTS: edge-tts fallback generated successfully.")
+            print("YouTube TTS: fast edge-tts fallback generated successfully.")
             return str(path)
     except Exception as error:
         print(f"YouTube TTS fallback failed: {error}")
@@ -480,13 +519,34 @@ def create_youtube_commentary_video(opportunity, index):
     theme = _listicle_theme(query)
     search_limit = max(CLIPS_PER_VIDEO * 4, 30)
     if theme == "funniest":
-        queries = [f"{query} funny people", "funny people caught on camera", "funny real life moments", "funny fails"]
+        queries = [
+            "funny people fails caught on camera",
+            "funniest human reactions fails",
+            "comedy fails unexpected moments",
+            "people funny accidents reactions",
+        ]
     elif theme == "scariest":
-        queries = [f"{query} scary real life", "scary people caught on camera", "creepy real life moments", "scary public domain video"]
+        queries = [
+            "scary people caught on camera",
+            "creepy unexpected moments people",
+            "real life horror reactions",
+            "eerie unexplained people night",
+        ]
     elif theme == "wildest":
-        queries = [f"{query} wild real life", "unexpected moments caught on camera", "crazy real life moments", "crazy public domain video"]
+        queries = [
+            "wild unexpected moments caught on camera",
+            "crazy people reactions caught on camera",
+            "insane accidents near misses stunts",
+            "shocking real life moments",
+        ]
     else:
-        queries = [query, f"{query} real life", "interesting real life moments", "people real life"]
+        queries = [
+            f"{query} people reaction",
+            f"{query} real life moments",
+            "unexpected people moments caught on camera",
+            "interesting real life reactions",
+        ]
+
     sources, seen = [], set()
     for search_query in queries:
         try:
@@ -501,20 +561,10 @@ def create_youtube_commentary_video(opportunity, index):
             seen.add(key)
             item["_match_score"] = _source_score(item, query)
             sources.append(item)
-        if len(sources) >= CLIPS_PER_VIDEO * 4:
+        if len(sources) >= CLIPS_PER_VIDEO * 6:
             break
 
-    sources.sort(key=lambda item: item.get("_match_score", 0), reverse=True)
-    ordered_sources = []
-    remaining = list(sources)
-    last_provider = None
-    while remaining and len(ordered_sources) < min(len(sources), CLIPS_PER_VIDEO * 3):
-        pool = [x for x in remaining if x.get("provider") != last_provider] or remaining
-        chosen = pool[0]
-        ordered_sources.append(chosen)
-        remaining.remove(chosen)
-        last_provider = chosen.get("provider")
-    sources = ordered_sources
+    sources = _rank_and_diversify(sources, theme)
 
     clips, manifest = [], []
     for clip_index, source in enumerate(sources):
@@ -528,13 +578,19 @@ def create_youtube_commentary_video(opportunity, index):
             if duration < CLIP_SECONDS + 0.5:
                 continue
             max_start = max(0.0, duration - CLIP_SECONDS)
-            starts = [0.12 * duration, 0.35 * duration, 0.55 * duration, 0.75 * duration]
+
+            # Try several moments in each source instead of always taking a
+            # predictable timestamp. This increases the chance of catching the
+            # actual event rather than a boring lead-in.
+            starts = [0.08 * duration, 0.28 * duration, 0.48 * duration, 0.68 * duration, 0.84 * duration]
             start = min(starts[clip_index % len(starts)], max_start)
+
             rank = CLIPS_PER_VIDEO - len(clips)
             _make_clip(raw, segment, start, CLIP_SECONDS, rank=rank)
             clips.append(segment)
             clean_source = dict(source)
             clean_source.pop("_match_score", None)
+            clean_source["_selection_score"] = source.get("_match_score", 0)
             manifest.append(clean_source)
         except (requests.RequestException, subprocess.CalledProcessError, ValueError, OSError) as error:
             print(f"YouTube clip skipped: {source.get('title','unknown')} ({source.get('provider','unknown')}): {error}")
@@ -556,13 +612,7 @@ def create_youtube_commentary_video(opportunity, index):
 
     combined_clips = [title_card] + clips
     combined = root / "combined.mp4"
-
-    # Concatenate decoded video streams with FFmpeg's concat filter.
-    # The concat demuxer can reject otherwise valid MP4 segments when their
-    # timestamps/time bases differ. Each segment is decoded, reset to a common
-    # 30-fps timeline, then concatenated and encoded once.
-    inputs = []
-    filter_parts = []
+    inputs, filter_parts = [], []
     for i, item in enumerate(combined_clips):
         inputs += ["-i", str(item)]
         filter_parts.append(
@@ -571,15 +621,12 @@ def create_youtube_commentary_video(opportunity, index):
         )
     concat_inputs = "".join(f"[v{i}]" for i in range(len(combined_clips)))
     filter_parts.append(
-        f"{concat_inputs}concat=n={len(combined_clips)}:v=1:a=0,settb=1/30,"
-        "format=yuv420p[vout]"
+        f"{concat_inputs}concat=n={len(combined_clips)}:v=1:a=0,settb=1/30,format=yuv420p[vout]"
     )
     subprocess.run([
-        "ffmpeg", "-y", *inputs,
-        "-filter_complex", ";".join(filter_parts),
-        "-map", "[vout]",
-        "-an", "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
-        "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
+        "ffmpeg", "-y", *inputs, "-filter_complex", ";".join(filter_parts),
+        "-map", "[vout]", "-an", "-r", "30", "-c:v", "libx264",
+        "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
     ], check=True)
 
     comments = [_listicle_commentary(rank, opportunity, source) for rank, source in enumerate(manifest, 1)]
@@ -592,16 +639,14 @@ def create_youtube_commentary_video(opportunity, index):
         subprocess.run([
             "ffmpeg", "-y", "-i", str(combined), "-i", audio_path,
             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
-            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
-            "-ar", "48000", "-b:a", "128k",
+            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-b:a", "128k",
             "-shortest", "-movflags", "+faststart", str(final)
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         mode = "ai_voice"
     else:
         subtitle = root / "commentary.srt"
-        cursor = 0
-        lines = []
         cursor = TITLE_SECONDS
+        lines = []
         for n, comment in enumerate(comments, 1):
             start, end = cursor, cursor + CLIP_SECONDS
             def stamp(seconds):
@@ -626,16 +671,12 @@ def create_youtube_commentary_video(opportunity, index):
         "platform": "youtube", "mode": mode, "format": "top_10_listicle",
         "trend": opportunity.get("trend", ""), "commentary": comments,
         "editing": {
-            "clips": CLIPS_PER_VIDEO,
-            "clip_seconds": CLIP_SECONDS,
-            "title_card_seconds": TITLE_SECONDS,
-            "countdown": "#10 -> #1",
-            "crossfade_seconds": 0.10,
-            "audio_normalization": True,
-            "aspect_ratio": "9:16",
-            "burned_in_text": True,
-            "title_card": title_text,
-            "rank_overlay": True,
+            "clips": CLIPS_PER_VIDEO, "clip_seconds": CLIP_SECONDS,
+            "title_card_seconds": TITLE_SECONDS, "countdown": "#10 -> #1",
+            "aspect_ratio": "9:16", "burned_in_text": True,
+            "title_card": title_text, "rank_overlay": True,
+            "selection_engine": "theme-aware semantic metadata scoring with hard negative gates",
+            "commentary_style": "fast_reactive",
         },
         "sources": manifest,
         "license_policy": (
