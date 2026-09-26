@@ -33,13 +33,15 @@ def _clean(text):
     return re.sub(r"\s+", " ", re.sub(r"^(HOOK|WHY IT MATTERS|TAKEAWAY|SCENE \d+):\s*", "", str(text))).strip()
 
 
-def _fallback(trend, hook, format_name="short_explainer"):
+def _fallback(trend, hook, format_name="short_explainer", source_summary="", source_url=""):
     seed = hashlib.sha256((trend + "|" + format_name).encode("utf-8")).hexdigest()
     category = _category(trend)
     clean_hook = _clean(hook)
     title = _short_title(trend)
     topic_words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", trend) if len(w) > 2]
     topic_phrase = " ".join(topic_words[:7]) or "this topic"
+    evidence = _clean(re.sub(r"<[^>]+>", " ", source_summary))
+    evidence = " ".join(evidence.split())[:420]
 
     if format_name == "youtube_ranked_breakdown":
         title = f"3 Things About {title}"
@@ -96,6 +98,22 @@ def _fallback(trend, hook, format_name="short_explainer"):
         hashtags = ["#trending", "#shorts", "#explainer"]
 
     opening = _pick(openings, seed[:8])
+    if evidence:
+        evidence_lines = [
+            f"The latest source describes it this way: {evidence[:150]}.",
+            f"The source context adds: {evidence[150:300]}.",
+            f"The remaining context says: {evidence[300:420]}.",
+        ]
+        scenes = [
+            clean_hook,
+            evidence_lines[0],
+            "That gives the headline its immediate context.",
+            evidence_lines[1] if evidence[150:300] else "The next detail is the part to watch.",
+            "Keep the confirmed information separate from speculation.",
+            evidence_lines[2] if evidence[300:420] else "The available source does not establish more than that.",
+            "The story may change as more verified information appears.",
+            "That is the verified short version from the available source.",
+        ]
     visual_scenes = [
         f"Opening: a striking real-world establishing shot that instantly communicates {topic_phrase}; main subject enters frame, fast push-in, natural lighting, shallow depth of field.",
         f"Context: the same subject or object performs a clear action connected to {topic_phrase}; medium tracking shot, realistic environment and layered depth.",
@@ -121,14 +139,16 @@ def _fallback(trend, hook, format_name="short_explainer"):
     }
 
 
-def generate_script(trend: str, hook: str, format_name: str = "short_explainer") -> dict:
+def generate_script(trend: str, hook: str, format_name: str = "short_explainer", source_summary: str = "", source_url: str = "") -> dict:
     if AI_MODE != "openai" or not OPENAI_API_KEY:
-        return _fallback(trend, hook, format_name)
+        return _fallback(trend, hook, format_name, source_summary, source_url)
 
     prompt = f"""Create an original vertical short about this current topic.
 TREND: {trend}
 FORMAT: {format_name}
 HOOK: {hook}
+SOURCE SUMMARY: {source_summary[:1800]}
+SOURCE URL: {source_url}
 PREVIOUS SYSTEM LESSONS: {learning_context()}
 
 Use only information contained in the topic and hook. Do not invent names, numbers, quotes, events, or causes. Do not copy any creator's wording, footage, watermark, or script.
