@@ -239,6 +239,55 @@ def create_video(opportunity, script, index=1):
     silent = work / "silent.mp4"
     _concat_with_transitions(segments, str(silent), transition=transition)
 
+    # Creative feedback loop: inspect the assembled draft, then replace only weak scenes.
+    # This avoids spending AI-generation credits on every scene.
+    regeneration_count = 0
+    visual_review = {}
+    try:
+        from visual_qc import review_video
+        visual_review = review_video(str(silent), script, scene_count=target)
+        weak = []
+        for item in visual_review.get("scene_reviews", []):
+            try:
+                if bool(item.get("weak")) or float(item.get("score_1_to_10", 10)) < 7:
+                    weak.append(int(item.get("scene_index", -1)))
+            except Exception:
+                continue
+        weak = [i for i in dict.fromkeys(weak) if 0 <= i < target][:2]
+        if weak:
+            from ai_video import generate_clip, engine_available
+            if engine_available():
+                for weak_i in weak:
+                    prompt = (
+                        "REGENERATE THIS WEAK SHOT. Make it visually premium, physically plausible, "
+                        "dynamic and clearly different from neighboring shots. "
+                        "Use a distinct camera movement, composition and environment. "
+                        "Avoid static slideshow/card visuals, blue gradients, repeated backgrounds, "
+                        "readable text, logos and watermarks. Vertical 9:16. "
+                        + visuals[weak_i]
+                    )
+                    retry_path = work / f"regen_scene_{weak_i:02d}.mp4"
+                    generated = generate_clip(
+                        prompt, str(retry_path),
+                        duration=min(5, max(3, int(round(scene_time)))),
+                    )
+                    if generated and Path(generated).exists():
+                        normalized = work / f"regen_scene_{weak_i:02d}_norm.mp4"
+                        subprocess.run(
+                            ["ffmpeg","-y","-i",generated,
+                             "-vf",f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,"
+                                   f"crop={WIDTH}:{HEIGHT},fps={FPS},format=yuv420p",
+                             "-an","-t",f"{scene_time:.3f}","-c:v","libx264",
+                             "-preset","veryfast","-crf","18","-movflags","+faststart",
+                             str(normalized)],
+                            check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                        segments[weak_i] = str(normalized)
+                        regeneration_count += 1
+                if regeneration_count:
+                    _concat_with_transitions(segments, str(silent), transition=transition)
+    except Exception as error:
+        print(f"Creative regeneration loop skipped: {error}")
+
     audio = _make_polished_audio(script, work, duration)
     if not audio:
         raise RuntimeError("Narration engine unavailable; refusing to create a silent video.")
@@ -300,11 +349,14 @@ def create_video(opportunity, script, index=1):
         "audio": True,
         "captions": True,
         "original_content": True,
-        "visual_engine": "viral_v5_multiscene_editorial_crossfade_kinetic_audio",
+        "visual_engine": "viral_v6_multiscene_engine_routing_feedback_regeneration",
         "scene_changes": target - 1,
         "transition": "crossfade",
         "camera_motion": "alternating_push_pull",
         "visual_directions_used": len(visuals),
+        "creative_qc_enabled": bool(visual_review.get("enabled")),
+        "creative_qc_score": visual_review.get("score_1_to_10"),
+        "weak_scenes_regenerated": regeneration_count,
         "art_direction": f"palette-{(index-1)%len(v4.PALETTES)+1}/dynamic-layouts",
         "script": script,
         "video_file": str(out),
