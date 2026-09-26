@@ -19,15 +19,10 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "5")))
-HOOK_SECONDS = 2
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
-ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb").strip()
-ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb").strip()
@@ -265,12 +260,32 @@ def _normalize_audio(path):
 
 
 def _concat(clips, output):
-    manifest = output.parent / "concat.txt"
-    manifest.write_text("\n".join(f"file '{p.resolve()}'" for p in clips), encoding="utf-8")
+    if len(clips) == 1:
+        subprocess.run([
+            "ffmpeg", "-y", "-i", str(clips[0]), "-c", "copy", "-movflags", "+faststart", str(output)
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return output
+
+    inputs = []
+    filters = []
+    for i, clip in enumerate(clips):
+        inputs += ["-i", str(clip)]
+        filters.append(f"[{i}:v]settb=AVTB,setsar=1[v{i}]")
+
+    current = "v0"
+    offset = CLIP_SECONDS - 0.25
+    for i in range(1, len(clips)):
+        out = f"x{i}"
+        filters.append(f"[{current}][v{i}]xfade=transition=fade:duration=0.25:offset={offset:.2f}[{out}]")
+        current = out
+        offset += CLIP_SECONDS - 0.25
+
     subprocess.run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(manifest),
-        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
-        "-movflags", "+faststart", str(output)
+        "ffmpeg", "-y", *inputs,
+        "-filter_complex", ";".join(filters),
+        "-map", f"[{current}]",
+        "-an", "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(output)
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return output
 
@@ -286,14 +301,47 @@ def _listicle_theme(trend):
     return "most interesting"
 
 
+def _short_detail(source):
+    text = re.sub(r"\\s+", " ", source.get("description", "") or "").strip()
+    if not text:
+        text = re.sub(r"\\s+", " ", source.get("title", "") or "").strip()
+    words = re.findall(r"[A-Za-z0-9']+", text)
+    return " ".join(words[:7])
+
+
 def _listicle_commentary(rank, opportunity, source):
-    description = re.sub(r"\s+", " ", source.get("description", "")).strip()
     trend = opportunity.get("trend", "this topic")
-    provider = source.get("provider", "a licensed source")
-    detail = description[:150].rstrip(".") if description else "a real-life moment"
+    theme = _listicle_theme(trend)
+    detail = _short_detail(source)
     if rank == 1:
-        return f"Here are 10 {_listicle_theme(trend)} real-life moments connected to {trend}. Starting at number 10. This {provider} clip shows {detail}. Stay to the end because the final moments are the most unexpected."
-    return f"Number {11-rank}. This {provider} clip shows {detail}. Watch closely — the next moment is coming up."
+        return f"Top 10 {theme} real-life moments. Starting at number 10."
+    if detail:
+        return f"Number {11-rank}. {detail}."
+    return f"Number {11-rank}. Watch this one closely."
+
+
+def _source_score(source, query):
+    text = " ".join([
+        str(source.get("title", "")),
+        str(source.get("description", "")),
+        str(query),
+    ]).lower()
+    keyword_map = {
+        "funniest": ("funny", "funniest", "laugh", "hilarious", "fail", "fails", "comedy"),
+        "scariest": ("scary", "horror", "creepy", "ghost", "haunted", "terrifying"),
+        "wildest": ("wild", "crazy", "unexpected", "insane", "shocking"),
+    }
+    theme = _listicle_theme(query)
+    score = sum(3 for word in keyword_map.get(theme, ()) if word in text)
+    if source.get("provider") == "Pexels":
+        score += 3
+    elif source.get("provider") == "Pixabay":
+        score += 2
+    elif source.get("provider") == "Wikimedia Commons":
+        score += 1
+    if source.get("creator"):
+        score += 1
+    return score
 
 
 def _tts(text, path):
@@ -352,15 +400,14 @@ def create_youtube_commentary_video(opportunity, index):
     theme = _listicle_theme(query)
     search_limit = max(CLIPS_PER_VIDEO * 4, 30)
     if theme == "funniest":
-        queries = [f"{query} funny people", "funny real life moments", "funny fails people"]
+        queries = [f"{query} funny people", "funny people caught on camera", "funny real life moments", "funny fails"]
     elif theme == "scariest":
-        queries = [f"{query} scary real life", "creepy real life moments", "scary public domain video"]
+        queries = [f"{query} scary real life", "scary people caught on camera", "creepy real life moments", "scary public domain video"]
     elif theme == "wildest":
-        queries = [f"{query} wild real life", "unexpected real life moments", "crazy public domain video"]
+        queries = [f"{query} wild real life", "unexpected moments caught on camera", "crazy real life moments", "crazy public domain video"]
     else:
         queries = [query, f"{query} real life", "interesting real life moments", "people real life"]
     sources, seen = [], set()
-
     for search_query in queries:
         try:
             candidates = _search_sources(search_query, limit=search_limit)
@@ -372,14 +419,22 @@ def create_youtube_commentary_video(opportunity, index):
             if not key or key in seen:
                 continue
             seen.add(key)
+            item["_match_score"] = _source_score(item, query)
             sources.append(item)
-        if len(sources) >= CLIPS_PER_VIDEO * 3:
+        if len(sources) >= CLIPS_PER_VIDEO * 4:
             break
 
-    if len(sources) < CLIPS_PER_VIDEO:
-        raise RuntimeError(
-            f"Only {len(sources)} licensed clip candidates found; need {CLIPS_PER_VIDEO} for YouTube video #{index}"
-        )
+    sources.sort(key=lambda item: item.get("_match_score", 0), reverse=True)
+    ordered_sources = []
+    remaining = list(sources)
+    last_provider = None
+    while remaining and len(ordered_sources) < min(len(sources), CLIPS_PER_VIDEO * 3):
+        pool = [x for x in remaining if x.get("provider") != last_provider] or remaining
+        chosen = pool[0]
+        ordered_sources.append(chosen)
+        remaining.remove(chosen)
+        last_provider = chosen.get("provider")
+    sources = ordered_sources
 
     clips, manifest = [], []
     for clip_index, source in enumerate(sources):
@@ -390,13 +445,16 @@ def create_youtube_commentary_video(opportunity, index):
         try:
             _download(source["url"], raw)
             duration = _probe_duration(raw)
-            if duration < 2:
+            if duration < CLIP_SECONDS + 0.5:
                 continue
             max_start = max(0.0, duration - CLIP_SECONDS)
-            start = min((clip_index * 1.7) % max(1.0, duration), max_start)
-            _make_clip(raw, segment, start, min(CLIP_SECONDS, duration))
+            starts = [0.12 * duration, 0.35 * duration, 0.55 * duration, 0.75 * duration]
+            start = min(starts[clip_index % len(starts)], max_start)
+            _make_clip(raw, segment, start, CLIP_SECONDS)
             clips.append(segment)
-            manifest.append(source)
+            clean_source = dict(source)
+            clean_source.pop("_match_score", None)
+            manifest.append(clean_source)
         except (requests.RequestException, subprocess.CalledProcessError, ValueError, OSError) as error:
             print(f"YouTube clip skipped: {source.get('title','unknown')} ({source.get('provider','unknown')}): {error}")
             continue
@@ -449,7 +507,7 @@ def create_youtube_commentary_video(opportunity, index):
     metadata = {
         "platform": "youtube", "mode": mode, "format": "top_10_listicle",
         "trend": opportunity.get("trend", ""), "commentary": comments,
-        "editing": {"clips": CLIPS_PER_VIDEO, "clip_seconds": CLIP_SECONDS, "audio_normalization": True, "aspect_ratio": "16:9"},
+        "editing": {"clips": CLIPS_PER_VIDEO, "clip_seconds": CLIP_SECONDS, "crossfade_seconds": 0.25, "audio_normalization": True, "aspect_ratio": "16:9", "burned_in_text": False},
         "sources": manifest,
         "license_policy": (
             "Automated sources are limited to Wikimedia Commons items with license metadata, "
