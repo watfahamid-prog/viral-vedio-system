@@ -16,12 +16,13 @@ def load_state():
             "platforms": {},
             "formats": {},
             "lessons": [],
+        "creative_history": [],
         }
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return {"version": 1, "runs": 0, "videos": 0, "qc_failures": {}, "platforms": {}, "formats": {}, "lessons": []}
+        return {"version": 2, "runs": 0, "videos": 0, "qc_failures": {}, "platforms": {}, "formats": {}, "lessons": [], "creative_history": []}
 
 
 def record_learning(result, qc_result):
