@@ -200,8 +200,18 @@ def create_video(opportunity, script, index=1):
     try:
         from ai_video import generate_clip, engine_available
         if engine_available():
-            max_ai = min(3, max(0, int(os.getenv("AI_VIDEO_MAX_CLIPS", "3"))))
-            candidate_indexes = [0, max(1, target // 2), max(1, target - 2)]
+            max_ai = min(6, max(0, int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))))
+            # Spread AI motion across the timeline so the short opens, escalates and finishes with real motion.
+            if target <= 6:
+                candidate_indexes = list(range(target))
+            else:
+                candidate_indexes = sorted(set([
+                    0, 1,
+                    round(target * 0.28),
+                    round(target * 0.50),
+                    round(target * 0.72),
+                    max(1, target - 2),
+                ]))
             used = []
             for ai_i in candidate_indexes:
                 if len(used) >= max_ai or ai_i >= target or ai_i in used:
@@ -365,7 +375,9 @@ def create_video(opportunity, script, index=1):
         "audio": True,
         "captions": True,
         "original_content": True,
-        "visual_engine": "viral_v6_multiscene_engine_routing_feedback_regeneration",
+        "visual_engine": "viral_v7_hybrid_ai_motion_editorial_engine",
+        "ai_motion_scenes": len(used) if "used" in locals() else 0,
+        "ai_engines_available": __import__("ai_video").available_engines() if __import__("ai_video").engine_available() else [],
         "scene_changes": target - 1,
         "transition": "crossfade",
         "camera_motion": "alternating_push_pull",
