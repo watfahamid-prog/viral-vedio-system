@@ -516,19 +516,30 @@ def create_youtube_commentary_video(opportunity, index):
     combined_clips = [title_card] + clips
     combined = root / "combined.mp4"
 
-    # Use concat instead of xfade: every input is already normalized to the same
-    # 1080x1920/30fps/yuv420p format. This avoids xfade timing/black-frame failures.
-    concat_file = root / "concat.txt"
-    concat_file.write_text(
-        "".join(f"file '{str(item).replace(chr(39), chr(39)+chr(92)+chr(39)+chr(39))}'\\n" for item in combined_clips),
-        encoding="utf-8",
+    # Concatenate decoded video streams with FFmpeg's concat filter.
+    # The concat demuxer can reject otherwise valid MP4 segments when their
+    # timestamps/time bases differ. Each segment is decoded, reset to a common
+    # 30-fps timeline, then concatenated and encoded once.
+    inputs = []
+    filter_parts = []
+    for i, item in enumerate(combined_clips):
+        inputs += ["-i", str(item)]
+        filter_parts.append(
+            f"[{i}:v:0]fps=30,scale=1080:1920:force_original_aspect_ratio=decrease,"
+            f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,settb=1/30,format=yuv420p[v{i}]"
+        )
+    concat_inputs = "".join(f"[v{i}]" for i in range(len(combined_clips)))
+    filter_parts.append(
+        f"{concat_inputs}concat=n={len(combined_clips)}:v=1:a=0,settb=1/30,"
+        "format=yuv420p[vout]"
     )
     subprocess.run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
-        "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p",
-        "-an", "-c:v", "libx264", "-preset", "veryfast",
+        "ffmpeg", "-y", *inputs,
+        "-filter_complex", ";".join(filter_parts),
+        "-map", "[vout]",
+        "-an", "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
         "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ], check=True)
 
     comments = [_listicle_commentary(rank, opportunity, source) for rank, source in enumerate(manifest, 1)]
     full_commentary = " ".join(comments)
