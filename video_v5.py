@@ -139,7 +139,7 @@ def create_video(opportunity, script, index=1):
     if not scenes:
         scenes = [str(script.get("hook") or opportunity.get("trend", "Current topic"))]
 
-    target = max(7, min(10, math.ceil(duration / 2.65)))
+    target = max(8, min(14, math.ceil(duration / 2.25)))
     while len(scenes) < target:
         scenes.append(scenes[-1])
     scenes = scenes[:target]
