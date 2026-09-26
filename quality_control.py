@@ -52,6 +52,19 @@ def check_video(video_path, platform="youtube"):
     if metrics["duration"] > min(VIDEO_MAX_SECONDS, 180):
         errors.append("too_long")
 
+
+    # Visual integrity: reject a long full-black section.
+    try:
+        black = subprocess.run([
+            "ffmpeg", "-hide_banner", "-i", str(path),
+            "-vf", "blackdetect=d=1.0:pix_th=0.10",
+            "-an", "-f", "null", "-"
+        ], capture_output=True, text=True, timeout=45)
+        if "black_start:" in (black.stderr or ""):
+            errors.append("long_black_section")
+    except Exception:
+        warnings.append("black_frame_check_unavailable")
+
     # Manifest and creative-structure checks.
     manifest = path.with_suffix('.json')
     if manifest.exists():
