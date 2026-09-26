@@ -128,8 +128,8 @@ jobs:
           ELEVENLABS_MODEL: "eleven_multilingual_v2"
           YOUTUBE_ENABLED: "true"
           YOUTUBE_COMMENTARY_MODE: "voice"
-          YOUTUBE_CLIPS_PER_VIDEO: "4"
-          YOUTUBE_CLIP_SECONDS: "7"
+          YOUTUBE_CLIPS_PER_VIDEO: "7"
+          YOUTUBE_CLIP_SECONDS: "6"
           TIKTOK_ENABLED: "false"
           PUBLISH_ENABLED: "false"
           YOUTUBE_ACCESS_TOKEN: ${{ secrets.YOUTUBE_ACCESS_TOKEN }}
