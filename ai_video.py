@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 import requests
 
+ZERO_COST_MODE = os.getenv("ZERO_COST_MODE", "false").lower() == "true"
 AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
 VIDEO_ENGINE = os.getenv("VIDEO_ENGINE", "auto").lower()
 AI_VIDEO_MODEL = os.getenv("AI_VIDEO_MODEL", "gen4.5").strip()
@@ -19,7 +20,7 @@ POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "").strip()
 HF_VIDEO_MODELS = ["Wan-AI/Wan2.1-T2V-1.3B", "Lightricks/LTX-Video"]
 
 def available_engines():
-    if not AI_VIDEO_ENABLED:
+    if ZERO_COST_MODE or not AI_VIDEO_ENABLED:
         return []
     engines = []
     if POLLINATIONS_API_KEY:
