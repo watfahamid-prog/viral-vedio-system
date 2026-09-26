@@ -23,7 +23,7 @@ def _similar(a, b):
     return SequenceMatcher(None, na, nb).ratio() >= 0.78
 
 
-def _add(trends, value, source, score=0.0, metrics=None):
+def _add(trends, value, source, score=0.0, metrics=None, context=None):
     value = re.sub(r"\s+", " ", str(value or "")).strip()
     if not value:
         return
@@ -39,9 +39,11 @@ def _add(trends, value, source, score=0.0, metrics=None):
                     item.setdefault("metrics", {})[key] = max(item.get("metrics", {}).get(key, 0), metric)
                 elif metric:
                     item.setdefault("metrics", {})[key] = metric
+            if context:
+                item.setdefault("context", {}).update({k:v for k,v in context.items() if v})
             return
     trends.append({"trend": value, "source": source, "sources": [source],
-                   "score": round(score, 3), "metrics": metrics})
+                   "score": round(score, 3), "metrics": metrics, "context": context or {}})
 
 
 def get_news_trends():
@@ -60,8 +62,15 @@ def get_news_trends():
                 if title is not None and title.text:
                     value = title.text.strip()
                     if " - " in value:
-                        value = value.rsplit(" - ", 1)[0]
-                    _add(trends, value, source_name, max(25.0, 100.0 - rank * 2.0), {"rank": rank + 1})
+                        publisher = ""
+                    if " - " in value:
+                        value, publisher = value.rsplit(" - ", 1)
+                    description = item.findtext("description") or ""
+                    description = re.sub(r"<[^>]+>", " ", description)
+                    description = re.sub(r"\s+", " ", description).strip()
+                    link = (item.findtext("link") or "").strip()
+                    _add(trends, value, source_name, max(25.0, 100.0 - rank * 2.0), {"rank": rank + 1},
+                         {"summary": description[:1200], "source_url": link, "publisher": publisher})
         except Exception as error:
             print(f"{source_name} failed: {error}")
     return trends
@@ -124,7 +133,7 @@ def get_trends():
     combined = []
     for source in (get_news_trends(), get_youtube_trends(), get_tiktok_trends()):
         for item in source:
-            _add(combined, item["trend"], item["source"], item.get("score", 0.0), item.get("metrics", {}))
+            _add(combined, item["trend"], item["source"], item.get("score", 0.0), item.get("metrics", {}), item.get("context", {}))
 
     for item in combined:
         sources = set(item.get("sources", []))
