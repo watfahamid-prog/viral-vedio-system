@@ -515,24 +515,18 @@ def create_youtube_commentary_video(opportunity, index):
 
     combined_clips = [title_card] + clips
     combined = root / "combined.mp4"
-    concat_inputs = []
-    for item in combined_clips:
-        concat_inputs += ["-i", str(item)]
-    filters = []
-    for i, item in enumerate(combined_clips):
-        filters.append(f"[{i}:v]settb=AVTB,setsar=1[v{i}]")
-    current = "v0"
-    offset = TITLE_SECONDS - 0.10
-    for i in range(1, len(combined_clips)):
-        out = f"t{i}"
-        filters.append(f"[{current}][v{i}]xfade=transition=fade:duration=0.10:offset={offset:.3f}[{out}]")
-        current = out
-        offset += CLIP_SECONDS - 0.10
+
+    # Use concat instead of xfade: every input is already normalized to the same
+    # 1080x1920/30fps/yuv420p format. This avoids xfade timing/black-frame failures.
+    concat_file = root / "concat.txt"
+    concat_file.write_text(
+        "".join(f"file '{str(item).replace(chr(39), chr(39)+chr(92)+chr(39)+chr(39))}'\\n" for item in combined_clips),
+        encoding="utf-8",
+    )
     subprocess.run([
-        "ffmpeg", "-y", *concat_inputs,
-        "-filter_complex", ";".join(filters),
-        "-map", f"[{current}]",
-        "-an", "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
+        "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p",
+        "-an", "-c:v", "libx264", "-preset", "veryfast",
         "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
