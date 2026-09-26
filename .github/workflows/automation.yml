@@ -147,7 +147,10 @@ jobs:
           ELEVENLABS_ENABLED: "true"
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          # Stable default voice; a custom secret can override this later.
+          ELEVENLABS_DEFAULT_VOICE_ID: "JBFqnCBsd6RMkjVDRZzb"
           ELEVENLABS_MODEL: "eleven_flash_v2_5"
+          ELEVENLABS_DEFAULT_VOICE_ID: "JBFqnCBsd6RMkjVDRZzb"
           YOUTUBE_ENABLED: "true"
           YOUTUBE_COMMENTARY_MODE: "voice"
           YOUTUBE_CLIPS_PER_VIDEO: "7"
