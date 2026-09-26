@@ -3,6 +3,7 @@ import math
 import os
 import re
 import subprocess
+import requests
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -97,6 +98,101 @@ def _add_atmosphere(img, accent, hot, seed):
         d.ellipse((x-r, y-r, x+r, y+r), fill=(*color, 42))
     layer = layer.filter(ImageFilter.GaussianBlur(85))
     img.alpha_composite(layer)
+
+def _safe_download(url, path):
+    try:
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0 ViralVideoBot/4.1"}, timeout=12)
+        response.raise_for_status()
+        data = response.content
+        if len(data) < 12000:
+            return False
+        Path(path).write_bytes(data)
+        with Image.open(path) as im:
+            im.verify()
+        return True
+    except Exception as error:
+        print(f"Visual asset download skipped: {error}")
+        Path(path).unlink(missing_ok=True)
+        return False
+
+def _fetch_visual_assets(opportunity, work):
+    assets, credits = [], []
+    source_url = str(opportunity.get("source_url", "")).strip()
+    if source_url:
+        try:
+            page = requests.get(source_url, headers={"User-Agent": "Mozilla/5.0 ViralVideoBot/4.1"}, timeout=12)
+            if page.ok:
+                match = re.search(r'<meta[^>]+(?:property|name)=["\']og:image["\'][^>]+content=["\']([^"\']+)', page.text, re.I)
+                if not match:
+                    match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']og:image["\']', page.text, re.I)
+                if match:
+                    p = work / "source_og.jpg"
+                    if _safe_download(match.group(1), p):
+                        assets.append(str(p))
+                        credits.append("source image")
+        except Exception as error:
+            print(f"Source preview image unavailable: {error}")
+    query = re.sub(r"^(källor|sources)[:\s]+", "", str(opportunity.get("trend", "")), flags=re.I).strip()
+    query = " ".join(query.split()[:8])
+    if query:
+        try:
+            api = requests.get(
+                "https://commons.wikimedia.org/w/api.php",
+                params={"action":"query","generator":"search","gsrsearch":query,"gsrnamespace":6,"gsrlimit":5,
+                        "prop":"imageinfo","iiprop":"url","iiurlwidth":1080,"format":"json"},
+                headers={"User-Agent":"ViralVideoBot/4.1"}, timeout=12)
+            if api.ok:
+                pages = (api.json().get("query", {}).get("pages", {}) or {}).values()
+                for n, page_data in enumerate(pages):
+                    info = (page_data.get("imageinfo") or [{}])[0]
+                    url = info.get("thumburl") or info.get("url")
+                    if not url:
+                        continue
+                    p = work / f"commons_{n:02d}.jpg"
+                    if _safe_download(url, p):
+                        assets.append(str(p))
+                        credits.append("Wikimedia Commons")
+        except Exception as error:
+            print(f"Wikimedia visual search unavailable: {error}")
+    return assets[:6], credits[:6]
+
+def _photo_frame(path, image_path, title, hook, scene, category, index, total, palette, style):
+    bg, ink, accent, hot = palette
+    with Image.open(image_path).convert("RGB") as src:
+        sw, sh = src.size
+        target_ratio = WIDTH / HEIGHT
+        src_ratio = sw / max(1, sh)
+        if src_ratio > target_ratio:
+            crop_h = int(sw / target_ratio)
+            top = max(0, min(sh-crop_h, int((sh-crop_h) * ((index*0.17 + style*0.09) % 1))))
+            src = src.crop((0, top, sw, top+crop_h))
+        else:
+            crop_w = int(sh * target_ratio)
+            left = max(0, min(sw-crop_w, int((sw-crop_w) * ((index*0.23 + style*0.11) % 1))))
+            src = src.crop((left, 0, left+crop_w, sh))
+        img = src.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS).convert("RGBA")
+    overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0,0,0,0))
+    od = ImageDraw.Draw(overlay)
+    od.rectangle((0,0,WIDTH,HEIGHT), fill=(*bg, 65))
+    od.rectangle((0,0,WIDTH,620), fill=(*bg, 175))
+    od.rectangle((0,1250,WIDTH,HEIGHT), fill=(*bg, 205))
+    img.alpha_composite(overlay)
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((34,34,WIDTH-34,HEIGHT-34), radius=44, outline=(*accent,210), width=4)
+    d.text((70,72), "TREND / NOW", font=_font(28), fill=(*accent,255))
+    d.text((WIDTH-210,72), f"{index+1:02d} / {total:02d}", font=_font(28), fill=(*ink,255))
+    label = ["HOOK","CONTEXT","DETAIL","REACTION","CHANGE","EVIDENCE","ESCALATION","PAYOFF"][min(index,7)]
+    d.text((70,165), label, font=_font(30), fill=(*hot,255))
+    text = _phrase(hook, 12) if index == 0 else _phrase(scene, 13)
+    for j, line in enumerate(_wrap(d, text, _font(70 if index == 0 else 62), 900)[:3]):
+        d.text((70,235+j*(82 if index == 0 else 72)), line, font=_font(70 if index == 0 else 62),
+               fill=(*ink,255), stroke_width=2, stroke_fill=(*bg,180))
+    d.rounded_rectangle((70,1130,1010,1170),radius=20,fill=(*hot,225))
+    d.text((80,1190), _phrase(title, 8).upper(), font=_font(30), fill=(*ink,235))
+    d.text((70,1510), _phrase(scene, 14), font=_regular(40), fill=(*ink,255))
+    d.rounded_rectangle((70,1770,1010,1830),radius=22,fill=(*bg,210),outline=(*accent,170),width=2)
+    d.text((90,1783), "ORIGINAL EDIT • SOURCE IMAGERY", font=_font(22), fill=(*ink,220))
+    img.convert("RGB").save(path, quality=94, optimize=True)
 
 def _draw_category_icon(d, category, cx, cy, size, accent, hot):
     cat = str(category).lower()
@@ -308,9 +404,20 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
 
 def _make_audio(script, work, duration):
     voice = Path(work) / "voice.wav"
+    text = _speech(script)
     try:
+        edge_voice = os.getenv("TTS_VOICE", "en-US-GuyNeural")
+        edge = work / "voice.mp3"
         subprocess.run(
-            ["espeak-ng", "-v", "en-us", "-s", "178", "-p", "48", "-a", "155", "-w", str(voice), _speech(script)],
+            ["edge-tts", "--voice", edge_voice, "--text", text, "--write-media", str(edge)],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=35,
+        )
+        subprocess.run(["ffmpeg", "-y", "-i", str(edge), "-ar", "48000", "-ac", "1",
+                        "-c:a", "pcm_s16le", str(voice)],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        subprocess.run(
+            ["espeak-ng", "-v", "en-us", "-s", "170", "-p", "50", "-a", "165", "-w", str(voice), text],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         # Add a quiet original rhythmic bed and normalize narration.
@@ -354,7 +461,7 @@ def _make_captions(script, duration, work):
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\n")
         f.write("Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n")
-        f.write("Style: Viral,DejaVu Sans,36,&H00FFFFFF,&H00FFFFFF,&H00101010,&HDD101010,-1,0,0,0,100,100,0,0,3,2,0,2,70,70,95,1\n\n")
+        f.write("Style: Viral,DejaVu Sans,58,&H00FFFFFF,&H00FFFFFF,&H00000000,&HCC000000,-1,0,0,0,100,100,0,0,3,3,0,2,60,60,250,1\n\n")
         f.write("[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n")
         cursor = 0.0
         for i, scene in enumerate(scenes):
@@ -431,10 +538,14 @@ def create_video(opportunity, script, index=1):
     style = (index - 1) % 4
     scene_time = duration / len(scenes)
 
+    assets, asset_credits = _fetch_visual_assets(opportunity, work)
     keys = []
     for i, scene in enumerate(scenes):
         key = work / f"key_{i:02d}.jpg"
-        _render_frame(str(key), title, hook, scene, category, i, len(scenes), palette, style)
+        if assets:
+            _photo_frame(str(key), assets[i % len(assets)], title, hook, scene, category, i, len(scenes), palette, style)
+        else:
+            _render_frame(str(key), title, hook, scene, category, i, len(scenes), palette, style)
         keys.append(str(key))
 
     segments = []
@@ -496,6 +607,8 @@ def create_video(opportunity, script, index=1):
     os.replace(final_tmp, out)
     manifest = {
         "trend": opportunity.get("trend"),
+        "visual_assets": assets,
+        "visual_asset_credits": asset_credits,
         "format": opportunity.get("format", "short_explainer"),
         "platform": opportunity.get("platform", "shorts"),
         "duration_seconds": duration,
@@ -503,7 +616,7 @@ def create_video(opportunity, script, index=1):
         "audio": True,
         "captions": True,
         "original_content": True,
-        "visual_engine": "kinetic_motion_v4_optional_ai_hero",
+        "visual_engine": "real_topic_imagery_plus_kinetic_motion_v4_optional_ai_hero",
         "art_direction": f"palette-{(index-1)%len(PALETTES)+1}/layout-set-{style+1}",
         "script": script,
         "video_file": str(out),
