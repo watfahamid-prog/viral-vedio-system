@@ -682,7 +682,7 @@ def _make_captions(script, duration, work):
         f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n")
         f.write("[V4+ Styles]\n")
         f.write("Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding\n")
-        f.write("Style: Viral,DejaVu Sans,48,&H00FFFFFF,&H00FFFFFF,&H00101010,&HAA101010,-1,0,0,0,100,100,0,0,3,2,1,2,80,80,180,1\n\n")
+        f.write("Style: Viral,DejaVu Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&HAA101010,-1,0,0,0,100,100,0,0,3,2,1,2,80,80,180,1\n\n")
         f.write("[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n")
         cursor = 0.0
         for i, scene in enumerate(scenes):
@@ -691,8 +691,8 @@ def _make_captions(script, duration, work):
             cursor = end
             # Captions are deliberately shorter than the spoken sentence.
             words = re.findall(r"[A-Za-zÅÄÖåäö0-9’'\-]+", html.unescape(scene))
-            if len(words) > 9:
-                words = words[:9]
+            if len(words) > 7:
+                words = words[:7]
             caption = " ".join(words).strip()
             if not caption:
                 continue
