@@ -25,13 +25,26 @@ def direct_script(trend, hook, format_name, source_summary, base_script):
                                  json={"contents":[{"role":"user","parts":[{"text":prompt}]}],
                                        "generationConfig":{"temperature":0.9,"responseMimeType":"application/json"}}, timeout=60)
         if not response.ok:
-            print("Gemini director skipped:", response.status_code)
+            try:
+                message = response.json().get("error", {}).get("message", "unknown API error")
+            except Exception:
+                message = response.text[:300]
+            print(f"Gemini director skipped: HTTP {response.status_code}: {message}")
             return base_script
         data = response.json()
-        text = ""
-        for candidate in data.get("candidates", []):
-            for part in candidate.get("content", {}).get("parts", []):
-                text += part.get("text", "")
+        candidates = data.get("candidates", [])
+        if not candidates:
+            print("Gemini director skipped: response contained no candidates.")
+            return base_script
+        text = "".join(str(part.get("text", "")) for part in candidates[0].get("content", {}).get("parts", []))
+        text = text.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
         start, end = text.find("{"), text.rfind("}")
         result = json.loads(text[start:end+1]) if start >= 0 and end > start else None
         if not result:
@@ -40,6 +53,7 @@ def direct_script(trend, hook, format_name, source_summary, base_script):
         visuals = [str(x).strip() for x in result.get("visual_scenes", []) if str(x).strip()]
         count = min(14, max(8, min(len(scenes), len(visuals))))
         if count < 8:
+            print(f"Gemini director skipped: only {len(scenes)}/{len(visuals)} valid scenes returned.")
             return base_script
         result["scenes"] = scenes[:count]
         result["visual_scenes"] = visuals[:count]
@@ -50,6 +64,7 @@ def direct_script(trend, hook, format_name, source_summary, base_script):
         result["hashtags"] = [str(x) for x in result.get("hashtags", [])][:5]
         result["generation_mode"] = str(base_script.get("generation_mode", "base")) + "+gemini_director"
         result["gemini_director"] = True
+        print(f"Gemini director succeeded: {GEMINI_MODEL}, {count} scenes.")
         return result
     except Exception as error:
         print("Gemini director skipped:", error)
