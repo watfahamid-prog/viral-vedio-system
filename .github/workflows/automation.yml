@@ -58,7 +58,7 @@ jobs:
           AI_VIDEO_TIMEOUT: "45"
           AI_VIDEO_MAX_CLIPS: "1"
           TTS_ENGINE: "espeak-ng"
-          TTS_VOICE: "en-us"
+          TTS_VOICE: "en-US-GuyNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           YOUTUBE_ENABLED: "false"
           TIKTOK_ENABLED: "false"
