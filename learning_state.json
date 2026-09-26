@@ -68,6 +68,41 @@
       "format": "youtube_real_commentary",
       "category": "general",
       "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "hammarby mot eskilstuna",
+      "hook": "A real-life moment connected to hammarby mot eskilstuna.",
+      "format": "youtube_real_commentary",
+      "category": "general",
+      "platform": "youtube"
+    },
+    {
+      "trend": "DN Direkt – USA och Kina öppnar direktlinje om AI-incidenter",
+      "hook": "Wait — here is why DN Direkt – USA och Kina öppnar direktlinje om AI-incidenter is suddenly everywhere.",
+      "format": "tiktok_cantina_story",
+      "category": "technology",
+      "platform": "tiktok"
+    },
+    {
+      "trend": "Putin: Förbereder inte konflikt med Europa",
+      "hook": "A real-life moment connected to Putin: Förbereder inte konflikt med Europa.",
+      "format": "youtube_real_commentary",
+      "category": "sports",
+      "platform": "youtube"
     }
   ]
 }
