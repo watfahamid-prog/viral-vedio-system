@@ -239,13 +239,52 @@ def _probe_duration(path):
     return float(result.stdout.strip())
 
 
-def _make_clip(source, destination, start, duration):
+TITLE_SECONDS = max(1.2, float(os.getenv("YOUTUBE_TITLE_SECONDS", "1.5")))
+
+
+def _drawtext_filter(text, fontsize, y, box=False):
+    safe = str(text).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+    box_part = ":box=1:boxcolor=black@0.62:boxborderw=18" if box else ""
+    return (
+        f"drawtext=text='{safe}':fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"fontsize={fontsize}:fontcolor=white:x=(w-text_w)/2:y={y}{box_part}"
+    )
+
+
+def _make_clip(source, destination, start, duration, rank=None):
+    filters = [
+        "scale=1080:1920:force_original_aspect_ratio=increase",
+        "crop=1080:1920",
+        "eq=contrast=1.04:saturation=1.06:brightness=0.01",
+    ]
+    if rank is not None:
+        filters.append(_drawtext_filter(f"#{rank}", 86, "h*0.08", box=True))
+        filters.append(_drawtext_filter("TOP 10", 30, "h*0.14", box=False))
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start), "-i", str(source),
         "-t", str(duration),
-        "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+        "-vf", ",".join(filters),
         "-r", "30", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
-        str(destination)
+        "-movflags", "+faststart", str(destination)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _make_title_card(title, destination):
+    filters = [
+        "format=yuv420p",
+        _drawtext_filter(title.upper(), 78, "h*0.34", box=True),
+        _drawtext_filter("#10  ->  #1", 48, "h*0.53", box=False),
+        _drawtext_filter("WATCH UNTIL #1", 34, "h*0.61", box=False),
+        "fade=t=in:st=0:d=0.12",
+        f"fade=t=out:st={max(0.1, TITLE_SECONDS-0.14):.3f}:d=0.14",
+    ]
+    subprocess.run([
+        "ffmpeg", "-y", "-f", "lavfi", "-i",
+        "color=c=black:s=1080x1920:r=30",
+        "-t", f"{TITLE_SECONDS:.3f}",
+        "-vf", ",".join(filters),
+        "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-movflags", "+faststart", str(destination)
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -450,7 +489,8 @@ def create_youtube_commentary_video(opportunity, index):
             max_start = max(0.0, duration - CLIP_SECONDS)
             starts = [0.12 * duration, 0.35 * duration, 0.55 * duration, 0.75 * duration]
             start = min(starts[clip_index % len(starts)], max_start)
-            _make_clip(raw, segment, start, CLIP_SECONDS)
+            rank = CLIPS_PER_VIDEO - len(clips)
+            _make_clip(raw, segment, start, CLIP_SECONDS, rank=rank)
             clips.append(segment)
             clean_source = dict(source)
             clean_source.pop("_match_score", None)
@@ -462,8 +502,39 @@ def create_youtube_commentary_video(opportunity, index):
     if len(clips) < CLIPS_PER_VIDEO:
         raise RuntimeError(f"YouTube video #{index} produced only {len(clips)} usable clips; need {CLIPS_PER_VIDEO}")
 
+    title_card = root / "title_card.mp4"
+    if theme == "funniest":
+        title_text = "TOP 10 FUNNIEST MOMENTS"
+    elif theme == "scariest":
+        title_text = "TOP 10 SCARIEST MOMENTS"
+    elif theme == "wildest":
+        title_text = "TOP 10 WILDEST MOMENTS"
+    else:
+        title_text = "TOP 10 MOMENTS"
+    _make_title_card(title_text, title_card)
+
+    combined_clips = [title_card] + clips
     combined = root / "combined.mp4"
-    _concat(clips, combined)
+    concat_inputs = []
+    for item in combined_clips:
+        concat_inputs += ["-i", str(item)]
+    filters = []
+    for i, item in enumerate(combined_clips):
+        filters.append(f"[{i}:v]settb=AVTB,setsar=1[v{i}]")
+    current = "v0"
+    offset = TITLE_SECONDS - 0.10
+    for i in range(1, len(combined_clips)):
+        out = f"t{i}"
+        filters.append(f"[{current}][v{i}]xfade=transition=fade:duration=0.10:offset={offset:.3f}[{out}]")
+        current = out
+        offset += CLIP_SECONDS - 0.10
+    subprocess.run([
+        "ffmpeg", "-y", *concat_inputs,
+        "-filter_complex", ";".join(filters),
+        "-map", f"[{current}]",
+        "-an", "-r", "30", "-c:v", "libx264", "-preset", "veryfast",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     comments = [_listicle_commentary(rank, opportunity, source) for rank, source in enumerate(manifest, 1)]
     full_commentary = " ".join(comments)
@@ -484,6 +555,7 @@ def create_youtube_commentary_video(opportunity, index):
         subtitle = root / "commentary.srt"
         cursor = 0
         lines = []
+        cursor = TITLE_SECONDS
         for n, comment in enumerate(comments, 1):
             start, end = cursor, cursor + CLIP_SECONDS
             def stamp(seconds):
@@ -507,7 +579,18 @@ def create_youtube_commentary_video(opportunity, index):
     metadata = {
         "platform": "youtube", "mode": mode, "format": "top_10_listicle",
         "trend": opportunity.get("trend", ""), "commentary": comments,
-        "editing": {"clips": CLIPS_PER_VIDEO, "clip_seconds": CLIP_SECONDS, "crossfade_seconds": 0.25, "audio_normalization": True, "aspect_ratio": "16:9", "burned_in_text": False},
+        "editing": {
+            "clips": CLIPS_PER_VIDEO,
+            "clip_seconds": CLIP_SECONDS,
+            "title_card_seconds": TITLE_SECONDS,
+            "countdown": "#10 -> #1",
+            "crossfade_seconds": 0.10,
+            "audio_normalization": True,
+            "aspect_ratio": "9:16",
+            "burned_in_text": True,
+            "title_card": title_text,
+            "rank_overlay": True,
+        },
         "sources": manifest,
         "license_policy": (
             "Automated sources are limited to Wikimedia Commons items with license metadata, "
