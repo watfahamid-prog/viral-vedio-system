@@ -608,6 +608,20 @@ def _render_frame(path, title, hook, scene, category, index, total, palette, sty
 def _make_audio(script, work, duration):
     voice = Path(work) / "voice.wav"
     text = _speech(script)
+    # Prefer the free Gemini TTS engine when a Gemini key is configured.
+    try:
+        from gemini_tts import gemini_tts
+        gemini_path = work / "voice_gemini.wav"
+        generated = gemini_tts(text, str(gemini_path))
+        if generated:
+            converted = work / "voice_gemini_48k.wav"
+            subprocess.run(["ffmpeg", "-y", "-i", generated, "-ar", "48000", "-ac", "1",
+                            "-c:a", "pcm_s16le", str(converted)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("Voice engine: Gemini free-tier TTS")
+            return str(converted)
+    except Exception as error:
+        print(f"Gemini TTS unavailable, using local fallback: {error}")
     try:
         edge_voice = os.getenv("TTS_VOICE", "en-US-GuyNeural")
         edge = work / "voice.mp3"
