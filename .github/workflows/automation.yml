@@ -186,6 +186,32 @@ jobs:
           echo "Generated exactly 3 videos; YouTube uses real reusable footage + commentary:"
           ls -lh output/*.mp4
 
+      - name: Create compact visual inspection previews
+        if: success()
+        run: |
+          set -euo pipefail
+          rm -rf output/previews
+          mkdir -p output/previews
+          for video in output/*.mp4; do
+            base="$(basename "$video" .mp4)"
+            ffmpeg -y -loglevel error -i "$video" \\
+              -vf "scale=640:-2:force_original_aspect_ratio=decrease" \\
+              -c:v libx264 -preset veryfast -crf 30 -pix_fmt yuv420p \\
+              -c:a aac -b:a 64k -movflags +faststart \\
+              "output/previews/${base}_preview.mp4"
+          done
+          echo "Created compact previews for visual inspection:"
+          ls -lh output/previews/*.mp4
+
+      - name: Save compact previews for visual inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viral-video-previews-run-${{ github.run_number }}
+          path: output/previews/
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Persist self-learning state
         if: always()
         run: |
