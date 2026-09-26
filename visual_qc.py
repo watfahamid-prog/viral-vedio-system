@@ -4,7 +4,7 @@ import requests
 
 ENABLED = os.getenv("GEMINI_VISUAL_QC_ENABLED", "true").lower() == "true"
 KEY = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 
 def review_video(video_path, script, scene_count=None):
     if not (ENABLED and KEY):
