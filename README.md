@@ -83,3 +83,6 @@ The automation is designed to stay fast and reliable on GitHub Actions:
 - generated videos and metadata are uploaded as GitHub Actions artifacts
 - YouTube/TikTok publishing remains disabled until official credentials are configured
 - a preflight self-test runs before video generation
+
+
+YouTube Shorts renderer: strict 1080x1920 Top-10 countdown output with a dedicated title card and stable concatenation.
