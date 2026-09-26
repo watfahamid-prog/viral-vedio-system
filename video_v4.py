@@ -202,7 +202,8 @@ def _draw_subject_visual(d, category, scene_index, trend, accent, hot, ink, bg):
             for a,b in zip(points,points[1:]):
                 d.line((*a,*b), fill=(*accent,230), width=14)
             for n,(x,y) in enumerate(points):
-                d.ellipse((x-34,y-34,x+34,y+34), fill=(*hot if n==len(points)-1 else accent,255))
+                node_color = hot if n == len(points)-1 else accent
+                d.ellipse((x-34,y-34,x+34,y+34), fill=(*node_color,255))
             d.text((150,590), "CHANGE →", font=_font(58), fill=(*ink,255))
         elif variant == 2:
             d.ellipse((300,650,760,1110), outline=(*accent,230), width=18)
