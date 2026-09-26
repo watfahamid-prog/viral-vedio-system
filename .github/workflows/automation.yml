@@ -102,6 +102,7 @@ jobs:
           VIDEO_MAX_SECONDS: "60"
           AI_MODE: "ai"
           GEMINI_ENABLED: "false"
+          GEMINI_ORIGINALITY_ENABLED: "true"
           GEMINI_MODEL: "gemini-3.8-flash"
           GEMINI_VISUAL_QC_ENABLED: "false"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
