@@ -5,6 +5,7 @@ from video_v5 import create_video
 from video_v4 import write_manifest
 from script_generator import generate_script
 from gemini_director import direct_script
+from creative_director import optimize_scene_plan
 from publish import publish
 from discord import notify
 from config import OUTPUT_DIR, VIDEO_COUNT
@@ -36,6 +37,7 @@ def main():
             opportunity.get("summary", ""),
             script,
         )
+        script = optimize_scene_plan(script, opportunity)
         video_path = create_video(opportunity, script, index)
         manifest_path = write_manifest(opportunity, script, video_path)
 
