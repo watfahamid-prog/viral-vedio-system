@@ -397,6 +397,34 @@
       "format": "youtube_real_commentary",
       "category": "general",
       "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Top 10 real-life moments connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "jeremy boyce",
+      "hook": "Top 10 jeremy boyce moments you need to see.",
+      "format": "youtube_top10",
+      "category": "general",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Dödliga ryska attacker i Ukraina",
+      "hook": "Wait — here is why Dödliga ryska attacker i Ukraina is suddenly everywhere.",
+      "format": "tiktok_cantina_story",
+      "category": "technology",
+      "platform": "tiktok"
     }
   ]
 }
