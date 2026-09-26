@@ -126,7 +126,10 @@ jobs:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
           ELEVENLABS_MODEL: "eleven_multilingual_v2"
-          YOUTUBE_ENABLED: "false"
+          YOUTUBE_ENABLED: "true"
+          YOUTUBE_COMMENTARY_MODE: "voice"
+          YOUTUBE_CLIPS_PER_VIDEO: "4"
+          YOUTUBE_CLIP_SECONDS: "7"
           TIKTOK_ENABLED: "false"
           PUBLISH_ENABLED: "false"
           YOUTUBE_ACCESS_TOKEN: ${{ secrets.YOUTUBE_ACCESS_TOKEN }}
@@ -147,11 +150,15 @@ jobs:
           count="$(find output -maxdepth 1 -name '*.mp4' -type f | wc -l)"
           test "$count" -eq 3
           for video in output/*.mp4; do
-            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1080,1920'
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video" | grep -qx 'aac'
             ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video"
           done
-          echo "Generated exactly 3 valid vertical videos with multi-engine routing/QC:"
+          youtube_count="$(find output -maxdepth 1 -name 'youtube_commentary_*.mp4' -type f | wc -l)"
+          test "$youtube_count" -ge 1
+          for video in output/youtube_commentary_*.mp4; do
+            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$video" | grep -qx '1920,1080'
+          done
+          echo "Generated exactly 3 videos; YouTube uses real reusable footage + commentary:"
           ls -lh output/*.mp4
 
       - name: Persist self-learning state
