@@ -30,7 +30,7 @@ def _probe(video_path):
     }
 
 
-def check_video(video_path, platform="youtube"):
+def check_video(video_path, platform="youtube", item_script=None):
     errors, warnings = [], []
     path = Path(video_path)
     if not path.exists():
@@ -80,6 +80,17 @@ def check_video(video_path, platform="youtube"):
     else:
         warnings.append('manifest_missing')
 
+    # Optional Gemini frame-level creative review.
+    try:
+        from visual_qc import review_video
+        visual = review_video(str(path), item_script if isinstance(item_script, dict) else {})
+        if visual.get("enabled"):
+            result_note = visual
+        else:
+            result_note = visual
+    except Exception as error:
+        result_note = {"enabled": False, "warning": str(error)}
+
     # Platform-specific checks.
     if platform == "tiktok" and metrics["duration"] > 60:
         warnings.append("tiktok_target_over_60_seconds")
@@ -87,10 +98,11 @@ def check_video(video_path, platform="youtube"):
         warnings.append("youtube_short_target_over_90_seconds")
 
     return {
-        "passed": not errors,
+        "passed": not errors and result_note.get("passed", True),
         "platform": platform,
         "errors": errors,
-        "warnings": warnings,
+        "warnings": warnings + ([result_note.get("warning")] if result_note.get("warning") else []),
+        "visual_review": result_note,
         "metrics": metrics,
     }
 
@@ -98,7 +110,7 @@ def check_video(video_path, platform="youtube"):
 def quality_check(video_items):
     results = []
     for item in video_items:
-        result = check_video(item["video"], item.get("platform", "youtube"))
+        result = check_video(item["video"], item.get("platform", "youtube"), item.get("script", {}))
         result["video"] = item["video"]
         result["trend"] = item.get("trend")
         results.append(result)
