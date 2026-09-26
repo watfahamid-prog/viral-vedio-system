@@ -138,6 +138,41 @@
       "format": "youtube_real_commentary",
       "category": "technology",
       "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "A real-life moment connected to Example technology trend.",
+      "format": "youtube_real_commentary",
+      "category": "technology",
+      "platform": "youtube"
+    },
+    {
+      "trend": "Katastroftillstånd i Bangkok efter kraftiga regn",
+      "hook": "A real-life moment connected to Katastroftillstånd i Bangkok efter kraftiga regn.",
+      "format": "youtube_real_commentary",
+      "category": "general",
+      "platform": "youtube"
+    },
+    {
+      "trend": "hammarby mot eskilstuna",
+      "hook": "Wait — here is why hammarby mot eskilstuna is suddenly everywhere.",
+      "format": "tiktok_cantina_story",
+      "category": "general",
+      "platform": "tiktok"
+    },
+    {
+      "trend": "Putin: Förbereder inte konflikt med Europa",
+      "hook": "A real-life moment connected to Putin: Förbereder inte konflikt med Europa.",
+      "format": "youtube_real_commentary",
+      "category": "sports",
+      "platform": "youtube"
     }
   ]
 }
