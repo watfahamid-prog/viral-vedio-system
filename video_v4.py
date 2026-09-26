@@ -259,7 +259,6 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
         d.text((safe+28,1475),_phrase(headline,11),font=_font(50),fill=(*ink,255))
     else:
         # Cinematic split-screen variant without the heavy side rail.
-        d.rectangle((0,0,WIDTH,HEIGHT),fill=(*bg,28))
         d.text((safe,82),label,font=_font(28),fill=(*hot,255))
         d.text((WIDTH-185,82),f"{index+1:02d}",font=_font(28),fill=(*ink,230))
         d.rounded_rectangle((safe,1390,WIDTH-safe,1740),radius=38,fill=(*bg,165),outline=(*accent,140),width=2)
