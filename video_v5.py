@@ -95,6 +95,21 @@ def _concat_with_transitions(segments, output, transition=0.12):
 
 def _make_polished_audio(script, work, duration):
     voice = v4._make_audio(script, work, duration)
+    try:
+        from audio_enhancements import elevenlabs_tts
+        eleven_path = Path(work) / "eleven_voice.mp3"
+        upgraded = elevenlabs_tts(v4._speech(script), str(eleven_path))
+        if upgraded:
+            converted = Path(work) / "voice_eleven.wav"
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", upgraded, "-ar", "48000", "-ac", "1",
+                 "-c:a", "pcm_s16le", str(converted)],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            voice = str(converted)
+            print("Voice engine: ElevenLabs free tier")
+    except Exception as error:
+        print(f"Optional ElevenLabs voice skipped: {error}")
     if not voice:
         return None
 
