@@ -105,20 +105,40 @@ def _add_atmosphere(img, accent, hot, seed):
     img.alpha_composite(layer)
 
 def _safe_download(url, path):
-    try:
-        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0 ViralVideoBot/4.1"}, timeout=12)
-        response.raise_for_status()
-        data = response.content
-        if len(data) < 12000:
-            return False
-        Path(path).write_bytes(data)
-        with Image.open(path) as im:
-            im.verify()
-        return True
-    except Exception as error:
-        print(f"Visual asset download skipped: {error}")
-        Path(path).unlink(missing_ok=True)
-        return False
+    # Wikimedia and news CDNs can briefly return 429s on GitHub runners.
+    # Retry politely and use a real browser-like identity before falling back.
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/131.0 Safari/537.36 ViralVideoBot/7.0",
+        "Referer": "https://commons.wikimedia.org/",
+        "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    }
+    for attempt in range(4):
+        try:
+            response = requests.get(url, headers=headers, timeout=20)
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After", "")
+                try:
+                    wait = min(6.0, max(1.5, float(retry_after)))
+                except Exception:
+                    wait = 2.0 + attempt
+                time.sleep(wait)
+                continue
+            response.raise_for_status()
+            data = response.content
+            if len(data) < 12000:
+                return False
+            Path(path).write_bytes(data)
+            with Image.open(path) as im:
+                im.verify()
+            return True
+        except Exception as error:
+            if attempt == 3:
+                print(f"Visual asset download skipped: {error}")
+            else:
+                time.sleep(1.5 * (attempt + 1))
+    Path(path).unlink(missing_ok=True)
+    return False
 
 def _fetch_visual_assets(opportunity, work):
     """Fetch topic-relevant imagery only; reject generic logos and unrelated search hits."""
@@ -180,7 +200,7 @@ def _fetch_visual_assets(opportunity, work):
                     scored.append((score, page_data.get("pageid", 0), url, title_text))
 
                 scored.sort(key=lambda x: (-x[0], x[1]))
-                for n, (score, _, url, title_text) in enumerate(scored[:6]):
+                for n, (score, _, url, title_text) in enumerate(scored[:3]):
                     p = work / f"commons_{n:02d}.jpg"
                     if _safe_download(url, p):
                         try:
@@ -193,6 +213,7 @@ def _fetch_visual_assets(opportunity, work):
                             continue
                         assets.append(str(p))
                         credits.append(f"Wikimedia Commons: {title_text[:100]}")
+                        time.sleep(1.2)
         except Exception as error:
             print(f"Wikimedia visual search unavailable: {error}")
 
