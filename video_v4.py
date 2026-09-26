@@ -174,15 +174,17 @@ def _photo_frame(path, image_path, title, hook, scene, category, index, total, p
         sw,sh=src.size
         ratio=WIDTH/HEIGHT
         if sw/sh > ratio:
-            crop_h=max(1,int(sw/ratio))
-            bias=((index*0.19)+(style*0.07))%1.0
-            top=max(0,min(sh-crop_h,int((sh-crop_h)*bias)))
-            src=src.crop((0,top,sw,top+crop_h))
-        else:
+            # Landscape source: crop width to the 9:16 window and keep the full height.
             crop_w=max(1,int(sh*ratio))
-            bias=((index*0.23)+(style*0.11))%1.0
+            bias=((index*0.19)+(style*0.07))%1.0
             left=max(0,min(sw-crop_w,int((sw-crop_w)*bias)))
             src=src.crop((left,0,left+crop_w,sh))
+        else:
+            # Portrait source: crop height to the 9:16 window and keep the full width.
+            crop_h=max(1,int(sw/ratio))
+            bias=((index*0.23)+(style*0.11))%1.0
+            top=max(0,min(sh-crop_h,int((sh-crop_h)*bias)))
+            src=src.crop((0,top,sw,top+crop_h))
         photo=src.resize((WIDTH,HEIGHT),Image.Resampling.LANCZOS).convert("RGBA")
 
     # Full-bleed base plus subtle depth/grade. Dark source art gets a designed backdrop
