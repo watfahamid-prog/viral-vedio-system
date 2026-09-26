@@ -53,6 +53,7 @@ jobs:
           AI_MODE: "openai"
           GEMINI_ENABLED: "true"
           GEMINI_MODEL: "gemini-2.5-flash"
+          GEMINI_VISUAL_QC_ENABLED: "true"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "auto"
           AI_VIDEO_ENABLED: "true"
