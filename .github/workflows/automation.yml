@@ -74,6 +74,27 @@ jobs:
             exit 0
           fi
           echo "Gemini API verification passed."
+      - name: Smoke-test ElevenLabs, Pexels, and Pixabay APIs
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${ELEVENLABS_API_KEY:-}" || { echo "ELEVENLABS_API_KEY is missing"; exit 1; }
+          test -n "${PEXELS_API_KEY:-}" || { echo "PEXELS_API_KEY is missing"; exit 1; }
+          test -n "${PIXABAY_API_KEY:-}" || { echo "PIXABAY_API_KEY is missing"; exit 1; }
+          eleven_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "xi-api-key: ${ELEVENLABS_API_KEY}" https://api.elevenlabs.io/v1/user)"
+          pexels_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: ${PEXELS_API_KEY}" 'https://api.pexels.com/v1/videos/search?query=football&per_page=1')"
+          pixabay_status="$(curl -sS -o /dev/null -w '%{http_code}' 'https://pixabay.com/api/videos/?key='${PIXABAY_API_KEY}'&q=football&per_page=3')"
+          echo "ElevenLabs API status: ${eleven_status}"
+          echo "Pexels API status: ${pexels_status}"
+          echo "Pixabay API status: ${pixabay_status}"
+          test "${eleven_status}" = "200"
+          test "${pexels_status}" = "200"
+          test "${pixabay_status}" = "200"
+          echo "All three API credentials are valid and reachable."
+
       - name: Report video-engine availability
         env:
           AI_VIDEO_ENABLED: "false"
