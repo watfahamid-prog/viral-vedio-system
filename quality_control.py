@@ -43,8 +43,12 @@ def check_video(video_path, platform="youtube", item_script=None):
 
     if metrics["size"] < 50_000:
         errors.append("file_too_small")
-    if metrics["width"] != 1080 or metrics["height"] != 1920:
-        errors.append("wrong_vertical_resolution")
+    if platform == "youtube":
+        if metrics["width"] != 1920 or metrics["height"] != 1080:
+            errors.append("wrong_youtube_resolution")
+    else:
+        if metrics["width"] != 1080 or metrics["height"] != 1920:
+            errors.append("wrong_vertical_resolution")
     if not metrics["has_audio"]:
         errors.append("missing_audio")
     if metrics["duration"] < VIDEO_MIN_SECONDS:
@@ -65,20 +69,24 @@ def check_video(video_path, platform="youtube", item_script=None):
     except Exception:
         warnings.append("black_frame_check_unavailable")
 
-    # Manifest and creative-structure checks.
-    manifest = path.with_suffix('.json')
+    # YouTube intentionally uses reusable third-party footage instead of generated scenes.
+    manifest = path.with_suffix(".json")
     if manifest.exists():
         try:
-            data = json.loads(manifest.read_text(encoding='utf-8'))
-            shots = int(data.get('scene_count', 0) or 0)
-            if shots < 8 or shots > 14:
-                errors.append('scene_count_out_of_range')
-            if not data.get('original_content', False):
-                errors.append('originality_flag_missing')
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            if platform == "youtube":
+                if not data.get("sources") or not data.get("license_policy"):
+                    errors.append("youtube_source_manifest_missing")
+            else:
+                shots = int(data.get("scene_count", 0) or 0)
+                if shots < 8 or shots > 14:
+                    errors.append("scene_count_out_of_range")
+                if not data.get("original_content", False):
+                    errors.append("originality_flag_missing")
         except Exception:
-            warnings.append('manifest_unreadable')
+            warnings.append("manifest_unreadable")
     else:
-        warnings.append('manifest_missing')
+        warnings.append("manifest_missing")
 
     # Optional Gemini frame-level creative review.
     try:
