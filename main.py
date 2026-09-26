@@ -1,7 +1,7 @@
 import json
 import os
 from pipeline import run_pipeline
-from video_v3 import create_video, write_manifest
+from video_v4 import create_video, write_manifest
 from script_generator import generate_script
 from publish import publish
 from discord import notify
