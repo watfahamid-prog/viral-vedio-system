@@ -119,6 +119,8 @@ def _concat_with_transitions(segments, output, transition=0.12):
 def _make_polished_audio(script, work, duration):
     voice = v4._make_audio(script, work, duration)
     try:
+        if os.getenv("ZERO_COST_MODE", "false").lower() == "true":
+            raise RuntimeError("ZERO_COST_MODE: external voice provider disabled")
         from audio_enhancements import elevenlabs_tts
         eleven_path = Path(work) / "eleven_voice.mp3"
         upgraded = elevenlabs_tts(v4._speech(script), str(eleven_path))
@@ -196,6 +198,8 @@ def create_video(opportunity, script, index=1):
     # The router is bounded per video, so a run cannot silently explode media spend.
     ai_keyframes = []
     try:
+        if os.getenv("ZERO_COST_MODE", "false").lower() == "true":
+            raise RuntimeError("ZERO_COST_MODE: external image generation disabled")
         from media_engine import generate_image, MAX_IMAGES_PER_VIDEO
         for i in range(min(target, MAX_IMAGES_PER_VIDEO)):
             prompt = (
