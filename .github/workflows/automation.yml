@@ -123,10 +123,10 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
           LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
-          ELEVENLABS_ENABLED: "false"
+          ELEVENLABS_ENABLED: "true"
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
-          ELEVENLABS_MODEL: "eleven_multilingual_v2"
+          ELEVENLABS_MODEL: "eleven_flash_v2_5"
           YOUTUBE_ENABLED: "true"
           YOUTUBE_COMMENTARY_MODE: "voice"
           YOUTUBE_CLIPS_PER_VIDEO: "7"
