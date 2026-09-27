@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import os
@@ -30,6 +31,8 @@ IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
 AI_SELECTOR_CANDIDATES = max(12, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "24")))
 VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 6, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "80")))
+GEMINI_VISUAL_QC_LIMIT = max(0, int(os.getenv("YOUTUBE_GEMINI_VISUAL_QC_LIMIT", "12")))
+SOURCE_HISTORY_LIMIT = max(20, int(os.getenv("YOUTUBE_SOURCE_HISTORY_LIMIT", "120")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
@@ -576,6 +579,147 @@ def _gemini_rank_sources(sources, theme):
     return sources
 
 
+
+def _load_source_history():
+    path = Path(os.getenv("YOUTUBE_SOURCE_HISTORY_FILE", "youtube_source_history.json"))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return set(str(x) for x in data if x)
+    except Exception:
+        return set()
+
+
+def _save_source_history(keys):
+    path = Path(os.getenv("YOUTUBE_SOURCE_HISTORY_FILE", "youtube_source_history.json"))
+    try:
+        existing = []
+        if path.exists():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                existing = [str(x) for x in data if x]
+        merged = list(dict.fromkeys(existing + [str(x) for x in keys if x]))
+        path.write_text(json.dumps(merged[-SOURCE_HISTORY_LIMIT:], ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as error:
+        print(f"YouTube source history could not be saved: {error}")
+
+
+def _gemini_visual_judge(path, theme, source):
+    """Use Gemini vision to judge the actual sampled frame, not just metadata."""
+    if (
+        not YOUTUBE_AI_SELECTOR_ENABLED
+        or not GEMINI_API_KEY
+        or os.getenv("GEMINI_ENABLED", "true").lower() != "true"
+        or os.getenv("ZERO_COST_MODE", "false").lower() == "true"
+    ):
+        return True, 50, "visual AI disabled; local QC only"
+
+    sample = Path(path).with_suffix(".ai_qc.jpg")
+    try:
+        duration = _probe_duration(path)
+        midpoint = max(0.1, min(duration - 0.1, duration * 0.55))
+        subprocess.run([
+            "ffmpeg", "-y", "-loglevel", "error", "-ss", str(midpoint),
+            "-i", str(path), "-frames:v", "1", "-vf", "scale=512:-1:force_original_aspect_ratio=decrease",
+            "-q:v", "5", str(sample)
+        ], check=True, timeout=8)
+        image_b64 = base64.b64encode(sample.read_bytes()).decode("ascii")
+        prompt = (
+            f"You are the final visual casting judge for a YouTube Top-10 {theme} listicle. "
+            "Judge the actual frame, not the filename. Decide whether this footage visibly shows "
+            "a real event/moment matching the promised theme and whether it is likely to be "
+            "interesting/funny/scary/wild in a 3-second Short. Reject generic stock, scenery, "
+            "animals for a human-funny list, static shots, posed portraits, and unrelated footage. "
+            "Return ONLY JSON: {\"relevant\":true/false,\"score\":0-100,\"reason\":\"short\"}. "
+            f"Metadata: {json.dumps({'title': source.get('title',''), 'description': source.get('description','')[:300]}, ensure_ascii=False)}"
+        )
+        response = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json={"contents": [{"parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
+            ]}], "generationConfig": {"temperature": 0.0, "maxOutputTokens": 120}},
+            timeout=30,
+        )
+        response.raise_for_status()
+        raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        match = re.search(r"\{.*\}", raw, re.S)
+        if not match:
+            raise ValueError("Gemini visual judge returned no JSON")
+        verdict = json.loads(match.group(0))
+        score = max(0, min(100, int(verdict.get("score", 0))))
+        relevant = bool(verdict.get("relevant", False))
+        reason = str(verdict.get("reason", ""))[:180]
+        source["_visual_ai_score"] = score
+        source["_visual_ai_reason"] = reason
+        return relevant and score >= 62, score, reason
+    except Exception as error:
+        print(f"YouTube visual AI unavailable for source; using local QC: {error}")
+        return True, 0, "visual AI fallback"
+    finally:
+        try:
+            sample.unlink()
+        except OSError:
+            pass
+
+
+def _gemini_generate_commentary(manifest, theme):
+    """Generate one distinct, natural voice line per clip with no countdown wording."""
+    if (
+        not YOUTUBE_AI_SELECTOR_ENABLED
+        or not GEMINI_API_KEY
+        or os.getenv("GEMINI_ENABLED", "true").lower() != "true"
+        or os.getenv("ZERO_COST_MODE", "false").lower() == "true"
+    ):
+        return None
+    candidates = []
+    for i, source in enumerate(manifest):
+        candidates.append({
+            "id": i,
+            "title": str(source.get("title", ""))[:180],
+            "description": str(source.get("description", ""))[:350],
+            "visual_judgement": str(source.get("_visual_ai_reason", ""))[:160],
+        })
+    prompt = (
+        f"Write the narration for a fast YouTube Top-10 {theme} Short. "
+        "Return ONLY a JSON array of exactly 10 strings in clip order. "
+        "Each line must be 7-16 spoken words, sound like a human reacting to what is visibly happening, "
+        "and be specific to that clip. NEVER say 'number one', 'number two', '#1', '#2', 'rank', "
+        "'top ten', 'coming in', 'at number', or any countdown phrase. Do not introduce the list. "
+        "Do not repeat the same sentence pattern. Avoid claims not supported by the metadata. "
+        "Use punchy natural language and make the strongest moments sound exciting without fake facts. "
+        f"Clips: {json.dumps(candidates, ensure_ascii=False)}"
+    )
+    try:
+        response = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}],
+                  "generationConfig": {"temperature": 0.8, "maxOutputTokens": 900}},
+            timeout=30,
+        )
+        response.raise_for_status()
+        raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        match = re.search(r"\[.*\]", raw, re.S)
+        if not match:
+            raise ValueError("Gemini commentary returned no JSON")
+        lines = json.loads(match.group(0))
+        if not isinstance(lines, list) or len(lines) != len(manifest):
+            raise ValueError("Gemini commentary returned the wrong number of lines")
+        cleaned = []
+        banned = re.compile(r"\b(number|rank|top\s*10|coming in|at number|countdown)\b", re.I)
+        for line in lines:
+            line = re.sub(r"\s+", " ", str(line)).strip()
+            if not line or banned.search(line):
+                raise ValueError("Gemini commentary contained countdown wording")
+            cleaned.append(line)
+        print(f"YouTube AI scriptwriter: generated {len(cleaned)} clip-specific lines.")
+        return cleaned
+    except Exception as error:
+        print(f"YouTube AI scriptwriter unavailable; using local commentary engine: {error}")
+        return None
+
+
 def _visual_preflight(path, duration, theme="most interesting"):
     """Reject black/frozen/low-information source videos before final clips."""
     sample_dir = Path(path).with_suffix("")
@@ -776,8 +920,8 @@ def _listicle_commentary(number, opportunity, source):
             f"Things change quickly once {subject} appears.",
         ])
 
-    prefix = "And this is number one." if number == 1 else f"Number {number}."
-    return f"{prefix} {line}"
+    # Rank is already shown visually; narration should sound like commentary, not a countdown.
+    return line
 
 
 def _tts(text, path):
@@ -935,6 +1079,28 @@ def create_youtube_commentary_video(opportunity, index):
         if wave_index < len(queries) and len(sources) >= CLIPS_PER_VIDEO * 24:
             break
 
+    # Prevent the system from recycling the same clips forever.
+    # Previous selections are remembered across runs, while the three parallel shards
+    # are split deterministically so they cannot choose the exact same URL in one run.
+    history = _load_source_history()
+    shard_index = max(1, int(index))
+    fresh_sources = []
+    shard_sources = []
+    for item in sources:
+        key = str(item.get("source_url") or item.get("url") or "")
+        if key and key in history:
+            continue
+        digest = int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:8], 16) if key else 0
+        if digest % 3 == (shard_index - 1):
+            shard_sources.append(item)
+        else:
+            fresh_sources.append(item)
+    if len(shard_sources) >= CLIPS_PER_VIDEO * 3:
+        sources = shard_sources
+    else:
+        sources = shard_sources + fresh_sources
+    print(f"YouTube research freshness: {len(history)} historical sources excluded; {len(sources)} fresh candidates remain.")
+
     # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
     locally_ranked = _rank_and_diversify(sources, theme)
     ranked_all = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
@@ -986,6 +1152,12 @@ def create_youtube_commentary_video(opportunity, index):
             duration = _probe_duration(raw)
             if duration < CLIP_SECONDS + 0.5:
                 continue
+            if GEMINI_VISUAL_QC_LIMIT > 0 and visual_qc_count < GEMINI_VISUAL_QC_LIMIT:
+                visual_qc_count += 1
+                ai_ok, ai_score, ai_reason = _gemini_visual_judge(raw, theme, source)
+                if not ai_ok:
+                    print(f"YouTube visual AI rejected source: {source.get('title','unknown')} (score={ai_score}; {ai_reason})")
+                    continue
             if visual_qc_count < VISUAL_QC_LIMIT:
                 visual_qc_count += 1
                 visual_ok, visual_reason = _visual_preflight(raw, duration, theme)
@@ -1043,7 +1215,13 @@ def create_youtube_commentary_video(opportunity, index):
         "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
     ], check=True, timeout=180)
 
-    comments = [_listicle_commentary(CLIPS_PER_VIDEO - i, opportunity, source) for i, source in enumerate(manifest)]
+    _save_source_history([
+        source.get("source_url") or source.get("url")
+        for source in manifest
+    ])
+    comments = _gemini_generate_commentary(manifest, theme)
+    if not comments:
+        comments = [_listicle_commentary(CLIPS_PER_VIDEO - i, opportunity, source) for i, source in enumerate(manifest)]
     full_commentary = " ".join(comments)
     audio = root / "commentary.mp3"
     audio_path = _tts(full_commentary, audio)
@@ -1095,10 +1273,10 @@ def create_youtube_commentary_video(opportunity, index):
             "title_card_seconds": 0, "countdown": "#10 -> #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
-            "selection_engine": "theme-locked search -> strict comedy/event metadata gate -> local relevance -> optional Gemini judge -> visual preflight",
+            "selection_engine": "multi-query research -> persistent freshness/history -> shard diversity -> strict semantic gate -> local relevance -> optional Gemini metadata+vision judge -> visual preflight",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
-            "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT,
-            "commentary_style": "clip_specific_fast_reactive_no_repeat", "voice_rate": "edge +75% / ElevenLabs 1.45x",
+            "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT, "gemini_visual_qc_limit": GEMINI_VISUAL_QC_LIMIT, "freshness_history": True,
+            "commentary_style": "ai_scripted_clip_specific_fast_reactive_no_countdown", "voice_rate": "edge +75% / ElevenLabs 1.45x",
         },
         "sources": manifest,
         "license_policy": (
