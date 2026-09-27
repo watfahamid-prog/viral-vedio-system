@@ -97,60 +97,35 @@ def main():
                 f"created {len(result['videos'])}"
             )
 
-    # YouTube is a TREND ENGINE, not an evergreen-topic loop.
-    # Each run starts from fresh live trend signals and turns distinct current
-    # topics into original Top-10 listicles. A small evergreen fallback is used
-    # only when live feeds are unavailable.
+    # YouTube is a dedicated Top-10 entertainment lane. It uses fixed semantic
+    # formats so the footage always matches the promised category.
     youtube_outputs = []
     youtube_candidates = []
     if run_mode in {"youtube", "both"}:
-        try:
-            live = get_trends()
-            state = load_state()
-            history = [str(x.get("topic", "")).lower() for x in state.get("creative_history", [])[-18:]]
-            seen_topics = set()
-            for item in live:
-                topic = str(item.get("trend", "")).strip()
-                if not topic:
-                    continue
-                low = topic.lower()
-                # Keep the YouTube lane out of political topics; current trends in
-                # other categories are still eligible for neutral listicle coverage.
-                if any(w in low for w in ("election", "government", "minister", "president", "parliament", "politics")):
-                    continue
-                if low in history or low in seen_topics:
-                    continue
-                seen_topics.add(low)
-                youtube_candidates.append(item)
-                if len(youtube_candidates) >= 9:
-                    break
-        except Exception as error:
-            print(f"YouTube live trend selection failed: {error}")
-
-        if not youtube_candidates:
-            youtube_candidates = [
-                {"trend": "funniest moments caught on camera", "source": "fallback",
-                 "summary": "Live trend feeds unavailable.", "hook": "Top 10 funniest moments caught on camera."},
-                {"trend": "scariest moments caught on camera", "source": "fallback",
-                 "summary": "Live trend feeds unavailable.", "hook": "Top 10 scariest moments caught on camera."},
-                {"trend": "wildest unexpected moments", "source": "fallback",
-                 "summary": "Live trend feeds unavailable.", "hook": "Top 10 wildest unexpected moments."},
-            ]
-
+        # Do not let an arbitrary live topic such as "Iran" become the subject
+        # of a funny listicle. The YouTube lane promises an entertainment format,
+        # so the semantic theme is locked here.
+        listicle_formats = [
+            {"trend": "funniest moments caught on camera", "listicle_theme": "funniest",
+             "angle": "fails and instant regrets"},
+            {"trend": "funniest reactions caught on camera", "listicle_theme": "funniest",
+             "angle": "unexpected reactions and perfect timing"},
+            {"trend": "funniest sports and public fails", "listicle_theme": "funniest",
+             "angle": "sports fails and harmless public mishaps"},
+        ]
         requested_index = int(os.getenv("YOUTUBE_INDEX", "0") or "0")
-        # Sharded jobs select a different live candidate by rank; they no longer
-        # permanently map job 1/2/3 to the same three videos.
         if requested_index in {1, 2, 3}:
-            candidate_index = (requested_index - 1) % len(youtube_candidates)
-            selected_topics = [(requested_index, youtube_candidates[candidate_index])]
+            selected_topics = [(requested_index, listicle_formats[requested_index - 1])]
         else:
-            selected_topics = list(enumerate(youtube_candidates[:3], 1))
+            selected_topics = list(enumerate(listicle_formats, 1))
 
         for youtube_index, item in selected_topics:
             topic = str(item.get("trend", "")).strip()
             youtube_opportunity = {
                 "trend": topic,
-                "source": item.get("source", "live_trend"),
+                "listicle_theme": item.get("listicle_theme", "funniest"),
+                "angle": item.get("angle", ""),
+                "source": item.get("source", "listicle_format"),
                 "sources": item.get("sources", []),
                 "summary": item.get("summary", ""),
                 "source_url": item.get("source_url", ""),
