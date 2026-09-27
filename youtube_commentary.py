@@ -20,7 +20,7 @@ YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 # Four-second clips keep the countdown moving; the narration is deliberately shorter too.
 CLIP_SECONDS = max(3, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.6")))
-DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
+DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "25"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
@@ -206,7 +206,7 @@ def _search_sources(query, limit):
 def _download(url, path):
     headers = {"User-Agent": "Mozilla/5.0 (compatible; ViralVideoAutomationBot/1.0)", "Accept": "*/*"}
     last_error = None
-    for attempt in range(5):
+    for attempt in range(3):
         try:
             with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT, headers=headers) as response:
                 if response.status_code == 429:
@@ -226,7 +226,7 @@ def _download(url, path):
             return path
         except requests.RequestException as error:
             last_error = error
-            if attempt < 4:
+            if attempt < 2:
                 time.sleep(min(20, 2 ** attempt))
             else:
                 raise
@@ -702,7 +702,7 @@ def create_youtube_commentary_video(opportunity, index):
         item for item in ranked_all
         if (item.get("source_url") or item.get("url")) not in judged_keys
     ]
-    sources = judged_pool + replacement_pool
+    sources = (judged_pool + replacement_pool)[:max(CLIPS_PER_VIDEO * 3, 30)]
 
     clips, manifest = [], []
     visual_qc_count = 0
