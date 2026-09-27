@@ -716,7 +716,7 @@ def _save_source_history(keys):
         print(f"YouTube source history could not be saved: {error}")
 
 
-def _gemini_visual_judge(path, theme, source):
+def _gemini_visual_judge(path, theme, source, clip_start=0.0):
     """Judge several real frames from the downloaded clip, not just metadata."""
     if (
         not YOUTUBE_AI_SELECTOR_ENABLED
@@ -729,10 +729,12 @@ def _gemini_visual_judge(path, theme, source):
     frames = []
     try:
         duration = _probe_duration(path)
-        for idx, pct in enumerate((0.25, 0.55, 0.85)):
+        clip_end = min(duration, float(clip_start) + CLIP_SECONDS)
+        window = max(0.2, clip_end - float(clip_start))
+        for idx, pct in enumerate((0.18, 0.52, 0.86)):
             frame = sample_dir / f"frame_{idx}.jpg"
             sample_dir.mkdir(exist_ok=True)
-            midpoint = max(0.1, min(duration - 0.1, duration * pct))
+            midpoint = max(0.1, min(duration - 0.1, float(clip_start) + window * pct))
             subprocess.run([
                 "ffmpeg", "-y", "-loglevel", "error", "-ss", str(midpoint),
                 "-i", str(path), "-frames:v", "1",
@@ -1342,9 +1344,12 @@ def create_youtube_commentary_video(opportunity, index):
             duration = _probe_duration(raw)
             if duration < CLIP_SECONDS + 0.5:
                 continue
+            max_start = max(0.0, duration - CLIP_SECONDS)
+            starts = [0.03 * duration, 0.16 * duration, 0.30 * duration, 0.44 * duration, 0.58 * duration, 0.72 * duration, 0.84 * duration]
+            start = min(starts[clip_index % len(starts)], max_start)
             if GEMINI_VISUAL_QC_LIMIT > 0 and visual_qc_count < GEMINI_VISUAL_QC_LIMIT:
                 visual_qc_count += 1
-                ai_ok, ai_score, ai_reason = _gemini_visual_judge(raw, theme, source)
+                ai_ok, ai_score, ai_reason = _gemini_visual_judge(raw, theme, source, clip_start=start)
                 if not ai_ok:
                     print(f"YouTube visual AI rejected source: {source.get('title','unknown')} (score={ai_score}; {ai_reason})")
                     continue
@@ -1356,9 +1361,6 @@ def create_youtube_commentary_video(opportunity, index):
             if not visual_ok:
                 print(f"YouTube visual QC rejected source: {source.get('title','unknown')} ({visual_reason})")
                 continue
-            max_start = max(0.0, duration - CLIP_SECONDS)
-            starts = [0.03 * duration, 0.16 * duration, 0.30 * duration, 0.44 * duration, 0.58 * duration, 0.72 * duration, 0.84 * duration]
-            start = min(starts[clip_index % len(starts)], max_start)
             rank = CLIPS_PER_VIDEO - len(clips)
             _make_clip(raw, segment, start, CLIP_SECONDS, rank=rank)
             clips.append(segment)
