@@ -20,14 +20,15 @@ YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 # Four-second clips keep the countdown moving; the narration is deliberately shorter too.
 CLIP_SECONDS = max(3, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.6")))
-DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "10"))
+DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "8"))
+DOWNLOAD_TOTAL_TIMEOUT = int(os.getenv("YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT", "15"))
 MAX_DOWNLOAD_BYTES = int(os.getenv("YOUTUBE_MAX_DOWNLOAD_BYTES", "80000000"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
 AI_SELECTOR_CANDIDATES = max(8, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "15")))
-VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 3, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "30")))
+VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 2, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "20")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
@@ -211,6 +212,7 @@ def _download(url, path):
     last_error = None
     for attempt in range(2):
         try:
+            started = time.monotonic()
             with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT, headers=headers) as response:
                 content_length = response.headers.get("Content-Length")
                 if content_length and content_length.isdigit() and int(content_length) > MAX_DOWNLOAD_BYTES:
@@ -228,6 +230,8 @@ def _download(url, path):
                 with open(path, "wb") as handle:
                     downloaded = 0
                     for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        if time.monotonic() - started > DOWNLOAD_TOTAL_TIMEOUT:
+                            raise TimeoutError("source download exceeded total time limit")
                         if chunk:
                             downloaded += len(chunk)
                             if downloaded > MAX_DOWNLOAD_BYTES:
@@ -286,7 +290,7 @@ def _make_clip(source, destination, start, duration, rank=None):
         "-t", str(duration), "-vf", ",".join(filters),
         "-r", "30", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-preset", "veryfast", "-movflags", "+faststart", str(destination)
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=45)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=25)
 
 
 def _make_title_card(title, destination):
@@ -453,7 +457,7 @@ def _visual_preflight(path, duration):
     sample_dir.mkdir(exist_ok=True)
     frames = []
     try:
-        for pct in (0.2, 0.5, 0.8):
+        for pct in (0.25, 0.6):
             frame = sample_dir / f"qc_{int(pct * 100)}.jpg"
             subprocess.run([
                 "ffmpeg", "-y", "-loglevel", "error", "-ss", str(max(0.1, duration * pct)),
