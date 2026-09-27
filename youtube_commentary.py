@@ -782,7 +782,7 @@ def create_youtube_commentary_video(opportunity, index):
         "ffmpeg", "-y", *inputs, "-filter_complex", ";".join(filter_parts),
         "-map", "[vout]", "-an", "-r", "30", "-c:v", "libx264",
         "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
-    ], check=True)
+    ], check=True, timeout=180)
 
     comments = [_listicle_commentary(rank, opportunity, source) for rank, source in enumerate(manifest, 1)]
     full_commentary = " ".join(comments)
@@ -796,7 +796,7 @@ def create_youtube_commentary_video(opportunity, index):
             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
             "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-b:a", "128k",
             "-shortest", "-movflags", "+faststart", str(final)
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
         mode = "ai_voice"
     else:
         subtitle = root / "commentary.srt"
@@ -819,7 +819,7 @@ def create_youtube_commentary_video(opportunity, index):
             "-vf", f"subtitles={subtitle.as_posix()}:force_style='FontSize=26,Alignment=2,MarginV=80'",
             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-preset", "veryfast",
             "-c:a", "aac", "-shortest", "-movflags", "+faststart", str(final)
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
         mode = "text"
 
     metadata = {
