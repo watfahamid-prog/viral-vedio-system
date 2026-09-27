@@ -144,7 +144,7 @@ jobs:
           GEMINI_ENABLED: "false"
           GEMINI_ORIGINALITY_ENABLED: "true"
           GEMINI_MODEL: "gemini-3.8-flash"
-          GEMINI_VISUAL_QC_ENABLED: "false"
+          GEMINI_VISUAL_QC_ENABLED: "true"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "local"
           AI_VIDEO_ENABLED: "true"
@@ -158,8 +158,8 @@ jobs:
           POLLINATIONS_MAX_IMAGES_PER_VIDEO: "6"
           POLLINATIONS_MAX_MOTION_CLIPS_PER_VIDEO: "2"
           POLLINATIONS_VIDEO_SECONDS: "4"
-          TTS_ENGINE: "auto"
-          TTS_VOICE: "en-US-GuyNeural"
+          TTS_ENGINE: "edge-tts"
+          TTS_VOICE: "en-US-ChristopherNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
           LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
@@ -174,8 +174,8 @@ jobs:
           YOUTUBE_CLIP_TIMEOUT: "6"
           YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT: "10"
           YOUTUBE_MAX_DOWNLOAD_BYTES: "80000000"
-          YOUTUBE_AI_SELECTOR_CANDIDATES: "6"
-          YOUTUBE_VISUAL_QC_LIMIT: "8"
+          YOUTUBE_AI_SELECTOR_CANDIDATES: "10"
+          YOUTUBE_VISUAL_QC_LIMIT: "10"
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           INTERNET_ARCHIVE_ENABLED: "false"
