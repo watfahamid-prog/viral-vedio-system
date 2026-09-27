@@ -33,7 +33,7 @@ jobs:
       matrix:
         index: [1, 2, 3]
     runs-on: ubuntu-latest
-    timeout-minutes: 22
+    timeout-minutes: 18
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -46,8 +46,8 @@ jobs:
 
       - name: Install ffmpeg and narration engine
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak-ng
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
 
       - name: Install requirements
         run: pip install -r requirements.txt
@@ -171,11 +171,11 @@ jobs:
           YOUTUBE_COMMENTARY_MODE: "voice"
           YOUTUBE_CLIPS_PER_VIDEO: "10"
           YOUTUBE_CLIP_SECONDS: "3.2"
-          YOUTUBE_CLIP_TIMEOUT: "8"
-          YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT: "15"
+          YOUTUBE_CLIP_TIMEOUT: "6"
+          YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT: "10"
           YOUTUBE_MAX_DOWNLOAD_BYTES: "80000000"
-          YOUTUBE_AI_SELECTOR_CANDIDATES: "10"
-          YOUTUBE_VISUAL_QC_LIMIT: "12"
+          YOUTUBE_AI_SELECTOR_CANDIDATES: "6"
+          YOUTUBE_VISUAL_QC_LIMIT: "8"
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           INTERNET_ARCHIVE_ENABLED: "false"
@@ -192,13 +192,13 @@ jobs:
           set +e
           rm -rf output
           mkdir -p output
-          timeout --signal=TERM --kill-after=30s 12m python main.py
+          timeout --signal=TERM --kill-after=20s 9m python main.py
           status=$?
           if [ "$status" -ne 0 ]; then
             echo "Production attempt failed or timed out; starting one clean bounded retry."
             rm -rf output
             mkdir -p output
-            timeout --signal=TERM --kill-after=30s 6m python main.py
+            timeout --signal=TERM --kill-after=20s 4m python main.py
             status=$?
           fi
           exit "$status"
