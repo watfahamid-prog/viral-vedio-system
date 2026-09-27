@@ -26,8 +26,27 @@ concurrency:
 
 jobs:
   create-videos:
+    # One workflow run contains three independent YouTube jobs. Each job
+    # renders exactly one Top-10 listicle, so Video 1/2/3 run in parallel.
+    if: matrix.mode == (inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mode: youtube
+            youtube_index: 1
+            video_count: 1
+          - mode: youtube
+            youtube_index: 2
+            video_count: 1
+          - mode: youtube
+            youtube_index: 3
+            video_count: 1
+          - mode: normal
+            youtube_index: 0
+            video_count: 3
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -123,11 +142,12 @@ jobs:
 
       - name: Run complete viral video pipeline
         env:
-          RUN_MODE: ${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
+          RUN_MODE: ${{ matrix.mode }}
+          YOUTUBE_INDEX: ${{ matrix.youtube_index }}
           DRY_RUN: "false"
           ZERO_COST_MODE: "true"
           MAX_TRENDS: "12"
-          VIDEO_COUNT: "3"
+          VIDEO_COUNT: "${{ matrix.video_count }}"
           VIDEO_SECONDS: "20"
           VIDEO_MIN_SECONDS: "15"
           VIDEO_MAX_SECONDS: "60"
@@ -163,7 +183,7 @@ jobs:
           YOUTUBE_CLIPS_PER_VIDEO: "10"
           YOUTUBE_CLIP_SECONDS: "4"
           YOUTUBE_AI_SELECTOR_CANDIDATES: "15"
-          YOUTUBE_VISUAL_QC_LIMIT: "12"
+          YOUTUBE_VISUAL_QC_LIMIT: "30"
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           INTERNET_ARCHIVE_ENABLED: "true"
@@ -181,7 +201,7 @@ jobs:
       - name: Check generated outputs
         if: success()
         env:
-          RUN_MODE: ${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
+          RUN_MODE: ${{ matrix.mode }}
         run: |
           set -euo pipefail
           test -f output/run_summary.json
@@ -192,8 +212,8 @@ jobs:
 
           if [ "$RUN_MODE" = "youtube" ]; then
             test "$primary_count" -eq 0
-            test "$youtube_count" -eq 3
-            echo "YouTube lane: exactly 3 YouTube Top-10 videos, 0 normal videos."
+            test "$youtube_count" -eq 1
+            echo "YouTube shard: exactly 1 Top-10 video in this parallel job."
           else
             test "$primary_count" -eq 3
             test "$youtube_count" -eq 0
@@ -241,7 +261,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: viral-video-previews-run-${{ github.run_number }}
+          name: viral-video-previews-run-${{ github.run_number }}-${{ matrix.mode }}-${{ matrix.youtube_index }}
           path: preview_artifact/
           if-no-files-found: warn
           retention-days: 7
@@ -263,7 +283,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: viral-videos-visual-inspection-run-${{ github.run_number }}
+          name: viral-videos-visual-inspection-run-${{ github.run_number }}-${{ matrix.mode }}-${{ matrix.youtube_index }}
           path: output/
           if-no-files-found: warn
           retention-days: 7
