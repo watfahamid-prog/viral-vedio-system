@@ -366,7 +366,12 @@ def _source_score(source, query):
         ),
         "wildest": (
             "sunset", "landscape", "flower", "portrait", "fashion", "model",
-            "calm", "peaceful", "meditation",
+            "calm", "peaceful", "meditation", "ocean", "sea", "nature",
+            "wildlife", "safari", "zoo", "animal", "animals", "tree", "forest",
+            "grass", "field", "garden", "sky", "cloud", "clouds", "mountain",
+            "astronomy", "galaxy", "cosmos", "comet", "asteroid", "planet",
+            "earth", "space", "stars", "starry", "milky way", "underwater",
+            "fish", "whale", "bird", "birds",
         ),
     }
     event_words = (
@@ -384,8 +389,32 @@ def _source_score(source, query):
     search_text = str(source.get("_search_query", "")).lower()
     search_hits = sum(1 for word in positives.get(theme, ()) if word in search_text)
     query_event_hits = sum(1 for word in event_words if word in search_text)
-    score = positive_hits * 12 + event_hits * 3 - negative_hits * 18
+    score = positive_hits * 12 + event_hits * 3 - negative_hits * 24
     score += min(3, search_hits) * 5 + min(2, query_event_hits) * 2
+
+    generic_terms = (
+        "nature", "landscape", "ocean", "sea", "forest", "flower", "garden",
+        "mountain", "sunset", "sunrise", "astronomy", "galaxy", "cosmos",
+        "comet", "asteroid", "planet", "earth", "space", "milky way",
+        "wildlife", "safari", "zoo", "portrait", "fashion", "model",
+        "meditation", "peaceful", "calm", "underwater",
+    )
+    concrete_event_terms = (
+        "people", "person", "man", "woman", "crowd", "reaction", "caught",
+        "camera", "street", "public", "fail", "accident", "surprise",
+        "chase", "fall", "crash", "prank", "scream", "stunt", "motorcycle",
+        "motorbike", "motocross", "skateboard", "skate", "bicycle", "bike",
+        "car", "race", "racing", "collision", "jump", "driver", "rider",
+        "sport", "sports", "extreme",
+    )
+    generic_hits = sum(1 for word in generic_terms if word in text)
+    concrete_hits = sum(1 for word in concrete_event_terms if word in text)
+    if generic_hits >= 2:
+        score -= 35
+    elif generic_hits == 1 and concrete_hits == 0:
+        score -= 25
+    if theme == "wildest" and concrete_hits == 0:
+        score -= 30
     if source.get("provider") in {"Pexels", "Pixabay"} and search_hits >= 1:
         score += 8
 
@@ -455,8 +484,8 @@ def _gemini_rank_sources(sources, theme):
     return sources
 
 
-def _visual_preflight(path, duration):
-    """Reject black/frozen source videos before they become final clips."""
+def _visual_preflight(path, duration, theme="most interesting"):
+    """Reject black/frozen/low-information source videos before final clips."""
     sample_dir = Path(path).with_suffix("")
     sample_dir.mkdir(exist_ok=True)
     frames = []
@@ -471,8 +500,11 @@ def _visual_preflight(path, duration):
         from PIL import Image, ImageStat
         images = [Image.open(frame).convert("L") for frame in frames]
         means = [ImageStat.Stat(img).mean[0] for img in images]
+        average_mean = sum(means) / len(means)
         if max(means) < 8:
             return False, "near-black footage"
+        if average_mean < (12 if theme == "scariest" else 22):
+            return False, "too dark for clear vertical viewing"
         diffs = []
         for a, b in zip(images, images[1:]):
             diffs.append(sum(abs(x - y) for x, y in zip(a.getdata(), b.getdata())) / (160 * 160))
@@ -493,32 +525,61 @@ def _visual_preflight(path, duration):
             pass
     return True, "passed"
 
-def _rank_and_diversify(sources, theme):
-    """Rank relevant clips while enforcing visual/provider/topic diversity."""
-    ranked = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
-    chosen, used_keys, provider_counts = [], set(), {}
+def _topic_bucket(item):
+    text = f"{item.get('title','')} {item.get('description','')}".lower()
+    buckets = [
+        ("motorcycle", ("motorcycle", "motorbike", "motocross", "dirt bike", "biker")),
+        ("car", ("car", "cars", "rally", "race car", "racing")),
+        ("skate", ("skateboard", "skateboarding", "skate")),
+        ("bike", ("bicycle", "bike", "cycling", "cyclist")),
+        ("crowd", ("crowd", "stadium", "public", "street")),
+        ("people", ("people", "person", "man", "woman", "reaction")),
+        ("water", ("surf", "water", "pool", "boat", "rafting")),
+        ("stunt", ("stunt", "jump", "trick", "extreme")),
+        ("sports", ("sport", "sports", "competition", "match")),
+    ]
+    for bucket, words in buckets:
+        if any(word in text for word in words):
+            return bucket
+    return "other"
 
-    for item in ranked:
-        score = item.get("_match_score", -999)
-        if score < -5:
-            continue
+
+def _rank_and_diversify(sources, theme):
+    """Rank relevant clips while enforcing provider and subject diversity."""
+    ranked = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
+    chosen, used_keys, provider_counts, bucket_counts = [], set(), {}, {}
+
+    def consider(item, strict_topics=True):
+        if item.get("_match_score", -999) < 0:
+            return False
         title = re.sub(r"[^a-z0-9]+", " ", str(item.get("title", "")).lower()).strip()
         description = re.sub(r"[^a-z0-9]+", " ", str(item.get("description", "")).lower()).strip()
         source_id = str(item.get("source_url") or item.get("url") or "").strip()
-        # Deduplicate by the actual source, not repeated metadata words.
-        # Stock APIs often return many different clips with nearly identical
-        # titles/descriptions; collapsing them was starving the final QC loop.
         identity = source_id or (title[:140], description[:80])
         if identity in used_keys:
-            continue
+            return False
         provider = item.get("provider", "unknown")
-        if provider_counts.get(provider, 0) >= max(10, CLIPS_PER_VIDEO):
-            continue
+        if provider_counts.get(provider, 0) >= max(8, CLIPS_PER_VIDEO):
+            return False
+        bucket = _topic_bucket(item)
+        if strict_topics and bucket_counts.get(bucket, 0) >= 2:
+            return False
         chosen.append(item)
         used_keys.add(identity)
         provider_counts[provider] = provider_counts.get(provider, 0) + 1
+        bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
+        return True
+
+    for item in ranked:
         if len(chosen) >= CLIPS_PER_VIDEO * 4:
             break
+        consider(item, strict_topics=True)
+
+    if len(chosen) < CLIPS_PER_VIDEO * 2:
+        for item in ranked:
+            if len(chosen) >= CLIPS_PER_VIDEO * 4:
+                break
+            consider(item, strict_topics=False)
 
     return chosen
 def _listicle_commentary(number, opportunity, source):
@@ -534,12 +595,13 @@ def _listicle_commentary(number, opportunity, source):
     pool = reactions.get(theme, reactions["most interesting"])
     reaction = pool[(10 - number) % len(pool)]
     details = {
-        "funniest": "Watch how this one ends.",
-        "scariest": "Keep watching the background closely.",
-        "wildest": "Watch how quickly this escalates.",
-        "most interesting": "Watch what happens next.",
+        "funniest": ["Watch the reaction.", "Wait for the payoff.", "That ending is wild."],
+        "scariest": ["Watch the background.", "Listen for what happens.", "Wait for the reveal."],
+        "wildest": ["Watch the landing.", "Look how fast this changes.", "Wait for the impact."],
+        "most interesting": ["Watch what happens.", "Look closely.", "Wait for the reveal."],
     }
-    detail = details.get(theme, details["most interesting"])
+    detail_pool = details.get(theme, details["most interesting"])
+    detail = detail_pool[(10 - number) % len(detail_pool)]
     if number == 1:
         reaction = "This is number one!"
     return f"Number {number}! {reaction} {detail}"
@@ -623,10 +685,12 @@ def create_youtube_commentary_video(opportunity, index):
         ]
     elif theme == "wildest":
         queries = [
-            "wild unexpected moments caught on camera",
-            "crazy people reactions caught on camera",
-            "insane accidents near misses stunts",
-            "shocking real life moments",
+            "wild people stunts caught on camera",
+            "crazy accidents near misses caught on camera",
+            "extreme motorcycle car skateboard stunts",
+            "shocking public reactions accidents",
+            "wild sports moments people",
+            "unexpected street stunts people",
         ]
     else:
         queries = [
@@ -708,6 +772,16 @@ def create_youtube_commentary_video(opportunity, index):
         if source.get("_match_score", -999) < 0:
             print(f"YouTube relevance QC rejected source: {source.get('title','unknown')} (score={source.get('_match_score', -999):.1f})")
             continue
+        source_text = f"{source.get('title','')} {source.get('description','')}".lower()
+        banned_visual_terms = (
+            "astronomy", "galaxy", "cosmos", "comet", "asteroid", "milky way",
+            "landscape", "sunset", "sunrise", "ocean", "underwater", "wildlife",
+            "nature", "flower", "forest", "mountain", "meditation", "peaceful",
+            "space", "planet", "earth", "zoo", "safari", "garden",
+        )
+        if theme == "wildest" and any(term in source_text for term in banned_visual_terms):
+            print(f"YouTube semantic QC rejected generic/non-event source: {source.get('title','unknown')}")
+            continue
         raw = root / f"source_{clip_index}_{_safe_name(source['title'])}.mp4"
         segment = root / f"segment_{clip_index}.mp4"
         try:
@@ -717,7 +791,7 @@ def create_youtube_commentary_video(opportunity, index):
                 continue
             if visual_qc_count < VISUAL_QC_LIMIT:
                 visual_qc_count += 1
-                visual_ok, visual_reason = _visual_preflight(raw, duration)
+                visual_ok, visual_reason = _visual_preflight(raw, duration, theme)
             else:
                 visual_ok, visual_reason = True, "QC shortlist limit reached"
             if not visual_ok:
