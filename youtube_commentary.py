@@ -312,6 +312,11 @@ def _short_detail(source):
 
 
 def _listicle_theme(trend):
+    if isinstance(trend, dict):
+        explicit = str(trend.get("listicle_theme", "")).lower().strip()
+        if explicit in {"funniest", "scariest", "wildest"}:
+            return explicit
+        trend = trend.get("trend", "")
     text = str(trend).lower()
     if any(w in text for w in ("horror", "scary", "creepy", "terrifying", "ghost", "haunted", "spooky")):
         return "scariest"
@@ -503,6 +508,13 @@ def _strict_source_gate(source, theme):
         if any(term in text for term in animal_stock):
             return False
         if event_hits == 0:
+            return False
+        comedy_evidence = (
+            "funny", "funniest", "hilarious", "comedy", "humor", "humour",
+            "prank", "fail", "fails", "bloopers", "awkward", "silly",
+            "laugh", "mistake", "mishap", "instant regret",
+        )
+        if not any(term in text for term in comedy_evidence):
             return False
     if theme == "wildest" and event_hits == 0:
         return False
@@ -812,8 +824,14 @@ def _tts(text, path):
 def create_youtube_commentary_video(opportunity, index):
     root = Path(OUTPUT_DIR) / f"youtube_{index}"
     root.mkdir(parents=True, exist_ok=True)
-    query = opportunity.get("trend") or "interesting real life moments"
-    theme = _listicle_theme(query)
+    query = opportunity.get("trend") or "funniest moments caught on camera"
+    theme = opportunity.get("listicle_theme") or _listicle_theme(query)
+    if theme == "funniest":
+        query = "funniest moments caught on camera"
+    elif theme == "scariest":
+        query = "scariest moments caught on camera"
+    elif theme == "wildest":
+        query = "wildest moments caught on camera"
     search_limit = max(CLIPS_PER_VIDEO * 2, 20)
     if theme == "funniest":
         # Search for actual human-action moments, not generic "funny" stock.
@@ -1061,7 +1079,7 @@ def create_youtube_commentary_video(opportunity, index):
             "title_card_seconds": 0, "countdown": "#10 -> #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
-            "selection_engine": "strict source metadata gate + local relevance -> optional Gemini judge -> visual preflight",
+            "selection_engine": "theme-locked search -> strict comedy/event metadata gate -> local relevance -> optional Gemini judge -> visual preflight",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
             "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT,
             "commentary_style": "clip_specific_fast_reactive_no_repeat", "voice_rate": "edge +75% / ElevenLabs 1.45x",
