@@ -26,7 +26,7 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
 AI_SELECTOR_CANDIDATES = max(8, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "15")))
-VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "12")))
+VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 3, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "30")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
@@ -669,8 +669,16 @@ def create_youtube_commentary_video(opportunity, index):
     # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
     locally_ranked = _rank_and_diversify(sources, theme)
     ai_pool = locally_ranked[:AI_SELECTOR_CANDIDATES]
-    sources = _gemini_rank_sources(ai_pool, theme)
-    sources = _rank_and_diversify(sources, theme)
+    judged_pool = _gemini_rank_sources(ai_pool, theme)
+    # Keep the strong local candidates that Gemini did not judge as a replacement
+    # pool. A temporary Gemini 429 or a visual/duration rejection must never leave
+    # us with only the small AI shortlist.
+    judged_keys = {item.get("source_url") or item.get("url") for item in judged_pool}
+    replacement_pool = [
+        item for item in locally_ranked
+        if (item.get("source_url") or item.get("url")) not in judged_keys
+    ]
+    sources = _rank_and_diversify(judged_pool + replacement_pool, theme)
 
     clips, manifest = [], []
     visual_qc_count = 0
@@ -707,7 +715,10 @@ def create_youtube_commentary_video(opportunity, index):
             continue
 
     if len(clips) < CLIPS_PER_VIDEO:
-        raise RuntimeError(f"YouTube video #{index} produced only {len(clips)} usable clips; need {CLIPS_PER_VIDEO}")
+        raise RuntimeError(
+            f"YouTube video #{index} produced only {len(clips)} usable clips; need {CLIPS_PER_VIDEO}. "
+            "The expanded replacement pool was exhausted while preserving visual/relevance QC."
+        )
 
     title_card = root / "title_card.mp4"
     if theme == "funniest":
