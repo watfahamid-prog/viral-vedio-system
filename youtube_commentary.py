@@ -941,7 +941,9 @@ def create_youtube_commentary_video(opportunity, index):
     if audio_path and YOUTUBE_MODE != "text":
         target_duration = max(0.1, TITLE_SECONDS + (CLIPS_PER_VIDEO * CLIP_SECONDS))
         audio_duration = _probe_duration(audio_path)
-        tempo_ratio = max(0.5, min(2.0, audio_duration / target_duration))
+        # Never slow a short voice track down. Only speed up when narration overruns
+        # the visual timeline; otherwise keep the fast voice and pad the tail slightly.
+        tempo_ratio = max(1.0, min(2.0, audio_duration / target_duration))
         audio_filter = f"atempo={tempo_ratio:.4f},loudnorm=I=-16:TP=-1.5:LRA=11,apad=pad_dur=0.35"
         subprocess.run([
             "ffmpeg", "-y", "-i", str(combined), "-i", audio_path,
