@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import os
 import re
 from difflib import SequenceMatcher
 from config import DRY_RUN, MAX_TRENDS, VIDEO_COUNT
@@ -95,7 +96,11 @@ def build_opportunities(trends):
     ai_keep = originality_review(candidates, history)
     if ai_keep is not None:
         candidates = [item for i, item in enumerate(candidates) if i in ai_keep]
-    selected = candidates[:VIDEO_COUNT]
+    # A sharded normal run still needs the full three opportunities available so
+    # VIDEO_INDEX=1/2/3 can select its own opportunity. The job only renders one.
+    requested_index = int(os.getenv("VIDEO_INDEX", "0") or "0")
+    target_count = max(VIDEO_COUNT, 3) if requested_index in {1, 2, 3} else VIDEO_COUNT
+    selected = candidates[:target_count]
 
     # The primary pipeline must always produce VIDEO_COUNT normal videos.
     # YouTube Top-10 listicles are generated separately so a missing/weak
