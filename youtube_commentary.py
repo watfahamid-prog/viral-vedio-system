@@ -473,7 +473,8 @@ def _visual_preflight(path, duration):
         diffs = []
         for a, b in zip(images, images[1:]):
             diffs.append(sum(abs(x - y) for x, y in zip(a.getdata(), b.getdata())) / (160 * 160))
-        if max(means) - min(means) < 1.5 and max(diffs, default=0) < 1.0:\n            return False, "frozen or nearly static footage"
+        if max(means) - min(means) < 1.5 and max(diffs, default=0) < 1.0:
+            return False, "frozen or nearly static footage"
             return False, "nearly frozen footage"
     except Exception as error:
         return False, f"visual QC error: {error}"
