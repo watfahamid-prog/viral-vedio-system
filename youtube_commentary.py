@@ -580,6 +580,48 @@ def _gemini_rank_sources(sources, theme):
 
 
 
+
+def _gemini_expand_search_queries(theme, shard_index):
+    """Ask Gemini for fresh, concrete search queries so research does not stagnate."""
+    if (
+        not YOUTUBE_AI_SELECTOR_ENABLED
+        or not GEMINI_API_KEY
+        or os.getenv("GEMINI_ENABLED", "true").lower() != "true"
+    ):
+        return []
+    prompt = (
+        f"Create 10 fresh search-engine queries for a YouTube Top-10 {theme} listicle. "
+        "The goal is real human-action footage, not generic stock. Make every query meaningfully "
+        "different: different situations, locations, reactions, timing, sports/public mishaps, "
+        "security-camera style moments, etc. Never ask for copyrighted movie/TV clips. "
+        "Return ONLY a JSON array of 10 short search queries. Do not number them."
+    )
+    try:
+        response = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}],
+                  "generationConfig": {"temperature": 0.9, "maxOutputTokens": 500}},
+            timeout=25,
+        )
+        response.raise_for_status()
+        raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        match = re.search(r"\[.*\]", raw, re.S)
+        if not match:
+            raise ValueError("Gemini search planner returned no JSON")
+        queries = json.loads(match.group(0))
+        cleaned = []
+        for query in queries:
+            query = re.sub(r"\s+", " ", str(query)).strip()
+            if 12 <= len(query) <= 120:
+                cleaned.append(query)
+        print(f"YouTube AI research planner: generated {len(cleaned)} fresh queries for shard {shard_index}.")
+        return list(dict.fromkeys(cleaned))[:10]
+    except Exception as error:
+        print(f"YouTube AI research planner unavailable; using built-in query bank: {error}")
+        return []
+
+
 def _load_source_history():
     path = Path(os.getenv("YOUTUBE_SOURCE_HISTORY_FILE", "youtube_source_history.json"))
     try:
@@ -609,7 +651,6 @@ def _gemini_visual_judge(path, theme, source):
         not YOUTUBE_AI_SELECTOR_ENABLED
         or not GEMINI_API_KEY
         or os.getenv("GEMINI_ENABLED", "true").lower() != "true"
-        or os.getenv("ZERO_COST_MODE", "false").lower() == "true"
     ):
         return True, 50, "visual AI disabled; local QC only"
 
@@ -1060,7 +1101,15 @@ def create_youtube_commentary_video(opportunity, index):
             "people caught on camera", "unusual real life event", "interesting reaction people",
         ],
     }
-    search_waves = queries + fallback_queries.get(theme, [])
+    shard_index = max(1, int(index))
+    ai_queries = _gemini_expand_search_queries(theme, shard_index)
+    # Rotate both AI and built-in queries by shard so parallel jobs research different angles.
+    if ai_queries:
+        rotation = (shard_index - 1) % len(ai_queries)
+        ai_queries = ai_queries[rotation:] + ai_queries[:rotation]
+    built_in_queries = queries[shard_index - 1:] + queries[:shard_index - 1]
+    fallback = fallback_queries.get(theme, [])
+    search_waves = ai_queries + built_in_queries + fallback[shard_index - 1:] + fallback[:shard_index - 1]
     sources, seen = [], set()
     for wave_index, search_query in enumerate(search_waves):
         try:
@@ -1273,9 +1322,9 @@ def create_youtube_commentary_video(opportunity, index):
             "title_card_seconds": 0, "countdown": "#10 -> #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
-            "selection_engine": "multi-query research -> persistent freshness/history -> shard diversity -> strict semantic gate -> local relevance -> optional Gemini metadata+vision judge -> visual preflight",
+            "selection_engine": "AI query planner -> multi-provider research -> persistent freshness/history -> shard diversity -> strict semantic gate -> local relevance -> Gemini metadata+vision judge -> visual preflight",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
-            "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT, "gemini_visual_qc_limit": GEMINI_VISUAL_QC_LIMIT, "freshness_history": True,
+            "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT, "gemini_visual_qc_limit": GEMINI_VISUAL_QC_LIMIT, "freshness_history": True, "ai_search_planner": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY and os.getenv("GEMINI_ENABLED", "true").lower() == "true"),
             "commentary_style": "ai_scripted_clip_specific_fast_reactive_no_countdown", "voice_rate": "edge +75% / ElevenLabs 1.45x",
         },
         "sources": manifest,
