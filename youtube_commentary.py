@@ -607,7 +607,7 @@ def create_youtube_commentary_video(opportunity, index):
     root.mkdir(parents=True, exist_ok=True)
     query = opportunity.get("trend") or "interesting real life moments"
     theme = _listicle_theme(query)
-    search_limit = max(CLIPS_PER_VIDEO * 4, 30)
+    search_limit = max(CLIPS_PER_VIDEO * 2, 20)
     if theme == "funniest":
         queries = [
             "funny people fails caught on camera",
@@ -679,7 +679,7 @@ def create_youtube_commentary_video(opportunity, index):
             item["_search_query"] = search_query
             item["_match_score"] = _source_score(item, query)
             sources.append(item)
-        if wave_index < len(queries) and len(sources) >= CLIPS_PER_VIDEO * 6:
+        if wave_index < len(queries) and len(sources) >= CLIPS_PER_VIDEO * 12:
             break
 
     # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
@@ -703,14 +703,14 @@ def create_youtube_commentary_video(opportunity, index):
         item for item in replacement_pool
         if item.get("_match_score", -999) >= 0
     ]
-    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 8, 80)]
+    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 12, 120)]
 
     clips, manifest = [], []
     visual_qc_count = 0
     for clip_index, source in enumerate(sources):
         if len(clips) >= CLIPS_PER_VIDEO:
             break
-        if source.get("_match_score", -999) < 10:
+        if source.get("_match_score", -999) < 0:
             print(f"YouTube relevance QC rejected source: {source.get('title','unknown')} (score={source.get('_match_score', -999):.1f})")
             continue
         raw = root / f"source_{clip_index}_{_safe_name(source['title'])}.mp4"
