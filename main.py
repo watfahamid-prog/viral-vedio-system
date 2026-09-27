@@ -42,7 +42,13 @@ def main():
 
     # Normal videos are generated only in normal/both mode.
     if run_mode in {"normal", "both"}:
-        for index, opportunity in enumerate(result["opportunities"][:VIDEO_COUNT], 1):
+        requested_video_index = int(os.getenv("VIDEO_INDEX", "0") or "0")
+        if requested_video_index in {1, 2, 3}:
+            selected_opportunities = [(requested_video_index, result["opportunities"][requested_video_index - 1])]
+        else:
+            selected_opportunities = list(enumerate(result["opportunities"][:VIDEO_COUNT], 1))
+
+        for index, opportunity in selected_opportunities:
             script = generate_script(
                 opportunity["trend"],
                 opportunity["hook"],
@@ -80,9 +86,10 @@ def main():
                 "publishing": {"status": "pending_quality_control"},
             })
 
-        if len(result["videos"]) != VIDEO_COUNT:
+        expected_normal = len(selected_opportunities)
+        if len(result["videos"]) != expected_normal:
             raise RuntimeError(
-                f"Pipeline quality gate failed: expected exactly {VIDEO_COUNT} normal videos, "
+                f"Pipeline quality gate failed: expected exactly {expected_normal} normal video(s), "
                 f"created {len(result['videos'])}"
             )
 
