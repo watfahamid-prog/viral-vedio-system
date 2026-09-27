@@ -268,15 +268,6 @@ jobs:
           echo "Created compact previews:"
           ls -lh preview_artifact/*.mp4
           du -sh preview_artifact
-      - name: Save compact previews for visual inspection
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: viral-video-previews-run-${{ github.run_number }}-${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}-${{ matrix.index }}
-          path: preview_artifact/
-          if-no-files-found: warn
-          retention-days: 7
-
       - name: Persist self-learning state
         # Only one YouTube shard writes shared learning state. Otherwise three
         # parallel jobs could race while pushing the same file to main.
