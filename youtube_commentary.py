@@ -695,11 +695,14 @@ def create_youtube_commentary_video(opportunity, index):
         item for item in ranked_all
         if (item.get("source_url") or item.get("url")) not in judged_keys
     ]
+    # Do not let the AI shortlist become the whole candidate pool. We need
+    # enough real clips for download/duration/visual QC, while still preferring
+    # relevance. Keep the strongest replacements even when their metadata score
+    # is modest; visual/download QC is the next gate.
     eligible_replacements = [
         item for item in replacement_pool
-        if item.get("_match_score", -999) >= 10
+        if item.get("_match_score", -999) >= 0
     ]
-    # Keep a large fallback pool because duration/download/visual QC happens later.
     sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 8, 80)]
 
     clips, manifest = [], []
