@@ -244,7 +244,7 @@ def _download(url, path):
                 time.sleep(2)
             else:
                 raise
-    raise last_error
+    raise last_error or RuntimeError("source download failed after retries")
 
 
 def _probe_duration(path):
