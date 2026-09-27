@@ -146,7 +146,7 @@ jobs:
           GEMINI_ORIGINALITY_ENABLED: "true"
           GEMINI_MODEL: "gemini-3.8-flash"
           GEMINI_VISUAL_QC_ENABLED: "true"
-          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "8"
+          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "2"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "local"
           AI_VIDEO_ENABLED: "true"
@@ -194,7 +194,7 @@ jobs:
         run: |
           set +e
           # Stagger the three YouTube shards so Gemini free-tier rate limits are not hit by a burst.
-          if [ "${YOUTUBE_INDEX:-1}" -gt 1 ]; then sleep $(( (YOUTUBE_INDEX - 1) * 35 )); fi
+          if [ "${YOUTUBE_INDEX:-1}" -gt 1 ]; then sleep $(( (YOUTUBE_INDEX - 1) * 60 )); fi
           rm -rf output
           mkdir -p output
           timeout --signal=TERM --kill-after=20s 9m python main.py
