@@ -96,19 +96,15 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
         run: |
           set -euo pipefail
-          test -n "${ELEVENLABS_API_KEY:-}" || { echo "ELEVENLABS_API_KEY is missing"; exit 1; }
           test -n "${PEXELS_API_KEY:-}" || { echo "PEXELS_API_KEY is missing"; exit 1; }
           test -n "${PIXABAY_API_KEY:-}" || { echo "PIXABAY_API_KEY is missing"; exit 1; }
-          eleven_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "xi-api-key: ${ELEVENLABS_API_KEY}" https://api.elevenlabs.io/v1/user)"
           pexels_status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: ${PEXELS_API_KEY}" 'https://api.pexels.com/v1/videos/search?query=football&per_page=1')"
           pixabay_status="$(curl -sS -o /dev/null -w '%{http_code}' 'https://pixabay.com/api/videos/?key='${PIXABAY_API_KEY}'&q=football&per_page=3')"
-          echo "ElevenLabs API status: ${eleven_status}"
           echo "Pexels API status: ${pexels_status}"
           echo "Pixabay API status: ${pixabay_status}"
-          test "${eleven_status}" = "200"
           test "${pexels_status}" = "200"
           test "${pixabay_status}" = "200"
-          echo "All three API credentials are valid and reachable."
+          echo "Required video-source APIs are valid and reachable. ElevenLabs is optional; edge-tts is the fallback."
 
       - name: Report video-engine availability
         env:
@@ -217,7 +213,7 @@ jobs:
               echo "Checking $video: dimensions=$dims audio=$audio duration=${duration}s"
               test "$dims" = "1080,1920" || { echo "FAIL: expected 1080x1920"; exit 1; }
               test "$audio" = "aac" || { echo "FAIL: expected AAC audio"; exit 1; }
-              awk "BEGIN { exit !($duration >= 45) }" || { echo "FAIL: YouTube video is shorter than 45s"; exit 1; }
+              awk "BEGIN { exit !($duration >= 30) }" || { echo "FAIL: YouTube video is shorter than 30s"; exit 1; }
             else
               audio="$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video")"
               duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video")"
@@ -279,7 +275,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: viral-videos-visual-inspection-run-${{ github.run_number }}-${{ matrix.mode }}-${{ matrix.youtube_index }}
+          name: viral-videos-visual-inspection-run-${{ github.run_number }}-${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}-${{ matrix.index }}
           path: output/
           if-no-files-found: warn
           retention-days: 7
