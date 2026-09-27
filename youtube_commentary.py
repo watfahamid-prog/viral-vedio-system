@@ -441,9 +441,9 @@ def _source_score(source, query):
             score -= 8
         else:
             score -= 30
-    if theme == "funniest" and event_hits == 0:
+    if theme == "funniest" and event_hits == 0 and query_event_hits == 0:
         score -= 20
-    elif theme == "funniest" and event_hits > 0 and search_hits > 0:
+    elif theme == "funniest" and (event_hits > 0 or query_event_hits > 0) and search_hits > 0:
         score += 10
     if theme == "scariest" and not any(w in text for w in ("scary", "horror", "creepy", "ghost", "haunted", "eerie", "paranormal", "scream", "fright")):
         score -= 25
@@ -535,7 +535,9 @@ def _strict_source_gate(source, theme):
         )
         if any(term in text for term in animal_stock):
             return False
-        if action_hits == 0:
+        # Stock providers often return weak metadata. If the search is explicitly funny/action-based,
+        # let the downloaded clip reach visual QC instead of rejecting it here.
+        if action_hits == 0 and not (search_theme_hits > 0 and (search_action_hits > 0 or search_event_hits > 0)):
             return False
         comedy_evidence = (
             "funny", "funniest", "hilarious", "comedy", "humor", "humour",
@@ -543,9 +545,9 @@ def _strict_source_gate(source, theme):
             "laugh", "mistake", "mishap", "instant regret",
         )
         if not any(term in text for term in comedy_evidence):
-            if not (event_hits > 0 and search_theme_hits > 0 and search_event_hits > 0):
+            if not (search_theme_hits > 0 and (search_event_hits > 0 or search_action_hits > 0)):
                 return False
-    if theme == "wildest" and event_hits == 0:
+    if theme == "wildest" and event_hits == 0 and not (search_theme_hits > 0 and (search_event_hits > 0 or search_action_hits > 0)):
         return False
     return True
 
@@ -933,32 +935,32 @@ def _listicle_commentary(number, opportunity, source):
     if theme == "funniest":
         if any(w in text for w in ("fail", "fall", "mistake", "accident", "mishap")):
             line = pick([
-                "That fail came out of nowhere.",
-                "That went wrong instantly.",
-                "The landing was not the plan.",
-                "One tiny mistake changed everything.",
-                "That is an instant-regret moment.",
+                "That fail was absolutely brutal.",
+                "Bro really thought that would work.",
+                "That landing was absolutely cursed.",
+                "That tiny mistake ruined everything.",
+                "Instant regret. You can see it immediately.",
             ])
         elif any(w in text for w in ("reaction", "crowd", "surprise", "people")):
             line = pick([
-                "The reaction makes this even better.",
-                "Look at the reaction after that.",
-                "Everyone saw that coming too late.",
-                "That reaction is priceless.",
-                "The timing of that reaction is perfect.",
+                "That reaction makes this ten times better.",
+                "That reaction says absolutely everything.",
+                "Nobody was ready for that reaction.",
+                "That reaction is actually priceless.",
+                "That reaction timing is ridiculously good.",
             ])
         elif any(w in text for w in ("prank", "comedy", "funny", "awkward")):
             line = pick([
-                "The timing on this is perfect.",
-                "That could not have gone better.",
-                "The awkward moment says it all.",
+                "That timing is ridiculously good.",
+                "Bro somehow made that look intentional.",
+                "That awkward moment says everything.",
                 "That timing is genuinely hilarious.",
             ])
         else:
             line = pick([
-                "That took a very unexpected turn.",
-                "Nobody expected that ending.",
-                "That escalated in seconds.",
+                "Okay, that went completely wrong.",
+                "That ending was absolutely ridiculous.",
+                "That escalated way too fast.",
             ])
     elif theme == "scariest":
         if any(w in text for w in ("ghost", "haunted", "paranormal", "eerie")):
