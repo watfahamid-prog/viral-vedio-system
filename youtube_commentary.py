@@ -31,7 +31,7 @@ IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
 AI_SELECTOR_CANDIDATES = max(12, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "24")))
 VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 6, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "80")))
-GEMINI_VISUAL_QC_LIMIT = max(0, int(os.getenv("YOUTUBE_GEMINI_VISUAL_QC_LIMIT", "12")))
+GEMINI_VISUAL_QC_LIMIT = max(0, int(os.getenv("YOUTUBE_GEMINI_VISUAL_QC_LIMIT", "4")))
 SOURCE_HISTORY_LIMIT = max(20, int(os.getenv("YOUTUBE_SOURCE_HISTORY_LIMIT", "120")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
@@ -504,13 +504,15 @@ def _strict_source_gate(source, theme):
     }
     hits = [term for term in required.get(theme, ()) if term in text]
     event_hits = sum(1 for term in event_terms if term in text)
+    action_hits = sum(1 for term in action_event_terms if term in text)
 
     search_text = str(source.get("_search_query", "")).lower()
     search_event_hits = sum(1 for term in event_terms if term in search_text)
+    search_action_hits = sum(1 for term in action_event_terms if term in search_text)
     search_theme_hits = sum(1 for term in required.get(theme, ()) if term in search_text)
 
     if theme in {"funniest", "scariest", "wildest"} and not hits:
-        if not (event_hits > 0 and search_theme_hits > 0 and search_event_hits > 0):
+        if not (action_hits > 0 and search_theme_hits > 0 and search_action_hits > 0):
             return False
     if theme == "funniest":
         animal_stock = (
@@ -520,7 +522,7 @@ def _strict_source_gate(source, theme):
         )
         if any(term in text for term in animal_stock):
             return False
-        if event_hits == 0:
+        if action_hits == 0:
             return False
         comedy_evidence = (
             "funny", "funniest", "hilarious", "comedy", "humor", "humour",
@@ -867,10 +869,10 @@ def _rank_and_diversify(sources, theme):
         if identity in used_keys:
             return False
         provider = item.get("provider", "unknown")
-        if provider_counts.get(provider, 0) >= 3:
+        if provider_counts.get(provider, 0) >= 4:
             return False
         bucket = _topic_bucket(item)
-        if strict_topics and bucket_counts.get(bucket, 0) >= 1:
+        if strict_topics and bucket_counts.get(bucket, 0) >= 2:
             return False
         chosen.append(item)
         used_keys.add(identity)
@@ -1059,7 +1061,7 @@ def create_youtube_commentary_video(opportunity, index):
         query = "scariest moments caught on camera"
     elif theme == "wildest":
         query = "wildest moments caught on camera"
-    search_limit = max(CLIPS_PER_VIDEO * 4, 40)
+    search_limit = max(CLIPS_PER_VIDEO * 6, 60)
     if theme == "funniest":
         # Search for actual human-action moments, not generic "funny" stock.
         # The old broad queries produced unrelated animals/stock footage in Run 406.
@@ -1156,7 +1158,7 @@ def create_youtube_commentary_video(opportunity, index):
             item["_search_query"] = search_query
             item["_match_score"] = _source_score(item, query)
             sources.append(item)
-        if wave_index < len(queries) and len(sources) >= CLIPS_PER_VIDEO * 24:
+        if len(sources) >= CLIPS_PER_VIDEO * 30:
             break
 
     # Prevent the system from recycling the same clips forever.
