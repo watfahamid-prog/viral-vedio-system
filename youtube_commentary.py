@@ -444,7 +444,8 @@ def _gemini_rank_sources(sources, theme):
                 ai_score = max(0, min(100, int(by_id[i].get("score", 0))))
                 source["_ai_score"] = ai_score
                 source["_ai_reason"] = str(by_id[i].get("reason", ""))[:180]
-                local_score = source.get("_match_score", 0)\n                source["_match_score"] = local_score * 0.25 + ai_score * 0.75
+                local_score = source.get("_match_score", 0)
+                source["_match_score"] = local_score * 0.25 + ai_score * 0.75
         print(f"YouTube AI selector: Gemini judged {len(by_id)} candidates for {theme}.")
     except Exception as error:
         print(f"YouTube AI selector unavailable; using local selector: {error}")
