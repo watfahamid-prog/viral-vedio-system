@@ -410,7 +410,7 @@ def _source_score(source, query):
 
 def _gemini_rank_sources(sources, theme):
     """Optional AI judge for source metadata; falls back safely on errors."""
-    if not YOUTUBE_AI_SELECTOR_ENABLED or not GEMINI_API_KEY or not sources:
+    if not YOUTUBE_AI_SELECTOR_ENABLED or not GEMINI_API_KEY or not sources or os.getenv("GEMINI_ENABLED", "true").lower() != "true":
         return sources
     sources = sources[:AI_SELECTOR_CANDIDATES]
     candidates = [{"id": i, "title": str(s.get("title", ""))[:180],
@@ -510,12 +510,12 @@ def _rank_and_diversify(sources, theme):
         if identity in used_keys:
             continue
         provider = item.get("provider", "unknown")
-        if provider_counts.get(provider, 0) >= max(4, CLIPS_PER_VIDEO // 2):
+        if provider_counts.get(provider, 0) >= max(10, CLIPS_PER_VIDEO):
             continue
         chosen.append(item)
         used_keys.add(identity)
         provider_counts[provider] = provider_counts.get(provider, 0) + 1
-        if len(chosen) >= CLIPS_PER_VIDEO * 3:
+        if len(chosen) >= CLIPS_PER_VIDEO * 4:
             break
 
     return chosen
@@ -631,8 +631,9 @@ def create_youtube_commentary_video(opportunity, index):
         ],
         "scariest": [
             "scary moments people", "creepy moments caught camera", "people scared reaction",
+            "ghost footage", "haunted scary footage", "security camera incident",
             "night scary encounter", "strange unexplained moment", "eerie people reaction",
-            "haunted scary footage", "unexpected scary event",
+            "unexpected scary event", "people screaming",
         ],
         "wildest": [
             "wild moments people", "crazy moments caught camera", "unexpected accident reaction",
@@ -680,7 +681,7 @@ def create_youtube_commentary_video(opportunity, index):
         item for item in replacement_pool
         if item.get("_match_score", -999) >= 10
     ]
-    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 2, 20)]
+    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 4, 40)]
 
     clips, manifest = [], []
     visual_qc_count = 0
