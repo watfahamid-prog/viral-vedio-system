@@ -31,16 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - mode: youtube
-            youtube_index: 1
-            video_count: 1
-          - mode: youtube
-            youtube_index: 2
-            video_count: 1
-          - mode: youtube
-            youtube_index: 3
-            video_count: 1
+        index: [1, 2, 3]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -138,12 +129,13 @@ jobs:
 
       - name: Run complete viral video pipeline
         env:
-          RUN_MODE: ${{ matrix.mode }}
-          YOUTUBE_INDEX: ${{ matrix.youtube_index }}
+          RUN_MODE: ${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
+          YOUTUBE_INDEX: ${{ matrix.index }}
+          VIDEO_INDEX: ${{ matrix.index }}
           DRY_RUN: "false"
           ZERO_COST_MODE: "true"
           MAX_TRENDS: "12"
-          VIDEO_COUNT: "${{ matrix.video_count }}"
+          VIDEO_COUNT: "1"
           VIDEO_SECONDS: "20"
           VIDEO_MIN_SECONDS: "15"
           VIDEO_MAX_SECONDS: "60"
@@ -197,7 +189,7 @@ jobs:
       - name: Check generated outputs
         if: success()
         env:
-          RUN_MODE: ${{ matrix.mode }}
+          RUN_MODE: ${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
         run: |
           set -euo pipefail
           test -f output/run_summary.json
@@ -257,7 +249,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: viral-video-previews-run-${{ github.run_number }}-${{ matrix.mode }}-${{ matrix.youtube_index }}
+          name: viral-video-previews-run-${{ github.run_number }}-${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}-${{ matrix.index }}
           path: preview_artifact/
           if-no-files-found: warn
           retention-days: 7
@@ -265,7 +257,7 @@ jobs:
       - name: Persist self-learning state
         # Only one YouTube shard writes shared learning state. Otherwise three
         # parallel jobs could race while pushing the same file to main.
-        if: always() && (matrix.mode == 'normal' || matrix.youtube_index == 1)
+        if: always() && matrix.index == 1
         run: |
           if [ -f learning_state.json ]; then
             git config user.name "github-actions[bot]"
