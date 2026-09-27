@@ -486,6 +486,8 @@ def _strict_source_gate(source, theme):
         "motorbike", "bike", "driver",
     )
 
+    action_event_terms = ("fail", "accident", "surprise", "chase", "fall", "crash", "prank", "scream", "stunt", "jump", "collision", "racing", "race", "skateboard", "motorcycle", "motorbike", "bike", "instant regret", "mishap", "mistake", "reaction", "awkward")
+
     required = {
         "funniest": (
             "funny", "funniest", "hilarious", "comedy", "humor", "prank",
