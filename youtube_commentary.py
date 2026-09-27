@@ -19,7 +19,7 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 # Tight clips keep the countdown moving and leave room for a genuinely fast voice.
-CLIP_SECONDS = max(2.2, float(os.getenv("YOUTUBE_CLIP_SECONDS", "2.5")))
+CLIP_SECONDS = max(2.0, float(os.getenv("YOUTUBE_CLIP_SECONDS", "2.2")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "8"))
 DOWNLOAD_TOTAL_TIMEOUT = int(os.getenv("YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT", "15"))
 MAX_DOWNLOAD_BYTES = int(os.getenv("YOUTUBE_MAX_DOWNLOAD_BYTES", "80000000"))
@@ -651,46 +651,101 @@ def _rank_and_diversify(sources, theme):
 
     return chosen
 def _listicle_commentary(number, opportunity, source):
-    """Short, varied narration that describes the type of moment instead of repeating filler."""
+    """Generate short, clip-specific countdown narration with no repeated filler."""
     trend = opportunity.get("trend", "this topic")
     theme = _listicle_theme(trend)
-    text = f"{source.get('title','')} {source.get('description','')}".lower()
+    text = re.sub(r"\\s+", " ", f"{source.get('title','')} {source.get('description','')}").lower()
+
+    def pick(lines):
+        # Stable selection: different clips get different phrasing without randomness.
+        seed = hashlib.sha256(
+            f"{number}|{source.get('source_url','')}|{source.get('title','')}".encode("utf-8")
+        ).hexdigest()
+        return lines[int(seed[:8], 16) % len(lines)]
 
     if theme == "funniest":
-        if any(w in text for w in ("fail", "bloop", "fall", "mistake")):
-            line = "That fail was brutal."
-        elif any(w in text for w in ("reaction", "surprise", "crowd")):
-            line = "That reaction says everything."
-        elif any(w in text for w in ("prank", "comedy", "funny")):
-            line = "The timing is perfect."
+        if any(w in text for w in ("fail", "fall", "mistake", "accident", "mishap")):
+            line = pick([
+                "That fail came out of nowhere.",
+                "That went wrong instantly.",
+                "The landing was not the plan.",
+                "One tiny mistake changed everything.",
+                "That is an instant-regret moment.",
+            ])
+        elif any(w in text for w in ("reaction", "crowd", "surprise", "people")):
+            line = pick([
+                "The reaction makes this even better.",
+                "Look at the reaction after that.",
+                "Everyone saw that coming too late.",
+                "That reaction is priceless.",
+                "The timing of that reaction is perfect.",
+            ])
+        elif any(w in text for w in ("prank", "comedy", "funny", "awkward")):
+            line = pick([
+                "The timing on this is perfect.",
+                "That could not have gone better.",
+                "The awkward moment says it all.",
+                "That timing is genuinely hilarious.",
+            ])
         else:
-            line = "That went wrong fast."
+            line = pick([
+                "That took a very unexpected turn.",
+                "Nobody expected that ending.",
+                "That escalated in seconds.",
+            ])
     elif theme == "scariest":
-        if any(w in text for w in ("ghost", "haunted", "paranormal")):
-            line = "Look closely at the background."
-        elif any(w in text for w in ("scream", "fright", "fear")):
-            line = "Listen to that reaction."
-        elif any(w in text for w in ("night", "dark", "eerie")):
-            line = "Something feels very wrong here."
+        if any(w in text for w in ("ghost", "haunted", "paranormal", "eerie")):
+            line = pick([
+                "Look closely at what happens next.",
+                "Something changes in the background.",
+                "Watch the background very carefully.",
+            ])
+        elif any(w in text for w in ("scream", "fright", "fear", "scared")):
+            line = pick([
+                "The reaction tells you everything.",
+                "That reaction was immediate.",
+                "Listen to how quickly they react.",
+            ])
         else:
-            line = "Watch the moment it changes."
+            line = pick([
+                "The moment this changes is unsettling.",
+                "Something is definitely not right here.",
+                "Watch the moment the mood changes.",
+            ])
     elif theme == "wildest":
         if any(w in text for w in ("crash", "collision", "accident")):
-            line = "That crash came out of nowhere."
+            line = pick([
+                "That crash happened unbelievably fast.",
+                "The collision came out of nowhere.",
+                "That was a seriously close call.",
+            ])
         elif any(w in text for w in ("jump", "stunt", "motorcycle", "motorbike", "skateboard")):
-            line = "That stunt is seriously wild."
+            line = pick([
+                "That stunt leaves almost no room for error.",
+                "That jump was way too close.",
+                "The timing on that stunt is wild.",
+            ])
         elif any(w in text for w in ("speed", "racing", "race")):
-            line = "Watch how fast this gets."
+            line = pick([
+                "The speed here is ridiculous.",
+                "That escalated at full speed.",
+                "Watch how quickly this unfolds.",
+            ])
         else:
-            line = "That escalated very quickly."
+            line = pick([
+                "This escalated much faster than expected.",
+                "That turn happened in seconds.",
+                "The next moment changes everything.",
+            ])
     else:
-        line = "Watch what happens next."
+        line = pick([
+            "This one takes a surprising turn.",
+            "The key moment happens right here.",
+            "Watch the reaction to this.",
+        ])
 
-    if number == 1:
-        line = "And this is number one."
-    return f"Number {number}. {line}"
-
-
+    prefix = "And this is number one." if number == 1 else f"Number {number}."
+    return f"{prefix} {line}"
 
 
 def _tts(text, path):
@@ -718,7 +773,7 @@ def _tts(text, path):
                         "style": 0.48,
                         "use_speaker_boost": True,
                     },
-                    "speed": 1.35,
+                    "speed": 1.45,
                 },
                 timeout=120,
             )
@@ -736,7 +791,7 @@ def _tts(text, path):
             import asyncio
             import edge_tts
             async def make():
-                await edge_tts.Communicate(text, TTS_VOICE, rate="+60%").save(str(path))
+                await edge_tts.Communicate(text, TTS_VOICE, rate="+75%").save(str(path))
             asyncio.run(make())
             print("YouTube TTS: fast edge-tts fallback generated successfully.")
             return str(path)
@@ -752,11 +807,17 @@ def create_youtube_commentary_video(opportunity, index):
     theme = _listicle_theme(query)
     search_limit = max(CLIPS_PER_VIDEO * 2, 20)
     if theme == "funniest":
+        # Search for actual human-action moments, not generic "funny" stock.
+        # The old broad queries produced unrelated animals/stock footage in Run 406.
         queries = [
-            "funny people fails caught on camera",
-            "funniest human reactions fails",
-            "comedy fails unexpected moments",
-            "people funny accidents reactions",
+            "human funny fail caught on camera",
+            "people instant regret funny fail",
+            "unexpected human reaction funny moment",
+            "perfectly timed human fail reaction",
+            "funny public mishap people reaction",
+            "people falling harmless funny fail",
+            "awkward human moment caught camera",
+            "funny sports fail human reaction",
         ]
     elif theme == "scariest":
         queries = [
@@ -790,9 +851,10 @@ def create_youtube_commentary_video(opportunity, index):
 
     fallback_queries = {
         "funniest": [
-            "funny moments people", "funny fails people", "people reacting funny",
-            "unexpected funny moments", "human reaction comedy", "funny accident reaction",
-            "awkward moments people", "surprise reaction people",
+            "human funny fail", "people funny accident", "instant regret human",
+            "funny reaction people", "harmless public fail", "awkward human moment",
+            "unexpected human reaction", "funny sports fail", "people comedy mishap",
+            "perfect timing fail",
         ],
         "scariest": [
             "scary moments people", "creepy moments caught camera", "people scared reaction",
@@ -884,7 +946,7 @@ def create_youtube_commentary_video(opportunity, index):
                 print(f"YouTube visual QC rejected source: {source.get('title','unknown')} ({visual_reason})")
                 continue
             max_start = max(0.0, duration - CLIP_SECONDS)
-            starts = [0.05 * duration, 0.22 * duration, 0.40 * duration, 0.58 * duration, 0.76 * duration]
+            starts = [0.03 * duration, 0.16 * duration, 0.30 * duration, 0.44 * duration, 0.58 * duration, 0.72 * duration, 0.84 * duration]
             start = min(starts[clip_index % len(starts)], max_start)
             rank = CLIPS_PER_VIDEO - len(clips)
             _make_clip(raw, segment, start, CLIP_SECONDS, rank=rank)
@@ -987,7 +1049,7 @@ def create_youtube_commentary_video(opportunity, index):
             "selection_engine": "strict source metadata gate + local relevance -> optional Gemini judge -> visual preflight",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
             "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT,
-            "commentary_style": "short_source_aware_reactive", "voice_rate": "edge +60% / ElevenLabs 1.35x",
+            "commentary_style": "clip_specific_fast_reactive_no_repeat", "voice_rate": "edge +75% / ElevenLabs 1.45x",
         },
         "sources": manifest,
         "license_policy": (
