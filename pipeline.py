@@ -99,8 +99,8 @@ def build_opportunities(trends):
     # A sharded normal run still needs the full three opportunities available so
     # VIDEO_INDEX=1/2/3 can select its own opportunity. The job only renders one.
     requested_index = int(os.getenv("VIDEO_INDEX", "0") or "0")
-    target_count = max(VIDEO_COUNT, 3) if requested_index in {1, 2, 3} else VIDEO_COUNT
-    selected = candidates[:target_count]
+    required_count = max(VIDEO_COUNT, 3) if requested_index in {1, 2, 3} else VIDEO_COUNT
+    selected = candidates[:required_count]
 
     # The primary pipeline must always produce VIDEO_COUNT normal videos.
     # YouTube Top-10 listicles are generated separately so a missing/weak
@@ -112,7 +112,7 @@ def build_opportunities(trends):
     ]
     existing = {str(item.get("trend", "")).strip().lower() for item in selected}
     fallback_index = 0
-    while len(selected) < VIDEO_COUNT:
+    while len(selected) < required_count:
         topic = fallback_topics[fallback_index % len(fallback_topics)]
         fallback_index += 1
         if topic in existing:
