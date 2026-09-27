@@ -208,6 +208,8 @@ jobs:
         if: success()
         env:
           RUN_MODE: ${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}
+          YOUTUBE_CLIPS_PER_VIDEO: "10"
+          YOUTUBE_CLIP_SECONDS: "3.2"
         run: |
           set -euo pipefail
           test -f output/run_summary.json
