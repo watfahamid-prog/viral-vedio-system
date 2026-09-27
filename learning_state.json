@@ -56,69 +56,6 @@
       "platform": "youtube"
     },
     {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "jeremy boyce",
-      "hook": "Top 10 jeremy boyce moments you need to see.",
-      "format": "youtube_top10",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Dödliga ryska attacker i Ukraina",
-      "hook": "Wait — here is why Dödliga ryska attacker i Ukraina is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "technology",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "jeremy boyce",
-      "hook": "Top 10 jeremy boyce moments you need to see.",
-      "format": "youtube_top10",
-      "category": "general",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Dödliga ryska attacker i Ukraina",
-      "hook": "Wait — here is why Dödliga ryska attacker i Ukraina is suddenly everywhere.",
-      "format": "tiktok_cantina_story",
-      "category": "technology",
-      "platform": "tiktok"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Top 10 real-life moments connected to Example technology trend.",
-      "format": "youtube_real_commentary",
-      "category": "technology",
-      "platform": "youtube"
-    },
-    {
       "trend": "jeremy boyce",
       "hook": "Here is the quick breakdown of jeremy boyce.",
       "format": "short_explainer",
@@ -746,6 +683,69 @@
       "hook": "Here is the quick breakdown of funniest moments caught on camera.",
       "format": "short_explainer",
       "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "kieffer bellows",
+      "hook": "Here is the quick breakdown of kieffer bellows.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "rysslands utrikesminister",
+      "hook": "Here is the quick breakdown of rysslands utrikesminister.",
+      "format": "short_explainer",
+      "category": "politics",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Dödliga ryska attacker i Ukraina",
+      "hook": "Here is the quick breakdown of Dödliga ryska attacker i Ukraina.",
+      "format": "short_explainer",
+      "category": "technology",
       "platform": "shorts"
     }
   ]
