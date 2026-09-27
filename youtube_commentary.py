@@ -20,7 +20,7 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 # Tight clips keep the countdown moving and leave room for a genuinely fast voice.
-CLIP_SECONDS = max(2.0, float(os.getenv("YOUTUBE_CLIP_SECONDS", "2.2")))
+CLIP_SECONDS = max(2.4, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.0")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "8"))
 DOWNLOAD_TOTAL_TIMEOUT = int(os.getenv("YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT", "15"))
 MAX_DOWNLOAD_BYTES = int(os.getenv("YOUTUBE_MAX_DOWNLOAD_BYTES", "80000000"))
@@ -28,8 +28,8 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
-AI_SELECTOR_CANDIDATES = max(10, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "10")))
-VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 4, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "40")))
+AI_SELECTOR_CANDIDATES = max(12, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "24")))
+VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 6, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "80")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
@@ -543,7 +543,7 @@ def _gemini_rank_sources(sources, theme):
     prompt = (
         f"You are a strict casting editor for a viral YouTube Top-10 {theme} listicle. "
         "Score candidates only from metadata. Prefer footage clearly matching the promised event "
-        "and likely to work in a 2.5-second vertical clip. Reject generic landscapes, wildlife, "
+        "and likely to work in a 3.0-second vertical clip. Reject generic landscapes, wildlife, "
         "portraits, calm stock footage, and unrelated clips. Return ONLY JSON like "
         "[{\"id\":0,\"score\":0,\"reason\":\"short\"}]. "
         f"Candidates: {json.dumps(candidates, ensure_ascii=False)}"
@@ -651,10 +651,10 @@ def _rank_and_diversify(sources, theme):
         if identity in used_keys:
             return False
         provider = item.get("provider", "unknown")
-        if provider_counts.get(provider, 0) >= max(8, CLIPS_PER_VIDEO):
+        if provider_counts.get(provider, 0) >= 3:
             return False
         bucket = _topic_bucket(item)
-        if strict_topics and bucket_counts.get(bucket, 0) >= 2:
+        if strict_topics and bucket_counts.get(bucket, 0) >= 1:
             return False
         chosen.append(item)
         used_keys.add(identity)
@@ -663,11 +663,11 @@ def _rank_and_diversify(sources, theme):
         return True
 
     for item in ranked:
-        if len(chosen) >= CLIPS_PER_VIDEO * 4:
+        if len(chosen) >= CLIPS_PER_VIDEO * 6:
             break
         consider(item, strict_topics=True)
 
-    if len(chosen) < CLIPS_PER_VIDEO * 2:
+    if len(chosen) < CLIPS_PER_VIDEO * 3:
         for item in ranked:
             if len(chosen) >= CLIPS_PER_VIDEO * 4:
                 break
@@ -843,7 +843,7 @@ def create_youtube_commentary_video(opportunity, index):
         query = "scariest moments caught on camera"
     elif theme == "wildest":
         query = "wildest moments caught on camera"
-    search_limit = max(CLIPS_PER_VIDEO * 2, 20)
+    search_limit = max(CLIPS_PER_VIDEO * 4, 40)
     if theme == "funniest":
         # Search for actual human-action moments, not generic "funny" stock.
         # The old broad queries produced unrelated animals/stock footage in Run 406.
@@ -932,7 +932,7 @@ def create_youtube_commentary_video(opportunity, index):
             item["_search_query"] = search_query
             item["_match_score"] = _source_score(item, query)
             sources.append(item)
-        if wave_index < len(queries) and len(sources) >= CLIPS_PER_VIDEO * 12:
+        if wave_index < len(queries) and len(sources) >= CLIPS_PER_VIDEO * 24:
             break
 
     # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
@@ -956,7 +956,7 @@ def create_youtube_commentary_video(opportunity, index):
         item for item in replacement_pool
         if item.get("_match_score", -999) >= 0
     ]
-    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 12, 120)]
+    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 24, 240)]
 
     clips, manifest = [], []
     visual_qc_count = 0
