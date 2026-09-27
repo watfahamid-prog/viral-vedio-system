@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "runs": 84,
+  "runs": 85,
   "videos": 166,
   "qc_failures": {
     "missing_audio": 6,
@@ -46,29 +46,8 @@
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-27T16:11:59.207967+00:00",
+  "last_updated": "2026-09-27T16:21:45.525419+00:00",
   "creative_history": [
-    {
-      "trend": "sergej lavrov",
-      "hook": "Here is the quick breakdown of sergej lavrov.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "presidents cup 2026",
-      "hook": "Here is the quick breakdown of presidents cup 2026.",
-      "format": "short_explainer",
-      "category": "politics",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
     {
       "trend": "funniest moments caught on camera",
       "hook": "Here is the quick breakdown of funniest moments caught on camera.",
@@ -557,6 +536,27 @@
       "hook": "Here is the quick breakdown of Avråder från apparna: ”Tar bort charmen”.",
       "format": "short_explainer",
       "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
       "platform": "shorts"
     },
     {
