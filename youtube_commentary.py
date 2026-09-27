@@ -738,10 +738,18 @@ def _listicle_commentary(number, opportunity, source):
                 "The next moment changes everything.",
             ])
     else:
+        # Trend-specific fallback: mention the actual clip/topic instead of
+        # recycling the same three generic sentences.
+        detail = _short_detail(source)
+        topic_words = [w for w in re.findall(r"[A-Za-z0-9ÅÄÖåäö0-9'’\-]+", detail) if len(w) >= 4]
+        subject = " ".join(topic_words[:4]) or "this moment"
         line = pick([
-            "This one takes a surprising turn.",
-            "The key moment happens right here.",
-            "Watch the reaction to this.",
+            f"Watch what happens with {subject}.",
+            f"This is the moment {subject} takes an unexpected turn.",
+            f"Look closely at {subject—the key moment happens fast.",
+            f"That is why {subject} made the list.",
+            f"The detail to watch here is {subject}.",
+            f"Things change quickly once {subject} appears.",
         ])
 
     prefix = "And this is number one." if number == 1 else f"Number {number}."
@@ -842,11 +850,17 @@ def create_youtube_commentary_video(opportunity, index):
             "wild crowd reactions and public moments",
         ]
     else:
+        # For live trends, search the actual trend first. The old implementation
+        # ignored the trend and repeatedly searched generic reaction stock.
+        clean_query = re.sub(r"[^A-Za-z0-9ÅÄÖåäö0-9'’\- ]+", " ", str(query)).strip()
+        clean_query = re.sub(r"\s+", " ", clean_query)[:100]
         queries = [
-            f"{query} people reaction",
-            f"{query} real life moments",
-            "unexpected people moments caught on camera",
-            "interesting real life reactions",
+            f"{clean_query} real footage",
+            f"{clean_query} people reaction",
+            f"{clean_query} caught on camera",
+            f"{clean_query} viral moment",
+            f"{clean_query} news footage",
+            f"{clean_query} real life moment",
         ]
 
     fallback_queries = {
