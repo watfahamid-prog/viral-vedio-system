@@ -581,6 +581,40 @@ def _gemini_rank_sources(sources, theme):
 
 
 
+def _gemini_post(payload, timeout=30, attempts=4):
+    """Call Gemini with bounded backoff for transient 429/5xx responses."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            response = requests.post(
+                url,
+                headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+                json=payload,
+                timeout=timeout,
+            )
+            if response.status_code == 429 or response.status_code >= 500:
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    delay = float(retry_after) if retry_after else min(12, 2 ** attempt)
+                except ValueError:
+                    delay = min(12, 2 ** attempt)
+                print(f"Gemini transient HTTP {response.status_code}; retrying in {delay:.1f}s.")
+                time.sleep(delay)
+                continue
+            response.raise_for_status()
+            return response
+        except requests.RequestException as error:
+            last_error = error
+            if attempt + 1 < attempts:
+                delay = min(12, 2 ** attempt)
+                print(f"Gemini request error; retrying in {delay}s: {error}")
+                time.sleep(delay)
+    if last_error:
+        raise last_error
+    raise RuntimeError("Gemini request failed after retries")
+
+
 def _gemini_expand_search_queries(theme, shard_index):
     """Ask Gemini for fresh, concrete search queries so research does not stagnate."""
     if (
@@ -673,10 +707,8 @@ def _gemini_visual_judge(path, theme, source):
             "Return ONLY JSON: {\"relevant\":true/false,\"score\":0-100,\"reason\":\"short\"}. "
             f"Metadata: {json.dumps({'title': source.get('title',''), 'description': source.get('description','')[:300]}, ensure_ascii=False)}"
         )
-        response = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
-            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
-            json={"contents": [{"parts": [
+        response = _gemini_post(
+            {"contents": [{"parts": [
                 {"text": prompt},
                 {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
             ]}], "generationConfig": {"temperature": 0.0, "maxOutputTokens": 120}},
