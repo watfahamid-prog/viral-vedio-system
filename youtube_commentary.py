@@ -509,12 +509,11 @@ def _rank_and_diversify(sources, theme):
             continue
         title = re.sub(r"[^a-z0-9]+", " ", str(item.get("title", "")).lower()).strip()
         description = re.sub(r"[^a-z0-9]+", " ", str(item.get("description", "")).lower()).strip()
-        words = set((title + " " + description).split())
-        key = " ".join(sorted(words & set((
-            "fail", "reaction", "people", "crowd", "street", "accident", "prank",
-            "crash", "stunt", "scream", "night", "ghost", "horror", "funny", "unexpected"
-        ))))
-        identity = (title[:100], key)
+        source_id = str(item.get("source_url") or item.get("url") or "").strip()
+        # Deduplicate by the actual source, not repeated metadata words.
+        # Stock APIs often return many different clips with nearly identical
+        # titles/descriptions; collapsing them was starving the final QC loop.
+        identity = source_id or (title[:140], description[:80])
         if identity in used_keys:
             continue
         provider = item.get("provider", "unknown")
@@ -700,7 +699,8 @@ def create_youtube_commentary_video(opportunity, index):
         item for item in replacement_pool
         if item.get("_match_score", -999) >= 10
     ]
-    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 4, 40)]
+    # Keep a large fallback pool because duration/download/visual QC happens later.
+    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 8, 80)]
 
     clips, manifest = [], []
     visual_qc_count = 0
