@@ -539,9 +539,16 @@ def _listicle_commentary(number, opportunity, source):
     }
     pool = reactions.get(theme, reactions["most interesting"])
     reaction = pool[(10 - number) % len(pool)]
+    details = {
+        "funniest": "Watch how this one ends.",
+        "scariest": "Keep watching the background closely.",
+        "wildest": "Watch how quickly this escalates.",
+        "most interesting": "Watch what happens next.",
+    }
+    detail = details.get(theme, details["most interesting"])
     if number == 1:
         reaction = "This is number one!"
-    return f"Number {number}! {reaction}"
+    return f"Number {number}! {reaction} {detail}"
 
 
 def _tts(text, path):
@@ -779,8 +786,8 @@ def create_youtube_commentary_video(opportunity, index):
         subprocess.run([
             "ffmpeg", "-y", "-i", str(combined), "-i", audio_path,
             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
-            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-b:a", "128k",
-            "-shortest", "-movflags", "+faststart", str(final)
+            "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,apad=pad_dur=2", "-ar", "48000", "-b:a", "128k",
+            "-t", f"{TITLE_SECONDS + (CLIPS_PER_VIDEO * CLIP_SECONDS):.3f}", "-movflags", "+faststart", str(final)
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
         mode = "ai_voice"
     else:
