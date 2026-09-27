@@ -27,8 +27,8 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
-AI_SELECTOR_CANDIDATES = max(8, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "15")))
-VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 2, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "20")))
+AI_SELECTOR_CANDIDATES = max(10, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "10")))
+VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 2, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "10")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
@@ -444,7 +444,7 @@ def _gemini_rank_sources(sources, theme):
                 ai_score = max(0, min(100, int(by_id[i].get("score", 0))))
                 source["_ai_score"] = ai_score
                 source["_ai_reason"] = str(by_id[i].get("reason", ""))[:180]
-                source["_match_score"] = source.get("_match_score", 0) + ai_score * 0.55
+                local_score = source.get("_match_score", 0)\n                source["_match_score"] = local_score * 0.25 + ai_score * 0.75
         print(f"YouTube AI selector: Gemini judged {len(by_id)} candidates for {theme}.")
     except Exception as error:
         print(f"YouTube AI selector unavailable; using local selector: {error}")
@@ -457,7 +457,7 @@ def _visual_preflight(path, duration):
     sample_dir.mkdir(exist_ok=True)
     frames = []
     try:
-        for pct in (0.25, 0.6):
+        for pct in (0.2, 0.45, 0.7, 0.9):
             frame = sample_dir / f"qc_{int(pct * 100)}.jpg"
             subprocess.run([
                 "ffmpeg", "-y", "-loglevel", "error", "-ss", str(max(0.1, duration * pct)),
@@ -472,7 +472,7 @@ def _visual_preflight(path, duration):
         diffs = []
         for a, b in zip(images, images[1:]):
             diffs.append(sum(abs(x - y) for x, y in zip(a.getdata(), b.getdata())) / (160 * 160))
-        if max(means) - min(means) < 1.5 and max(diffs, default=0) < 1.0:
+        if max(means) - min(means) < 1.5 and max(diffs, default=0) < 1.0:\n            return False, "frozen or nearly static footage"
             return False, "nearly frozen footage"
     except Exception as error:
         return False, f"visual QC error: {error}"
@@ -573,11 +573,11 @@ def _tts(text, path):
             print(f"YouTube TTS: ElevenLabs failed; falling back to edge-tts: {error}")
 
     try:
-        if TTS_ENGINE in {"auto", "edge"}:
+        if TTS_ENGINE in {"auto", "edge", "edge-tts"}:
             import asyncio
             import edge_tts
             async def make():
-                await edge_tts.Communicate(text, TTS_VOICE, rate="+35%").save(str(path))
+                await edge_tts.Communicate(text, TTS_VOICE, rate="+45%").save(str(path))
             asyncio.run(make())
             print("YouTube TTS: fast edge-tts fallback generated successfully.")
             return str(path)
@@ -664,7 +664,7 @@ def create_youtube_commentary_video(opportunity, index):
     # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
     locally_ranked = _rank_and_diversify(sources, theme)
     ranked_all = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
-    ai_pool = locally_ranked[:AI_SELECTOR_CANDIDATES]
+    ai_pool = _rank_and_diversify(ranked_all, theme)[:AI_SELECTOR_CANDIDATES]
     judged_pool = _gemini_rank_sources(ai_pool, theme)
     # Keep the strong local candidates that Gemini did not judge as a replacement
     # pool. A temporary Gemini 429 or a visual/duration rejection must never leave
@@ -676,7 +676,7 @@ def create_youtube_commentary_video(opportunity, index):
     ]
     eligible_replacements = [
         item for item in replacement_pool
-        if item.get("_match_score", -999) >= 8
+        if item.get("_match_score", -999) >= 10
     ]
     sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 2, 20)]
 
@@ -685,7 +685,7 @@ def create_youtube_commentary_video(opportunity, index):
     for clip_index, source in enumerate(sources):
         if len(clips) >= CLIPS_PER_VIDEO:
             break
-        if source.get("_match_score", -999) < 8:
+        if source.get("_match_score", -999) < 10:
             print(f"YouTube relevance QC rejected source: {source.get('title','unknown')} (score={source.get('_match_score', -999):.1f})")
             continue
         raw = root / f"source_{clip_index}_{_safe_name(source['title'])}.mp4"
