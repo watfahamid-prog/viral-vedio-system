@@ -146,6 +146,7 @@ jobs:
           GEMINI_ORIGINALITY_ENABLED: "true"
           GEMINI_MODEL: "gemini-3.8-flash"
           GEMINI_VISUAL_QC_ENABLED: "true"
+          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "8"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "local"
           AI_VIDEO_ENABLED: "true"
