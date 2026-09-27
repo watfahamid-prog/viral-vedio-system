@@ -746,7 +746,7 @@ def _listicle_commentary(number, opportunity, source):
         line = pick([
             f"Watch what happens with {subject}.",
             f"This is the moment {subject} takes an unexpected turn.",
-            f"Look closely at {subject—the key moment happens fast.",
+            f"Look closely at {subject} — the key moment happens fast.",
             f"That is why {subject} made the list.",
             f"The detail to watch here is {subject}.",
             f"Things change quickly once {subject} appears.",
