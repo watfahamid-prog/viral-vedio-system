@@ -218,9 +218,9 @@ def _download(url, path):
                 if content_length and content_length.isdigit() and int(content_length) > MAX_DOWNLOAD_BYTES:
                     raise ValueError(f"source too large: {int(content_length) / 1_000_000:.1f} MB")
                 if response.status_code == 429:
-                    # A source-level 429 should not stall or kill the whole listicle.
-                    # Skip this candidate immediately and let the next provider/source win.
-                    raise RuntimeError("source rate-limited (429)")
+                    # Treat rate limiting as a normal candidate rejection.
+                    # The caller already catches RequestException and moves on.
+                    raise requests.HTTPError("source rate-limited (429)")
                 response.raise_for_status()
                 with open(path, "wb") as handle:
                     downloaded = 0
