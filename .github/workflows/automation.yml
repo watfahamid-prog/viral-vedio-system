@@ -33,7 +33,7 @@ jobs:
       matrix:
         index: [1, 2, 3]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 22
     steps:
       - name: Get the code
         uses: actions/checkout@v5
@@ -171,10 +171,11 @@ jobs:
           YOUTUBE_COMMENTARY_MODE: "voice"
           YOUTUBE_CLIPS_PER_VIDEO: "10"
           YOUTUBE_CLIP_SECONDS: "4"
-          YOUTUBE_CLIP_TIMEOUT: "10"
+          YOUTUBE_CLIP_TIMEOUT: "8"
+          YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT: "15"
           YOUTUBE_MAX_DOWNLOAD_BYTES: "80000000"
-          YOUTUBE_AI_SELECTOR_CANDIDATES: "12"
-          YOUTUBE_VISUAL_QC_LIMIT: "20"
+          YOUTUBE_AI_SELECTOR_CANDIDATES: "10"
+          YOUTUBE_VISUAL_QC_LIMIT: "12"
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           INTERNET_ARCHIVE_ENABLED: "false"
@@ -191,13 +192,13 @@ jobs:
           set +e
           rm -rf output
           mkdir -p output
-          timeout --signal=TERM --kill-after=45s 18m python main.py
+          timeout --signal=TERM --kill-after=30s 12m python main.py
           status=$?
           if [ "$status" -ne 0 ]; then
             echo "Production attempt failed or timed out; starting one clean bounded retry."
             rm -rf output
             mkdir -p output
-            timeout --signal=TERM --kill-after=45s 8m python main.py
+            timeout --signal=TERM --kill-after=30s 6m python main.py
             status=$?
           fi
           exit "$status"
