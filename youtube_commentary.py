@@ -649,8 +649,30 @@ def create_youtube_commentary_video(opportunity, index):
             "interesting real life reactions",
         ]
 
+    fallback_queries = {
+        "funniest": [
+            "funny moments people", "funny fails people", "people reacting funny",
+            "unexpected funny moments", "human reaction comedy", "funny accident reaction",
+            "awkward moments people", "surprise reaction people",
+        ],
+        "scariest": [
+            "scary moments people", "creepy moments caught camera", "people scared reaction",
+            "night scary encounter", "strange unexplained moment", "eerie people reaction",
+            "haunted scary footage", "unexpected scary event",
+        ],
+        "wildest": [
+            "wild moments people", "crazy moments caught camera", "unexpected accident reaction",
+            "extreme stunt reaction", "shocking event people", "dramatic near miss",
+            "chaotic crowd moment", "unexpected real life event",
+        ],
+        "most interesting": [
+            "interesting people moments", "unexpected people reaction", "real life surprising moments",
+            "people caught on camera", "unusual real life event", "interesting reaction people",
+        ],
+    }
+    search_waves = queries + fallback_queries.get(theme, [])
     sources, seen = [], set()
-    for search_query in queries:
+    for wave_index, search_query in enumerate(search_waves):
         try:
             candidates = _search_sources(search_query, limit=search_limit)
         except Exception as error:
@@ -661,13 +683,15 @@ def create_youtube_commentary_video(opportunity, index):
             if not key or key in seen:
                 continue
             seen.add(key)
+            item["_search_query"] = search_query
             item["_match_score"] = _source_score(item, query)
             sources.append(item)
-        if len(sources) >= CLIPS_PER_VIDEO * 6:
+        if wave_index < len(queries) and len(sources) >= CLIPS_PER_VIDEO * 6:
             break
 
     # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
     locally_ranked = _rank_and_diversify(sources, theme)
+    ranked_all = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
     ai_pool = locally_ranked[:AI_SELECTOR_CANDIDATES]
     judged_pool = _gemini_rank_sources(ai_pool, theme)
     # Keep the strong local candidates that Gemini did not judge as a replacement
@@ -675,10 +699,10 @@ def create_youtube_commentary_video(opportunity, index):
     # us with only the small AI shortlist.
     judged_keys = {item.get("source_url") or item.get("url") for item in judged_pool}
     replacement_pool = [
-        item for item in locally_ranked
+        item for item in ranked_all
         if (item.get("source_url") or item.get("url")) not in judged_keys
     ]
-    sources = _rank_and_diversify(judged_pool + replacement_pool, theme)
+    sources = judged_pool + replacement_pool
 
     clips, manifest = [], []
     visual_qc_count = 0
@@ -717,7 +741,8 @@ def create_youtube_commentary_video(opportunity, index):
     if len(clips) < CLIPS_PER_VIDEO:
         raise RuntimeError(
             f"YouTube video #{index} produced only {len(clips)} usable clips; need {CLIPS_PER_VIDEO}. "
-            "The expanded replacement pool was exhausted while preserving visual/relevance QC."
+            f"Searched {len(search_waves)} queries and evaluated {len(sources)} candidates; "
+            "the remaining candidates failed duration/download/visual/relevance QC."
         )
 
     title_card = root / "title_card.mp4"
