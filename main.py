@@ -25,10 +25,19 @@ def main():
         raise RuntimeError(f"Invalid RUN_MODE: {run_mode}")
     print(f"RUN_MODE={run_mode}")
 
-    result = run_pipeline()
+    # The YouTube lane uses fixed evergreen listicle topics and does not need
+    # the expensive trend-scan stage. Normal videos still run the full scanner.
+    if run_mode in {"normal", "both"}:
+        result = run_pipeline()
+    else:
+        result = {
+            "opportunities": [],
+            "trend_count": 0,
+            "videos": [],
+        }
     result["videos"] = []
 
-    if not result["opportunities"]:
+    if run_mode in {"normal", "both"} and not result["opportunities"]:
         raise RuntimeError("No trend opportunities were found. Nothing was generated.")
 
     # Normal videos are generated only in normal/both mode.
