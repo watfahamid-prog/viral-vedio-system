@@ -62,7 +62,7 @@ jobs:
           ZERO_COST_MODE: "true"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: "gemini-3.8-flash"
-          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "6"
+          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "18"
         run: |
           set -euo pipefail
           if [ "${ZERO_COST_MODE:-false}" = "true" ]; then
@@ -146,7 +146,7 @@ jobs:
           GEMINI_ORIGINALITY_ENABLED: "true"
           GEMINI_MODEL: "gemini-3.8-flash"
           GEMINI_VISUAL_QC_ENABLED: "true"
-          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "6"
+          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "18"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VIDEO_ENGINE: "local"
           AI_VIDEO_ENABLED: "true"
@@ -177,8 +177,8 @@ jobs:
           YOUTUBE_CLIP_TIMEOUT: "8"
           YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT: "15"
           YOUTUBE_MAX_DOWNLOAD_BYTES: "80000000"
-          YOUTUBE_AI_SELECTOR_CANDIDATES: "60"
-          YOUTUBE_VISUAL_QC_LIMIT: "80"
+          YOUTUBE_AI_SELECTOR_CANDIDATES: "80"
+          YOUTUBE_VISUAL_QC_LIMIT: "100"
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           INTERNET_ARCHIVE_ENABLED: "false"
