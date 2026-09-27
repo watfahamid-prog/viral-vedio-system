@@ -603,10 +603,14 @@ def create_youtube_commentary_video(opportunity, index):
         ]
     elif theme == "scariest":
         queries = [
-            "scary people caught on camera",
-            "creepy unexpected moments people",
-            "real life horror reactions",
-            "eerie unexplained people night",
+            "scared people caught on camera",
+            "ghost caught on camera",
+            "haunted house scary footage",
+            "creepy night encounter people",
+            "security camera scary incident",
+            "people screaming scary moment",
+            "eerie unexplained footage",
+            "horror reaction caught camera",
         ]
     elif theme == "wildest":
         queries = [
