@@ -168,6 +168,7 @@ jobs:
           ELEVENLABS_VOICE_ID: "JBFqnCBsd6RMkjVDRZzb"
           ELEVENLABS_MODEL: "eleven_flash_v2_5"
           YOUTUBE_ENABLED: "true"
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           YOUTUBE_COMMENTARY_MODE: "voice"
           YOUTUBE_CLIPS_PER_VIDEO: "10"
           YOUTUBE_CLIP_SECONDS: "2.5"
