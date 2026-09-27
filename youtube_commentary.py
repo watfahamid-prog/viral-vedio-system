@@ -922,7 +922,7 @@ def _gemini_generate_commentary(manifest, theme):
         f"\nVISUAL EVIDENCE:\n{json.dumps(candidates, ensure_ascii=False)}"
     );
 
-    try {
+    try:
         drafts = call_gemini(writer_prompt)
         edited = call_gemini(
             editor_prompt + f"\nDRAFT REACTIONS:\n{json.dumps(drafts, ensure_ascii=False)}",
