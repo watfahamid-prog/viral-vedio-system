@@ -86,7 +86,16 @@ def main():
     youtube_outputs = []
 
     if run_mode in {"youtube", "both"}:
-        for youtube_index, topic in enumerate(youtube_topics, 1):
+        # The YouTube lane can be sharded across three independent GitHub Actions
+        # jobs. YOUTUBE_INDEX selects exactly one topic per job, preventing the
+        # three expensive listicle renders from blocking each other.
+        requested_index = int(os.getenv("YOUTUBE_INDEX", "0") or "0")
+        if requested_index in {1, 2, 3}:
+            selected_topics = [(requested_index, youtube_topics[requested_index - 1])]
+        else:
+            selected_topics = list(enumerate(youtube_topics, 1))
+
+        for youtube_index, topic in selected_topics:
             youtube_opportunity = {
                 "trend": topic,
                 "source": "evergreen_listicle",
@@ -121,9 +130,11 @@ def main():
                     "error": str(error),
                 })
 
-        if len(youtube_outputs) != 3:
+        expected_youtube = len(selected_topics)
+        if len(youtube_outputs) != expected_youtube:
             raise RuntimeError(
-                f"YouTube quality gate failed: expected exactly 3 listicles, created {len(youtube_outputs)}"
+                f"YouTube quality gate failed: expected {expected_youtube} listicle(s), "
+                f"created {len(youtube_outputs)}"
             )
 
     result["youtube_videos"] = youtube_outputs
