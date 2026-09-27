@@ -281,13 +281,12 @@ def _make_clip(source, destination, start, duration, rank=None):
     ]
     if rank is not None:
         filters.append(_drawtext_filter(f"#{rank}", 86, "h*0.08", box=True))
-        filters.append(_drawtext_filter("TOP 10", 30, "h*0.14", box=False))
     subprocess.run([
         "ffmpeg", "-y", "-ss", str(start), "-i", str(source),
         "-t", str(duration), "-vf", ",".join(filters),
         "-r", "30", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-preset", "veryfast", "-movflags", "+faststart", str(destination)
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=45)
 
 
 def _make_title_card(title, destination):
@@ -305,7 +304,7 @@ def _make_title_card(title, destination):
         "-t", f"{TITLE_SECONDS:.3f}", "-vf", ",".join(filters),
         "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
         "-movflags", "+faststart", str(destination)
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
 
 
 def _short_detail(source):
