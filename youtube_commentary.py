@@ -50,6 +50,17 @@ def _clean(value):
     return re.sub(r"<[^>]+>", "", str(value or "")).strip()
 
 
+YOUTUBE_UNRELATED_TERMS = (
+    "marine","marines","military","soldier","soldiers","army","navy","war","warfare",
+    "battlefield","battle","weapon","weapons","gun","politics","political","election",
+    "president","parliament","news","documentary","history","historical","interview",
+    "lecture","tutorial","weather","wildlife","safari","zoo","nature documentary",
+)
+def _youtube_topic_is_unrelated(text, theme):
+    if theme not in {"funniest","scariest","wildest"}: return False
+    normalized=re.sub(r"[^a-z0-9 ]+"," ",str(text).lower())
+    return any(re.search(rf"\b{re.escape(term)}\b",normalized) for term in YOUTUBE_UNRELATED_TERMS)
+
 def _commons_video_search(query, limit=8):
     params = {
         "action": "query", "generator": "search",
@@ -629,9 +640,12 @@ def _gemini_expand_search_queries(theme, shard_index):
         return []
     prompt = (
         f"Create 10 fresh search-engine queries for a YouTube Top-10 {theme} listicle. "
-        "The goal is real human-action footage, not generic stock. Make every query meaningfully "
-        "different: different situations, locations, reactions, timing, sports/public mishaps, "
-        "security-camera style moments, etc. Never ask for copyrighted movie/TV clips. "
+        "The ONLY subject is short real human-action moments matching the theme. "
+        "For funniest: harmless human fails, awkward moments, instant regrets, funny reactions, "
+        "sports/public mishaps and perfect timing. Never search for stories, documentaries, news, "
+        "military/marines/war, history, politics, animals, scenery, or generic subjects. "
+        "Every query must contain a strong theme signal such as funny, fail, reaction, hilarious, "
+        "scary, creepy, wild, crazy, shocking, caught on camera, or instant regret. "
         "Return ONLY a JSON array of 10 short search queries. Do not number them."
     )
     try:
@@ -652,7 +666,12 @@ def _gemini_expand_search_queries(theme, shard_index):
         for query in queries:
             query = re.sub(r"\s+", " ", str(query)).strip()
             if 12 <= len(query) <= 120:
-                cleaned.append(query)
+                lower=query.lower()
+                signals={"funniest":("funny","fail","fails","hilarious","reaction","awkward","instant regret"),
+                         "scariest":("scary","creepy","horror","ghost","haunted","scream"),
+                         "wildest":("wild","crazy","insane","shocking","extreme","near miss","stunt","crash")}.get(theme,())
+                if any(x in lower for x in signals) and not _youtube_topic_is_unrelated(lower,theme):
+                    cleaned.append(query)
         print(f"YouTube AI research planner: generated {len(cleaned)} fresh queries for shard {shard_index}.")
         return list(dict.fromkeys(cleaned))[:10]
     except Exception as error:
@@ -706,8 +725,10 @@ def _gemini_visual_judge(path, theme, source):
             f"You are the final visual casting judge for a YouTube Top-10 {theme} listicle. "
             "Judge the actual frame, not the filename. Decide whether this footage visibly shows "
             "a real event/moment matching the promised theme and whether it is likely to be "
-            "interesting/funny/scary/wild in a 3-second Short. Reject generic stock, scenery, "
-            "animals for a human-funny list, static shots, posed portraits, and unrelated footage. "
+            "interesting/funny/scary/wild in a 3-second Short. This is NOT a documentary or story video. "
+            "Reject military/marines/war, politics, news, history, interviews, lectures, scenery, "
+            "generic stock, animals for a human-funny list, static shots, posed portraits, and unrelated footage. "
+            "For funny, the frame should visibly contain a human fail, reaction, awkward moment, mishap, surprise, or strong comedic timing. "
             "Return ONLY JSON: {\"relevant\":true/false,\"score\":0-100,\"reason\":\"short\"}. "
             f"Metadata: {json.dumps({'title': source.get('title',''), 'description': source.get('description','')[:300]}, ensure_ascii=False)}"
         )
@@ -757,13 +778,14 @@ def _gemini_generate_commentary(manifest, theme):
             "visual_judgement": str(source.get("_visual_ai_reason", ""))[:160],
         })
     prompt = (
-        f"Write the narration for a fast YouTube Top-10 {theme} Short. "
+        f"Write 10 short reactions for a fast YouTube Top-10 {theme} Short. "
         "Return ONLY a JSON array of exactly 10 strings in clip order. "
-        "Each line must be 7-16 spoken words, sound like a human reacting to what is visibly happening, "
-        "and be specific to that clip. NEVER say 'number one', 'number two', '#1', '#2', 'rank', "
-        "'top ten', 'coming in', 'at number', or any countdown phrase. Do not introduce the list. "
-        "Do not repeat the same sentence pattern. Avoid claims not supported by the metadata. "
-        "Use punchy natural language and make the strongest moments sound exciting without fake facts. "
+        "You are NOT a storyteller, explainer, narrator, or documentary voice. "
+        "Each line is one standalone reaction to the exact clip. Do not describe a sequence, setup, background, motive, or what happens before/after. "
+        "Do not connect clips. Avoid story words like first, then, next, after, before, meanwhile, eventually, suddenly. "
+        "Use 5-12 spoken words, ideally 6-10. Be punchy, funny, surprised, impressed, or shocked based only on the visible moment. "
+        "Style examples: 'That timing could not have been worse.' 'Bro really committed to that move.' "
+        "'The reaction makes this ten times better.' Never use countdown/rank language or invent facts. "
         f"Clips: {json.dumps(candidates, ensure_ascii=False)}"
     )
     try:
@@ -783,11 +805,12 @@ def _gemini_generate_commentary(manifest, theme):
         if not isinstance(lines, list) or len(lines) != len(manifest):
             raise ValueError("Gemini commentary returned the wrong number of lines")
         cleaned = []
-        banned = re.compile(r"\b(number|rank|top\s*10|coming in|at number|countdown)\b", re.I)
+        banned = re.compile(r"\b(number|rank|top\s*10|coming in|at number|countdown|first|then|next|after|before|meanwhile|eventually|suddenly)\b", re.I)
         for line in lines:
             line = re.sub(r"\s+", " ", str(line)).strip()
-            if not line or banned.search(line):
-                raise ValueError("Gemini commentary contained countdown wording")
+            words=re.findall(r"[A-Za-z0-9']+",line)
+            if not line or banned.search(line) or not (5 <= len(words) <= 14):
+                raise ValueError("Gemini commentary failed reaction-only validation")
             cleaned.append(line)
         print(f"YouTube AI scriptwriter: generated {len(cleaned)} clip-specific lines.")
         return cleaned
@@ -1220,7 +1243,10 @@ def create_youtube_commentary_video(opportunity, index):
         if not _strict_source_gate(source, theme):
             print(f"YouTube strict semantic QC rejected source: {source.get('title','unknown')}")
             continue
-        source_text = f"{source.get('title','')} {source.get('description','')}".lower()
+        source_text=f"{source.get('title','')} {source.get('description','')} {source.get('_search_query','')}".lower()
+        if _youtube_topic_is_unrelated(source_text,theme):
+            print(f"YouTube topic QC rejected unrelated subject: {source.get('title','unknown')}")
+            continue
         # Keep this second visual-text pass for defense in depth.
         if any(term in source_text for term in ("astronomy", "galaxy", "cosmos", "comet", "asteroid", "milky way", "live wallpaper")):
             print(f"YouTube visual semantic QC rejected generic source: {source.get('title','unknown')}")
@@ -1363,7 +1389,7 @@ def create_youtube_commentary_video(opportunity, index):
             "selection_engine": "AI query planner -> multi-provider research -> persistent freshness/history -> shard diversity -> strict semantic gate -> local relevance -> Gemini metadata+vision judge -> visual preflight",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
             "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT, "gemini_visual_qc_limit": GEMINI_VISUAL_QC_LIMIT, "freshness_history": True, "ai_search_planner": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY and os.getenv("GEMINI_ENABLED", "true").lower() == "true"),
-            "commentary_style": "ai_scripted_clip_specific_fast_reactive_no_countdown", "voice_rate": "edge +75% / ElevenLabs 1.45x",
+            "commentary_style": "ai_scripted_standalone_reaction_only_no_storytelling_no_countdown", "voice_rate": "edge +75% / ElevenLabs 1.45x",
         },
         "sources": manifest,
         "license_policy": (
