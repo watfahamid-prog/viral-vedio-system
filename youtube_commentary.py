@@ -21,7 +21,10 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 # Tight clips keep the countdown moving and leave room for a genuinely fast voice.
-CLIP_SECONDS = max(2.4, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.0")))
+CLIP_SECONDS = max(2.5, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.0")))
+# Final ranking uses actual visual evidence, not discovery order.
+FINAL_RANK_VISUAL_WEIGHT = max(0.0, min(1.0, float(os.getenv("YOUTUBE_FINAL_RANK_VISUAL_WEIGHT", "0.70"))))
+FINAL_RANK_LOCAL_WEIGHT = 1.0 - FINAL_RANK_VISUAL_WEIGHT
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "8"))
 DOWNLOAD_TOTAL_TIMEOUT = int(os.getenv("YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT", "15"))
 MAX_DOWNLOAD_BYTES = int(os.getenv("YOUTUBE_MAX_DOWNLOAD_BYTES", "80000000"))
@@ -1360,13 +1363,15 @@ def create_youtube_commentary_video(opportunity, index):
             if not visual_ok:
                 print(f"YouTube visual QC rejected source: {source.get('title','unknown')} ({visual_reason})")
                 continue
-            rank = CLIPS_PER_VIDEO - len(clips)
-            _make_clip(raw, segment, start, CLIP_SECONDS, rank=rank)
-            clips.append(segment)
+            # Keep source/timestamp so clips can be ranked after visual AI review.
             clean_source = dict(source)
             clean_source.pop("_match_score", None)
             clean_source["_selection_score"] = source.get("_match_score", 0)
+            clean_source["_raw_path"] = str(raw)
+            clean_source["_clip_start"] = start
+            clean_source["_clip_segment"] = str(segment)
             manifest.append(clean_source)
+            clips.append(segment)
         except (requests.RequestException, subprocess.CalledProcessError, ValueError, OSError) as error:
             print(f"YouTube clip skipped: {source.get('title','unknown')} ({source.get('provider','unknown')}): {error}")
             continue
@@ -1377,6 +1382,50 @@ def create_youtube_commentary_video(opportunity, index):
             f"Searched {len(search_waves)} queries and evaluated {len(sources)} candidates; "
             "the remaining candidates failed duration/download/visual/relevance QC."
         )
+
+    # FINAL QUALITY RANKING: strongest accepted clip becomes #1.
+    def _final_rank_score(source):
+        visual = float(source.get("_visual_ai_score", 0) or 0)
+        local = float(source.get("_selection_score", 0) or 0)
+        local_norm = max(0.0, min(100.0, 50.0 + local))
+        if visual > 0:
+            return FINAL_RANK_VISUAL_WEIGHT * visual + FINAL_RANK_LOCAL_WEIGHT * local_norm
+        return local_norm
+
+    ranked_manifest = sorted(
+        manifest,
+        key=lambda source: (
+            _final_rank_score(source),
+            float(source.get("_visual_ai_score", 0) or 0),
+            float(source.get("_selection_score", 0) or 0),
+        ),
+        reverse=True,
+    )
+
+    # Keep adjacent ranks visually diverse when possible.
+    reordered = []
+    remaining = list(ranked_manifest)
+    while remaining:
+        if not reordered:
+            reordered.append(remaining.pop(0))
+            continue
+        previous_bucket = _topic_bucket(reordered[-1])
+        different = [x for x in remaining if _topic_bucket(x) != previous_bucket]
+        pool = different if different else remaining
+        chosen = max(pool, key=_final_rank_score)
+        remaining.remove(chosen)
+        reordered.append(chosen)
+
+    manifest = list(reversed(reordered))
+    rerendered_clips = []
+    for position, source in enumerate(manifest, start=1):
+        segment = root / f"ranked_segment_{position}.mp4"
+        _make_clip(source["_raw_path"], segment, float(source["_clip_start"]), CLIP_SECONDS, rank=position)
+        source["_rank"] = position
+        source["_final_rank_score"] = round(_final_rank_score(source), 2)
+        source["_clip_segment"] = str(segment)
+        rerendered_clips.append(segment)
+    clips = rerendered_clips
 
     title_card = root / "title_card.mp4"
     if theme == "funniest":
@@ -1465,6 +1514,7 @@ def create_youtube_commentary_video(opportunity, index):
         "editing": {
             "clips": CLIPS_PER_VIDEO, "clip_seconds": CLIP_SECONDS,
             "title_card_seconds": 0, "countdown": "#10 -> #1",
+            "ranking_engine": "post-visual evidence ranking; strongest accepted clip is #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
             "selection_engine": "AI query planner -> multi-provider research -> persistent freshness/history -> strict real-footage gate -> local relevance -> Gemini multi-frame vision casting -> visual preflight -> diversity",
@@ -1472,7 +1522,7 @@ def create_youtube_commentary_video(opportunity, index):
             "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT, "gemini_visual_qc_limit": GEMINI_VISUAL_QC_LIMIT, "freshness_history": True, "ai_search_planner": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY and os.getenv("GEMINI_ENABLED", "true").lower() == "true"),
             "commentary_style": "ai_writer_plus_always_on_comedy_editor_plus_strict_anti_repetition_validation", "voice_rate": "edge +75% / ElevenLabs 1.45x",
         },
-        "sources": manifest,
+        "sources": [{k:v for k,v in source.items() if k != "_raw_path"} for source in manifest],
         "license_policy": (
             "Automated sources are limited to Wikimedia Commons items with license metadata, "
             "Pexels, Pixabay, and Internet Archive items whose metadata identifies a Creative Commons/public-domain license. "
