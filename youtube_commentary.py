@@ -423,9 +423,14 @@ def _source_score(source, query):
     # A funny list needs evidence of a funny/event-like situation.
     # Generic wildlife/landscape clips are now pushed far below the threshold.
     if theme in {"funniest", "scariest"} and positive_hits == 0:
-        score -= 30
+        if event_hits > 0 and search_hits > 0:
+            score -= 8
+        else:
+            score -= 30
     if theme == "funniest" and event_hits == 0:
         score -= 20
+    elif theme == "funniest" and event_hits > 0 and search_hits > 0:
+        score += 10
     if theme == "scariest" and not any(w in text for w in ("scary", "horror", "creepy", "ghost", "haunted", "eerie", "paranormal", "scream", "fright")):
         score -= 25
     if theme == "wildest" and positive_hits == 0:
@@ -497,8 +502,13 @@ def _strict_source_gate(source, theme):
     hits = [term for term in required.get(theme, ()) if term in text]
     event_hits = sum(1 for term in event_terms if term in text)
 
+    search_text = str(source.get("_search_query", "")).lower()
+    search_event_hits = sum(1 for term in event_terms if term in search_text)
+    search_theme_hits = sum(1 for term in required.get(theme, ()) if term in search_text)
+
     if theme in {"funniest", "scariest", "wildest"} and not hits:
-        return False
+        if not (event_hits > 0 and search_theme_hits > 0 and search_event_hits > 0):
+            return False
     if theme == "funniest":
         animal_stock = (
             "animal", "animals", "cat", "kitten", "dog", "puppy", "monkey",
@@ -515,7 +525,8 @@ def _strict_source_gate(source, theme):
             "laugh", "mistake", "mishap", "instant regret",
         )
         if not any(term in text for term in comedy_evidence):
-            return False
+            if not (event_hits > 0 and search_theme_hits > 0 and search_event_hits > 0):
+                return False
     if theme == "wildest" and event_hits == 0:
         return False
     return True
@@ -949,6 +960,7 @@ def create_youtube_commentary_video(opportunity, index):
 
     clips, manifest = [], []
     visual_qc_count = 0
+    used_source_keys = set()
     for clip_index, source in enumerate(sources):
         if len(clips) >= CLIPS_PER_VIDEO:
             break
@@ -963,6 +975,10 @@ def create_youtube_commentary_video(opportunity, index):
         if any(term in source_text for term in ("astronomy", "galaxy", "cosmos", "comet", "asteroid", "milky way", "live wallpaper")):
             print(f"YouTube visual semantic QC rejected generic source: {source.get('title','unknown')}")
             continue
+        source_key = source.get("source_url") or source.get("url")
+        if source_key in used_source_keys:
+            continue
+        used_source_keys.add(source_key)
         raw = root / f"source_{clip_index}_{_safe_name(source['title'])}.mp4"
         segment = root / f"segment_{clip_index}.mp4"
         try:
