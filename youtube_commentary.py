@@ -28,7 +28,7 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
 AI_SELECTOR_CANDIDATES = max(10, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "10")))
-VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 2, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "10")))
+VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 4, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "40")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
@@ -384,7 +384,15 @@ def _source_score(source, query):
     negative_hits = sum(1 for word in negatives.get(theme, ()) if word in text)
     event_hits = sum(1 for word in event_words if word in text)
 
+    # Search-engine relevance is an important signal for stock providers such as
+    # Pexels, whose API metadata often contains only a URL and creator name.
+    search_text = str(source.get("_search_query", "")).lower()
+    search_hits = sum(1 for word in positives.get(theme, ()) if word in search_text)
+    query_event_hits = sum(1 for word in event_words if word in search_text)
     score = positive_hits * 12 + event_hits * 3 - negative_hits * 18
+    score += min(3, search_hits) * 5 + min(2, query_event_hits) * 2
+    if source.get("provider") in {"Pexels", "Pixabay"} and search_hits >= 1:
+        score += 8
 
     # A funny list needs evidence of a funny/event-like situation.
     # Generic wildlife/landscape clips are now pushed far below the threshold.
@@ -807,10 +815,10 @@ def create_youtube_commentary_video(opportunity, index):
             "title_card_seconds": TITLE_SECONDS, "countdown": "#10 -> #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
-            "selection_engine": "local theme ranking -> top-candidate Gemini judge -> visual preflight shortlist",
+            "selection_engine": "local metadata + search-query relevance -> optional Gemini judge -> visual preflight",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
             "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT,
-            "commentary_style": "fast_reactive", "voice_rate": "edge +35% / ElevenLabs 1.24x",
+            "commentary_style": "fast_reactive", "voice_rate": "edge +45% / ElevenLabs 1.24x",
         },
         "sources": manifest,
         "license_policy": (
