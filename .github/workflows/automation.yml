@@ -62,6 +62,7 @@ jobs:
           ZERO_COST_MODE: "true"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: "gemini-3.8-flash"
+          YOUTUBE_GEMINI_VISUAL_QC_LIMIT: "8"
         run: |
           set -euo pipefail
           if [ "${ZERO_COST_MODE:-false}" = "true" ]; then
@@ -141,7 +142,7 @@ jobs:
           VIDEO_MIN_SECONDS: "15"
           VIDEO_MAX_SECONDS: "60"
           AI_MODE: "ai"
-          GEMINI_ENABLED: "false"
+          GEMINI_ENABLED: "true"
           GEMINI_ORIGINALITY_ENABLED: "true"
           GEMINI_MODEL: "gemini-3.8-flash"
           GEMINI_VISUAL_QC_ENABLED: "true"
@@ -275,6 +276,7 @@ jobs:
           if [ -d output ]; then
             find output -maxdepth 1 -type f -name '*.mp4' -exec cp {} artifact_bundle/ \;
             find output -maxdepth 1 -type f -name 'youtube_commentary_*.json' -exec cp {} artifact_bundle/ \;
+            [ -f youtube_source_history.json ] && cp youtube_source_history.json artifact_bundle/
             for meta in output/run_summary.json output/quality_report.json; do
               [ -f "$meta" ] && cp "$meta" artifact_bundle/
             done
@@ -289,3 +291,50 @@ jobs:
           path: artifact_bundle/
           if-no-files-found: warn
           retention-days: 7
+
+
+  consolidate-youtube-history:
+    if: ${{ always() && (inputs.mode == 'youtube' || (github.event_name == 'schedule' && github.event.schedule == '0 * * * *')) }}
+    needs: create-videos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v5
+
+      - name: Download shard history
+        uses: actions/download-artifact@v5
+        with:
+          pattern: viral-video-run-${{ github.run_number }}-youtube-*
+          path: history_artifacts
+          merge-multiple: false
+
+      - name: Merge and persist all YouTube sources
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          limit = 120
+          current = []
+          target = Path("youtube_source_history.json")
+          if target.exists():
+              try:
+                  data = json.loads(target.read_text(encoding="utf-8"))
+                  if isinstance(data, list): current.extend(str(x) for x in data if x)
+              except Exception: pass
+          for path in Path("history_artifacts").rglob("youtube_source_history.json"):
+              try:
+                  data = json.loads(path.read_text(encoding="utf-8"))
+                  if isinstance(data, list): current.extend(str(x) for x in data if x)
+              except Exception: continue
+          merged = list(dict.fromkeys(current))
+          target.write_text(json.dumps(merged[-limit:], ensure_ascii=False, indent=2), encoding="utf-8")
+          print(f"Persisted {len(merged[-limit:])} YouTube source URLs.")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add youtube_source_history.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update YouTube source freshness history [skip ci]"
+            git pull --rebase origin main
+            git push
+          fi
