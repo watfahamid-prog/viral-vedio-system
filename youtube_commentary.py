@@ -21,6 +21,7 @@ CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))
 # Four-second clips keep the countdown moving; the narration is deliberately shorter too.
 CLIP_SECONDS = max(3, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.6")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "10"))
+MAX_DOWNLOAD_BYTES = int(os.getenv("YOUTUBE_MAX_DOWNLOAD_BYTES", "80000000"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
@@ -95,7 +96,8 @@ def _pexels_video_search(query, limit=15):
         files.sort(key=lambda x: (x.get("width") or 0) * (x.get("height") or 0), reverse=True)
         if not files:
             continue
-        chosen = next((x for x in files if (x.get("width") or 0) >= 1280), files[0])
+        preferred = [x for x in files if 640 <= (x.get("width") or 0) <= 1280]
+        chosen = max(preferred or files, key=lambda x: (x.get("width") or 0) * (x.get("height") or 0))
         results.append({
             "title": item.get("url", "Pexels video").rstrip("/").split("/")[-1],
             "url": chosen["link"], "mime": "video/mp4",
@@ -123,7 +125,8 @@ def _pixabay_video_search(query, limit=15):
         candidates.sort(key=lambda x: (x.get("width") or 0) * (x.get("height") or 0), reverse=True)
         if not candidates:
             continue
-        chosen = next((x for x in candidates if (x.get("width") or 0) >= 1280), candidates[0])
+        preferred = [x for x in candidates if 640 <= (x.get("width") or 0) <= 1280]
+        chosen = max(preferred or candidates, key=lambda x: (x.get("width") or 0) * (x.get("height") or 0))
         results.append({
             "title": item.get("tags", "Pixabay video"),
             "url": chosen["url"], "mime": "video/mp4",
@@ -209,6 +212,9 @@ def _download(url, path):
     for attempt in range(2):
         try:
             with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT, headers=headers) as response:
+                content_length = response.headers.get("Content-Length")
+                if content_length and content_length.isdigit() and int(content_length) > MAX_DOWNLOAD_BYTES:
+                    raise ValueError(f"source too large: {int(content_length) / 1_000_000:.1f} MB")
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After", "")
                     try:
@@ -220,8 +226,12 @@ def _download(url, path):
                     continue
                 response.raise_for_status()
                 with open(path, "wb") as handle:
+                    downloaded = 0
                     for chunk in response.iter_content(chunk_size=1024 * 1024):
                         if chunk:
+                            downloaded += len(chunk)
+                            if downloaded > MAX_DOWNLOAD_BYTES:
+                                raise ValueError("source exceeded download size limit")
                             handle.write(chunk)
             return path
         except requests.RequestException as error:
