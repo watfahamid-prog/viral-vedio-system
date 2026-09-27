@@ -24,7 +24,7 @@ AI_VIDEO_TIMEOUT = int(os.getenv("AI_VIDEO_TIMEOUT", "90"))
 AI_VIDEO_MAX_CLIPS = int(os.getenv("AI_VIDEO_MAX_CLIPS", "6"))
 YOUTUBE_COMMENTARY_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 YOUTUBE_CLIPS_PER_VIDEO = int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "4"))
-YOUTUBE_CLIP_SECONDS = int(os.getenv("YOUTUBE_CLIP_SECONDS", "7"))
+YOUTUBE_CLIP_SECONDS = float(os.getenv("YOUTUBE_CLIP_SECONDS", "7"))
 
 GEMINI_ENABLED = os.getenv("GEMINI_ENABLED", "true").lower() == "true"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
