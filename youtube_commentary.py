@@ -1419,9 +1419,10 @@ def create_youtube_commentary_video(opportunity, index):
     manifest = list(reversed(reordered))
     rerendered_clips = []
     for position, source in enumerate(manifest, start=1):
-        segment = root / f"ranked_segment_{position}.mp4"
-        _make_clip(source["_raw_path"], segment, float(source["_clip_start"]), CLIP_SECONDS, rank=position)
-        source["_rank"] = position
+        rank = CLIPS_PER_VIDEO - position + 1
+        segment = root / f"ranked_segment_{rank}.mp4"
+        _make_clip(source["_raw_path"], segment, float(source["_clip_start"]), CLIP_SECONDS, rank=rank)
+        source["_rank"] = rank
         source["_final_rank_score"] = round(_final_rank_score(source), 2)
         source["_clip_segment"] = str(segment)
         rerendered_clips.append(segment)
