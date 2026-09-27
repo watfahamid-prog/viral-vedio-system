@@ -257,7 +257,7 @@ jobs:
       - name: Persist self-learning state
         # Only one YouTube shard writes shared learning state. Otherwise three
         # parallel jobs could race while pushing the same file to main.
-        if: always() && matrix.index == 1
+        if: always() && matrix.index == 1 && !(inputs.mode == 'youtube' || (github.event_name == 'schedule' && github.event.schedule == '0 * * * *'))
         run: |
           if [ -f learning_state.json ]; then
             git config user.name "github-actions[bot]"
