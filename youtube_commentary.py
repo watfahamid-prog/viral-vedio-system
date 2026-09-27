@@ -519,7 +519,7 @@ def _gemini_rank_sources(sources, theme):
     prompt = (
         f"You are a strict casting editor for a viral YouTube Top-10 {theme} listicle. "
         "Score candidates only from metadata. Prefer footage clearly matching the promised event "
-        "and likely to work in a 4-second vertical clip. Reject generic landscapes, wildlife, "
+        "and likely to work in a 2.5-second vertical clip. Reject generic landscapes, wildlife, "
         "portraits, calm stock footage, and unrelated clips. Return ONLY JSON like "
         "[{\"id\":0,\"score\":0,\"reason\":\"short\"}]. "
         f"Candidates: {json.dumps(candidates, ensure_ascii=False)}"
