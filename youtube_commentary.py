@@ -31,7 +31,13 @@ IA_ENABLED = os.getenv("INTERNET_ARCHIVE_ENABLED", "true").lower() == "true"
 YOUTUBE_AI_SELECTOR_ENABLED = os.getenv("YOUTUBE_AI_SELECTOR_ENABLED", "true").lower() == "true"
 AI_SELECTOR_CANDIDATES = max(12, int(os.getenv("YOUTUBE_AI_SELECTOR_CANDIDATES", "24")))
 VISUAL_QC_LIMIT = max(CLIPS_PER_VIDEO * 6, int(os.getenv("YOUTUBE_VISUAL_QC_LIMIT", "80")))
-GEMINI_VISUAL_QC_LIMIT = max(0, int(os.getenv("YOUTUBE_GEMINI_VISUAL_QC_LIMIT", "4")))
+GEMINI_VISUAL_QC_LIMIT = max(0, int(os.getenv("YOUTUBE_GEMINI_VISUAL_QC_LIMIT", "18")))
+REAL_FOOTAGE_BAD_TERMS = (
+    "animation", "animated", "cartoon", "illustration", "illustrated", "3d render",
+    "cgi", "computer generated", "graphic", "diagram", "infographic", "wallpaper",
+    "background", "blender", "dna", "skeleton", "logo", "abstract", "particles",
+    "bokeh", "screen recording", "slideshow", "still image", "photo montage",
+)
 SOURCE_HISTORY_LIMIT = max(20, int(os.getenv("YOUTUBE_SOURCE_HISTORY_LIMIT", "120")))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
@@ -425,6 +431,9 @@ def _source_score(source, query):
     )
     generic_hits = sum(1 for word in generic_terms if word in text)
     concrete_hits = sum(1 for word in concrete_event_terms if word in text)
+    synthetic_hits = sum(1 for word in REAL_FOOTAGE_BAD_TERMS if word in text)
+    if synthetic_hits:
+        score -= 80 * min(2, synthetic_hits)
     if generic_hits >= 2:
         score -= 35
     elif generic_hits == 1 and concrete_hits == 0:
@@ -479,6 +488,9 @@ def _strict_source_gate(source, theme):
         "zoo", "flower", "underwater", "portrait", "fashion", "model",
         "meditation", "peaceful", "calm", "live wallpaper", "drone",
     )
+    if any(term in text for term in REAL_FOOTAGE_BAD_TERMS):
+        return False
+
     if any(term in text for term in generic_banned):
         # Scary footage can legitimately be dark/night footage, but generic
         # travel/nature/astronomy footage is never a substitute for the promised event.
@@ -705,7 +717,7 @@ def _save_source_history(keys):
 
 
 def _gemini_visual_judge(path, theme, source):
-    """Use Gemini vision to judge the actual sampled frame, not just metadata."""
+    """Judge several real frames from the downloaded clip, not just metadata."""
     if (
         not YOUTUBE_AI_SELECTOR_ENABLED
         or not GEMINI_API_KEY
@@ -713,35 +725,69 @@ def _gemini_visual_judge(path, theme, source):
     ):
         return True, 50, "visual AI disabled; local QC only"
 
-    sample = Path(path).with_suffix(".ai_qc.jpg")
+    sample_dir = Path(path).with_suffix(".ai_frames")
+    frames = []
     try:
         duration = _probe_duration(path)
-        midpoint = max(0.1, min(duration - 0.1, duration * 0.55))
-        subprocess.run([
-            "ffmpeg", "-y", "-loglevel", "error", "-ss", str(midpoint),
-            "-i", str(path), "-frames:v", "1", "-vf", "scale=512:-1:force_original_aspect_ratio=decrease",
-            "-q:v", "5", str(sample)
-        ], check=True, timeout=8)
-        image_b64 = base64.b64encode(sample.read_bytes()).decode("ascii")
-        prompt = (
-            f"You are the final visual casting judge for a YouTube Top-10 {theme} listicle. "
-            "Judge the actual frame, not the filename. Decide whether this footage visibly shows "
-            "a real event/moment matching the promised theme and whether it is likely to be "
-            "interesting/funny/scary/wild in a 3-second Short. This is NOT a documentary or story video. "
-            "Reject military/marines/war, politics, news, history, interviews, lectures, scenery, "
-            "generic stock, animals for a human-funny list, static shots, posed portraits, and unrelated footage. "
-            "For funny, the frame should visibly contain a human fail, reaction, awkward moment, mishap, surprise, or strong comedic timing. "
-            "Return ONLY JSON: {\"relevant\":true/false,\"score\":0-100,\"reason\":\"short\"}. "
-            f"Metadata: {json.dumps({'title': source.get('title',''), 'description': source.get('description','')[:300]}, ensure_ascii=False)}"
-        )
+        for idx, pct in enumerate((0.25, 0.55, 0.85)):
+            frame = sample_dir / f"frame_{idx}.jpg"
+            sample_dir.mkdir(exist_ok=True)
+            midpoint = max(0.1, min(duration - 0.1, duration * pct))
+            subprocess.run([
+                "ffmpeg", "-y", "-loglevel", "error", "-ss", str(midpoint),
+                "-i", str(path), "-frames:v", "1",
+                "-vf", "scale=512:-1:force_original_aspect_ratio=decrease",
+                "-q:v", "5", str(frame)
+            ], check=True, timeout=8)
+            frames.append(frame)
+
+        parts = [{
+            "text": (
+                f"You are the strict final casting judge for a YouTube Top-10 {theme} Short. "
+                "Judge ONLY what is visibly happening in these three frames from the SAME clip. "
+                "This must be real human-action footage, not animation, CGI, illustrations, diagrams, "
+                "wallpapers, generic stock scenery, posed portraits, or unrelated footage. "
+                "For FUNNY clips, require a visible human fail, awkward moment, reaction, mishap, "
+                "surprise, prank, or obvious comedic timing. A person merely walking, smiling, dancing "
+                "normally, posing, sightseeing, or looking at something is NOT enough. "
+                "For SCARY clips, require a visibly scary/creepy human situation or reaction. "
+                "For WILDEST clips, require a visibly unusual, high-energy, risky, shocking, or chaotic event. "
+                "Reject clips where the promised moment is not actually visible. "
+                "Return ONLY JSON: {\"relevant\":true/false,\"score\":0-100,"
+                "\"visible_action\":\"short concrete description\","
+                "\"hook\":\"short reason viewers would keep watching\","
+                "\"reason\":\"short rejection/approval reason\"}."
+            )
+        }];
+        for (const frame of frames) {
+            parts.push({
+                "inline_data": {
+                    "mime_type": "image/jpeg",
+                    "data": base64.b64encode(frame.read_bytes()).decode("ascii"),
+                }
+            });
+        }
+
         response = _gemini_post(
-            {"contents": [{"parts": [
-                {"text": prompt},
-                {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
-            ]}], "generationConfig": {"temperature": 0.0, "maxOutputTokens": 120}},
-            timeout=30,
+            {"contents": [{"parts": parts}],
+             "generationConfig": {
+                 "temperature": 0.0,
+                 "maxOutputTokens": 220,
+                 "response_mime_type": "application/json",
+                 "response_schema": {
+                     "type": "object",
+                     "properties": {
+                         "relevant": {"type": "boolean"},
+                         "score": {"type": "integer"},
+                         "visible_action": {"type": "string"},
+                         "hook": {"type": "string"},
+                         "reason": {"type": "string"},
+                     },
+                     "required": ["relevant", "score", "visible_action", "hook", "reason"],
+                 },
+             }},
+            timeout=35,
         )
-        response.raise_for_status()
         raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
         match = re.search(r"\{.*\}", raw, re.S)
         if not match:
@@ -749,22 +795,32 @@ def _gemini_visual_judge(path, theme, source):
         verdict = json.loads(match.group(0))
         score = max(0, min(100, int(verdict.get("score", 0))))
         relevant = bool(verdict.get("relevant", False))
-        reason = str(verdict.get("reason", ""))[:180]
+        action = re.sub(r"\s+", " ", str(verdict.get("visible_action", ""))).strip()[:220]
+        hook = re.sub(r"\s+", " ", str(verdict.get("hook", ""))).strip()[:180]
+        reason = re.sub(r"\s+", " ", str(verdict.get("reason", ""))).strip()[:180]
         source["_visual_ai_score"] = score
         source["_visual_ai_reason"] = reason
-        return relevant and score >= 62, score, reason
+        source["_visual_ai_action"] = action
+        source["_visual_ai_hook"] = hook
+        return relevant and score >= 75 and bool(action), score, reason or action
     except Exception as error:
-        print(f"YouTube visual AI unavailable for source; using local QC: {error}")
-        return True, 0, "visual AI fallback"
+        print(f"YouTube visual AI failed closed for source: {error}")
+        if GEMINI_API_KEY:
+            return False, 0, "visual AI unavailable; candidate rejected"
+        return True, 0, "visual AI disabled"
     finally:
+        for frame in frames:
+            try:
+                frame.unlink()
+            except OSError:
+                pass
         try:
-            sample.unlink()
+            sample_dir.rmdir()
         except OSError:
             pass
 
-
 def _gemini_generate_commentary(manifest, theme):
-    """Generate diverse clip-specific reactions, then run a second AI editor pass."""
+    """Write clip-specific reactions, then force a second AI comedy-editor pass."""
     if (
         not YOUTUBE_AI_SELECTOR_ENABLED
         or not GEMINI_API_KEY
@@ -776,33 +832,39 @@ def _gemini_generate_commentary(manifest, theme):
     for i, source in enumerate(manifest):
         candidates.append({
             "id": i,
-            "title": str(source.get("title", ""))[:180],
-            "description": str(source.get("description", ""))[:350],
-            "visual_judgement": str(source.get("_visual_ai_reason", ""))[:220],
+            "title": str(source.get("title", ""))[:160],
+            "description": str(source.get("description", ""))[:260],
+            "visible_action": str(source.get("_visual_ai_action", ""))[:220],
+            "visual_hook": str(source.get("_visual_ai_hook", ""))[:180],
+            "visual_judgement": str(source.get("_visual_ai_reason", ""))[:160],
         })
 
-    base_prompt = (
-        f"Write 10 ORIGINAL, punchy voice reactions for a fast YouTube Top-10 {theme} Short. "
-        "Return ONLY a JSON array of exactly 10 strings in clip order. "
-        "You are a comedian reacting to EACH INDIVIDUAL CLIP, not telling a story. "
-        "Every line must react to the specific visible moment and must sound different from the other nine. "
-        "Do NOT reuse sentence templates, openings, verbs, adjectives, punchlines, or the same joke structure. "
-        "Do not use 'number', 'top 10', countdown language, or rank references. "
-        "Do not use story transitions: first, then, next, after, before, meanwhile, eventually, suddenly. "
-        "Do not explain background, motives, identities, or facts that are not visible. "
-        "Use 5-12 spoken words. Vary the style across clips: deadpan, disbelief, playful roast, "
-        "shock, sarcasm, admiration, awkwardness, absurdity, perfect-timing reaction, quick punchline. "
-        "Avoid generic filler such as 'That was crazy', 'That was funny', 'What a reaction', "
-        "'That timing was perfect', or any sentence that could describe almost any clip. "
-        "If two clips are similar, find a DIFFERENT angle for each. "
-        f"CLIPS: {json.dumps(candidates, ensure_ascii=False)}"
+    banned = re.compile(
+        r"\b(number|rank|top\s*10|coming in|at number|countdown|first|then|next|after|before|"
+        r"meanwhile|eventually|suddenly|this clip|in this clip)\b", re.I
+    )
+    generic = re.compile(
+        r"\b(that was (crazy|funny|wild|insane|ridiculous)|that timing was (perfect|"
+        r"ridiculously good|genuinely hilarious)|what a reaction|that reaction (was|is) "
+        r"(priceless|everything)|that went (completely )?wrong|that escalated)\b", re.I
     )
 
-    def call_gemini(prompt, max_tokens=1000):
+    def call_gemini(prompt, max_tokens=1200):
         response = _gemini_post(
             {"contents": [{"parts": [{"text": prompt}]}],
-             "generationConfig": {"temperature": 0.95, "topP": 0.92, "maxOutputTokens": max_tokens}},
-            timeout=35,
+             "generationConfig": {
+                 "temperature": 0.92,
+                 "topP": 0.92,
+                 "maxOutputTokens": max_tokens,
+                 "response_mime_type": "application/json",
+                 "response_schema": {
+                     "type": "array",
+                     "minItems": len(manifest),
+                     "maxItems": len(manifest),
+                     "items": {"type": "string"},
+                 },
+             }},
+            timeout=40,
         )
         raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
         match = re.search(r"\[.*\]", raw, re.S)
@@ -810,51 +872,77 @@ def _gemini_generate_commentary(manifest, theme):
             raise ValueError("Gemini commentary returned no JSON")
         return json.loads(match.group(0))
 
-    banned = re.compile(
-        r"\b(number|rank|top\\s*10|coming in|at number|countdown|first|then|next|after|before|meanwhile|eventually|suddenly)\b",
-        re.I,
-    )
-
     def validate(lines):
         if not isinstance(lines, list) or len(lines) != len(manifest):
             return False
-        normalized = []
-        openings = set()
+        normalized, openings, trigrams = [], set(), set()
         for line in lines:
             line = re.sub(r"\s+", " ", str(line)).strip()
             words = re.findall(r"[A-Za-z0-9']+", line.lower())
-            if not line or banned.search(line) or not (5 <= len(words) <= 14):
+            if not line or banned.search(line) or generic.search(line) or not (5 <= len(words) <= 13):
                 return False
-            # Force meaningful variation: identical openings and near-identical lines are rejected.
-            opening = " ".join(words[:2])
             compact = " ".join(words)
+            opening = " ".join(words[:3])
             if opening in openings:
                 return False
-            if any(compact == old or compact in old or old in compact for old in normalized):
+            grams = set(zip(words, words[1:], words[2:]))
+            if trigrams & grams:
+                return False
+            if any(
+                len(set(words) & set(old.split())) / max(1, min(len(words), len(old.split()))) >= 0.78
+                for old in normalized
+            ):
                 return False
             openings.add(opening)
+            trigrams |= grams
             normalized.append(compact)
-        return lines
+        return True
 
-    try:
-        lines = call_gemini(base_prompt)
-        if not validate(lines):
+    writer_prompt = (
+        f"Write {len(manifest)} ORIGINAL one-line comedian reactions for a fast YouTube Top-10 {theme} Short. "
+        "Each line maps to exactly one clip in order. React to the VISIBLE ACTION described by the visual judge. "
+        "Do not narrate a story and do not describe what happened before/after. "
+        "Do not mention rankings, numbers, the list, the clip, the video, or background facts. "
+        "Use 5-13 natural spoken words. Make each line genuinely different: vary openings, verbs, rhythm, "
+        "humor angle, and punchline. Use specific details when the visual evidence gives one. "
+        "Prefer clever reactions, playful roasts, disbelief, awkward observations, or sharp one-liners. "
+        "Never use generic filler such as 'that was crazy', 'that was funny', 'that timing was perfect', "
+        "'what a reaction', 'that went wrong', or 'that escalated'. Return ONLY the JSON array."
+        f"\nCLIP EVIDENCE:\n{json.dumps(candidates, ensure_ascii=False)}"
+    );
+
+    editor_prompt = (
+        f"You are the FINAL comedy editor for a {theme} Top-10 Short. "
+        "Rewrite the draft reactions so every line sounds like a different comedian reacting to a different moment. "
+        "The visible-action evidence is authoritative. If a draft does not match the evidence, replace it. "
+        "Keep 5-13 words per line. No story narration, no countdown language, no generic filler, no repeated "
+        "openings, repeated three-word phrases, repeated joke structures, or near-duplicate vocabulary. "
+        "Each line must contain a concrete reaction to something visible. Return ONLY the JSON array."
+        f"\nVISUAL EVIDENCE:\n{json.dumps(candidates, ensure_ascii=False)}"
+    );
+
+    try {
+        drafts = call_gemini(writer_prompt)
+        edited = call_gemini(
+            editor_prompt + f"\nDRAFT REACTIONS:\n{json.dumps(drafts, ensure_ascii=False)}",
+            max_tokens=1400,
+        )
+        if not validate(edited):
             repair_prompt = (
-                "You are the FINAL comedy editor. Rewrite all 10 reactions below. "
-                "Keep the same clip order and react to the same clips, but make every line "
-                "clearly distinct. No repeated opening, no repeated punchline pattern, no generic filler. "
-                "Use 5-12 words, natural spoken English, fast and funny, clip-specific. "
-                "Never use countdown/rank words or story transitions. Return ONLY a JSON array of 10 strings. "
-                f"Original reactions: {json.dumps(lines, ensure_ascii=False)}\n"
-                f"Clip evidence: {json.dumps(candidates, ensure_ascii=False)}"
-            )
-            lines = call_gemini(repair_prompt, 1200)
-        if not validate(lines):
-            raise ValueError("Gemini commentary failed diversity validation")
-        print("YouTube AI scriptwriter: generated 10 distinct reaction lines and passed diversity editor.")
-        return [re.sub(r"\s+", " ", str(x)).strip() for x in lines]
+                "FINAL REPAIR. Rewrite all reactions below. Keep the same order and visible-action meaning. "
+                "Every line must be 5-13 words, clip-specific, funny, spoken naturally, and structurally unique. "
+                "No countdown words, story transitions, generic filler, repeated openings, repeated trigrams, "
+                "or near-duplicate vocabulary. Return ONLY the JSON array."
+                f"\nEVIDENCE: {json.dumps(candidates, ensure_ascii=False)}"
+                f"\nREACTIONS: {json.dumps(edited, ensure_ascii=False)}"
+            );
+            edited = call_gemini(repair_prompt, max_tokens=1500);
+        if not validate(edited):
+            raise ValueError("Gemini commentary failed strict diversity/quality validation")
+        print("YouTube AI commentary: writer -> comedy editor -> diversity validator passed.")
+        return [re.sub(r"\s+", " ", str(x)).strip() for x in edited]
     except Exception as error:
-        print(f"YouTube AI scriptwriter unavailable; using local commentary engine: {error}")
+        print(f"YouTube AI commentary unavailable; using local anti-repeat fallback: {error}")
         return None
 
 def _visual_preflight(path, duration, theme="most interesting"):
@@ -956,110 +1044,64 @@ def _rank_and_diversify(sources, theme):
 
     return chosen
 def _listicle_commentary(number, opportunity, source):
-    """Generate short, clip-specific countdown narration with no repeated filler."""
-    trend = opportunity.get("trend", "this topic")
-    theme = _listicle_theme(trend)
-    text = re.sub(r"\\s+", " ", f"{source.get('title','')} {source.get('description','')}").lower()
+    """Deterministic local fallback with clip evidence and anti-repeat-friendly phrasing."""
+    theme = _listicle_theme(opportunity.get("trend", ""))
+    evidence = str(source.get("_visual_ai_action", "")).strip()
+    text = re.sub(r"\s+", " ", f"{source.get('title','')} {source.get('description','')} {evidence}").lower()
 
     def pick(lines):
-        # Stable selection: different clips get different phrasing without randomness.
         seed = hashlib.sha256(
-            f"{number}|{source.get('source_url','')}|{source.get('title','')}".encode("utf-8")
+            f"{number}|{source.get('source_url','')}|{source.get('title','')}|{evidence}".encode("utf-8")
         ).hexdigest()
         return lines[int(seed[:8], 16) % len(lines)]
 
     if theme == "funniest":
-        if any(w in text for w in ("fail", "fall", "mistake", "accident", "mishap")):
-            line = pick([
-                "That fail was absolutely brutal.",
-                "Bro really thought that would work.",
-                "That landing was absolutely cursed.",
-                "That tiny mistake ruined everything.",
-                "Instant regret. You can see it immediately.",
-            ])
-        elif any(w in text for w in ("reaction", "crowd", "surprise", "people")):
-            line = pick([
-                "That reaction makes this ten times better.",
-                "That reaction says absolutely everything.",
-                "Nobody was ready for that reaction.",
-                "That reaction is actually priceless.",
-                "That reaction timing is ridiculously good.",
-            ])
-        elif any(w in text for w in ("prank", "comedy", "funny", "awkward")):
-            line = pick([
-                "That timing is ridiculously good.",
-                "Bro somehow made that look intentional.",
-                "That awkward moment says everything.",
-                "That timing is genuinely hilarious.",
-            ])
+        if any(w in text for w in ("fall", "trip", "slip", "fail", "mistake", "mishap")):
+            pool = [
+                "That landing had absolutely zero cooperation.",
+                "Bro committed to the mistake way too hard.",
+                "The recovery attempt somehow made it worse.",
+                "That face immediately says, 'I'm finished.'",
+                "Gravity really picked the worst possible moment.",
+                "You can actually see the regret arrive.",
+            ]
+        elif any(w in text for w in ("reaction", "shocked", "surprise", "scream", "laugh")):
+            pool = [
+                "That face changed before anyone could react.",
+                "The expression alone deserves its own replay.",
+                "That reaction came with absolutely no warning.",
+                "Nobody could have rehearsed that response.",
+                "The facial expression completely steals the moment.",
+                "That reaction landed harder than the actual joke.",
+            ]
         else:
-            line = pick([
-                "Okay, that went completely wrong.",
-                "That ending was absolutely ridiculous.",
-                "That escalated way too fast.",
-            ])
+            pool = [
+                "That decision aged terribly in real time.",
+                "The confidence lasted approximately three seconds.",
+                "There was a plan here. It did not survive.",
+                "That move needed about ten seconds more thinking.",
+                "The commitment is impressive; the result is not.",
+                "That is an elite level of bad timing.",
+            ]
     elif theme == "scariest":
-        if any(w in text for w in ("ghost", "haunted", "paranormal", "eerie")):
-            line = pick([
-                "Look closely at what happens next.",
-                "Something changes in the background.",
-                "Watch the background very carefully.",
-            ])
-        elif any(w in text for w in ("scream", "fright", "fear", "scared")):
-            line = pick([
-                "The reaction tells you everything.",
-                "That reaction was immediate.",
-                "Listen to how quickly they react.",
-            ])
-        else:
-            line = pick([
-                "The moment this changes is unsettling.",
-                "Something is definitely not right here.",
-                "Watch the moment the mood changes.",
-            ])
-    elif theme == "wildest":
-        if any(w in text for w in ("crash", "collision", "accident")):
-            line = pick([
-                "That crash happened unbelievably fast.",
-                "The collision came out of nowhere.",
-                "That was a seriously close call.",
-            ])
-        elif any(w in text for w in ("jump", "stunt", "motorcycle", "motorbike", "skateboard")):
-            line = pick([
-                "That stunt leaves almost no room for error.",
-                "That jump was way too close.",
-                "The timing on that stunt is wild.",
-            ])
-        elif any(w in text for w in ("speed", "racing", "race")):
-            line = pick([
-                "The speed here is ridiculous.",
-                "That escalated at full speed.",
-                "Watch how quickly this unfolds.",
-            ])
-        else:
-            line = pick([
-                "This escalated much faster than expected.",
-                "That turn happened in seconds.",
-                "The next moment changes everything.",
-            ])
+        pool = [
+            "That reaction says everything without a single word.",
+            "The mood changed instantly when that appeared.",
+            "That is exactly when I'd leave the room.",
+            "Nobody looks prepared for what they're seeing.",
+            "The expression tells you how serious that felt.",
+            "That moment got uncomfortable incredibly fast.",
+        ]
     else:
-        # Trend-specific fallback: mention the actual clip/topic instead of
-        # recycling the same three generic sentences.
-        detail = _short_detail(source)
-        topic_words = [w for w in re.findall(r"[A-Za-z0-9ÅÄÖåäö0-9'’\-]+", detail) if len(w) >= 4]
-        subject = " ".join(topic_words[:4]) or "this moment"
-        line = pick([
-            f"Watch what happens with {subject}.",
-            f"This is the moment {subject} takes an unexpected turn.",
-            f"Look closely at {subject} — the key moment happens fast.",
-            f"That is why {subject} made the list.",
-            f"The detail to watch here is {subject}.",
-            f"Things change quickly once {subject} appears.",
-        ])
-
-    # Rank is already shown visually; narration should sound like commentary, not a countdown.
-    return line
-
+        pool = [
+            "That took a turn nobody was ready for.",
+            "The margin for error there was basically nothing.",
+            "That move had absolutely no room for mistakes.",
+            "The speed makes this look completely unreal.",
+            "One tiny mistake and everything changes instantly.",
+            "That is way more chaotic than it needed to be.",
+        ]
+    return pick(pool)
 
 def _tts(text, path):
     if TTS_ENGINE in {"none", "text"}:
@@ -1424,10 +1466,10 @@ def create_youtube_commentary_video(opportunity, index):
             "title_card_seconds": 0, "countdown": "#10 -> #1",
             "aspect_ratio": "9:16", "burned_in_text": True,
             "title_card": title_text, "rank_overlay": True,
-            "selection_engine": "AI query planner -> multi-provider research -> persistent freshness/history -> shard diversity -> strict semantic gate -> local relevance -> Gemini metadata+vision judge -> visual preflight",
+            "selection_engine": "AI query planner -> multi-provider research -> persistent freshness/history -> strict real-footage gate -> local relevance -> Gemini multi-frame vision casting -> visual preflight -> diversity",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
             "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT, "gemini_visual_qc_limit": GEMINI_VISUAL_QC_LIMIT, "freshness_history": True, "ai_search_planner": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY and os.getenv("GEMINI_ENABLED", "true").lower() == "true"),
-            "commentary_style": "ai_scripted_standalone_reaction_only_no_storytelling_no_countdown", "voice_rate": "edge +75% / ElevenLabs 1.45x",
+            "commentary_style": "ai_writer_plus_always_on_comedy_editor_plus_strict_anti_repetition_validation", "voice_rate": "edge +75% / ElevenLabs 1.45x",
         },
         "sources": manifest,
         "license_policy": (
