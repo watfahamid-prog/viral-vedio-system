@@ -19,7 +19,7 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 # Four-second clips keep the countdown moving; the narration is deliberately shorter too.
-CLIP_SECONDS = max(3, int(os.getenv("YOUTUBE_CLIP_SECONDS", "4")))
+CLIP_SECONDS = max(3, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.6")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "90"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
@@ -255,10 +255,19 @@ def _drawtext_filter(text, fontsize, y, box=False):
 
 
 def _make_clip(source, destination, start, duration, rank=None):
+    motion = (int(rank or 1) % 4)
+    if motion == 0:
+        crop = "crop=1080:1920:x=iw*0.04:y=ih*0.02"
+    elif motion == 1:
+        crop = "crop=1080:1920:x=iw*0.10:y=ih*0.04"
+    elif motion == 2:
+        crop = "crop=1080:1920:x=iw*0.02:y=ih*0.08"
+    else:
+        crop = "crop=1080:1920:x=iw*0.08:y=ih*0.01"
     filters = [
-        "scale=1080:1920:force_original_aspect_ratio=increase",
-        "crop=1080:1920",
-        "eq=contrast=1.04:saturation=1.06:brightness=0.01",
+        "scale=1220:2160:force_original_aspect_ratio=increase",
+        crop,
+        "eq=contrast=1.04:saturation=1.08:brightness=0.01",
     ]
     if rank is not None:
         filters.append(_drawtext_filter(f"#{rank}", 86, "h*0.08", box=True))
@@ -467,34 +476,41 @@ def _visual_preflight(path, duration):
     return True, "passed"
 
 def _rank_and_diversify(sources, theme):
-    """Choose high-relevance clips first, while avoiding ten near-identical clips."""
+    """Rank relevant clips while enforcing visual/provider/topic diversity."""
     ranked = sorted(sources, key=lambda item: item.get("_match_score", -999), reverse=True)
-    chosen, used_titles = [], set()
+    chosen, used_keys, provider_counts = [], set(), {}
 
     for item in ranked:
         score = item.get("_match_score", -999)
-        if score < -10:
+        if score < -5:
             continue
         title = re.sub(r"[^a-z0-9]+", " ", str(item.get("title", "")).lower()).strip()
-        if title and title in used_titles:
+        description = re.sub(r"[^a-z0-9]+", " ", str(item.get("description", "")).lower()).strip()
+        words = set((title + " " + description).split())
+        key = " ".join(sorted(words & set((
+            "fail", "reaction", "people", "crowd", "street", "accident", "prank",
+            "crash", "stunt", "scream", "night", "ghost", "horror", "funny", "unexpected"
+        ))))
+        identity = (title[:100], key)
+        if identity in used_keys:
+            continue
+        provider = item.get("provider", "unknown")
+        if provider_counts.get(provider, 0) >= max(4, CLIPS_PER_VIDEO // 2):
             continue
         chosen.append(item)
-        if title:
-            used_titles.add(title)
+        used_keys.add(identity)
+        provider_counts[provider] = provider_counts.get(provider, 0) + 1
         if len(chosen) >= CLIPS_PER_VIDEO * 3:
             break
 
-    # If a theme is difficult, keep only the strongest candidates rather than
-    # filling the countdown with obviously unrelated footage.
     if len(chosen) < CLIPS_PER_VIDEO:
-        fallback = [x for x in ranked if x not in chosen and x.get("_match_score", -999) >= -25]
-        for item in fallback:
+        for item in ranked:
+            if item in chosen or item.get("_match_score", -999) < -20:
+                continue
             chosen.append(item)
             if len(chosen) >= CLIPS_PER_VIDEO * 3:
                 break
     return chosen
-
-
 def _listicle_commentary(rank, opportunity, source):
     """Short, punchy commentary designed for fast Shorts pacing."""
     trend = opportunity.get("trend", "this topic")
@@ -503,7 +519,7 @@ def _listicle_commentary(rank, opportunity, source):
     number = 11 - rank
 
     if rank == 1:
-        return f"Top 10 {theme} moments. Starting at number 10!"
+        return f"Top 10 {theme} moments. Here we go!"
 
     reactions = {
         "funniest": [
@@ -542,7 +558,7 @@ def _listicle_commentary(rank, opportunity, source):
     # reading a stock-video title.
     if detail:
         detail_words = " ".join(detail.split()[:4])
-        return f"Number {number}! {detail_words}. {reaction}"
+        return f"Number {number}! {reaction} {detail_words}."
     return f"Number {number}! {reaction}"
 
 
@@ -677,7 +693,7 @@ def create_youtube_commentary_video(opportunity, index):
                 print(f"YouTube visual QC rejected source: {source.get('title','unknown')} ({visual_reason})")
                 continue
             max_start = max(0.0, duration - CLIP_SECONDS)
-            starts = [0.08 * duration, 0.28 * duration, 0.48 * duration, 0.68 * duration, 0.84 * duration]
+            starts = [0.05 * duration, 0.22 * duration, 0.40 * duration, 0.58 * duration, 0.76 * duration]
             start = min(starts[clip_index % len(starts)], max_start)
             rank = CLIPS_PER_VIDEO - len(clips)
             _make_clip(raw, segment, start, CLIP_SECONDS, rank=rank)
