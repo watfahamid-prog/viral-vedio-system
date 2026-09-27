@@ -710,7 +710,6 @@ def _gemini_generate_commentary(manifest, theme):
         not YOUTUBE_AI_SELECTOR_ENABLED
         or not GEMINI_API_KEY
         or os.getenv("GEMINI_ENABLED", "true").lower() != "true"
-        or os.getenv("ZERO_COST_MODE", "false").lower() == "true"
     ):
         return None
     candidates = []
@@ -1269,7 +1268,10 @@ def create_youtube_commentary_video(opportunity, index):
         for source in manifest
     ])
     comments = _gemini_generate_commentary(manifest, theme)
-    if not comments:
+    if comments:
+        print("YouTube narration: REAL AI scriptwriter is active.")
+    else:
+        print("YouTube narration: AI unavailable; using varied local fallback.")
         comments = [_listicle_commentary(CLIPS_PER_VIDEO - i, opportunity, source) for i, source in enumerate(manifest)]
     full_commentary = " ".join(comments)
     audio = root / "commentary.mp3"
