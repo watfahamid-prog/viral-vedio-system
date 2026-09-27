@@ -203,9 +203,9 @@ jobs:
             test "$youtube_count" -eq 1
             echo "YouTube shard: exactly 1 Top-10 video in this parallel job."
           else
-            test "$primary_count" -eq 3
+            test "$primary_count" -eq 1
             test "$youtube_count" -eq 0
-            echo "Normal lane: exactly 3 normal videos, 0 YouTube videos."
+            echo "Normal shard: exactly 1 normal video in this parallel job."
           fi
 
           for video in output/*.mp4; do
