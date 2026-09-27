@@ -12,7 +12,8 @@ from config import OUTPUT_DIR, VIDEO_COUNT
 from performance import record_run
 from self_test import main as run_self_test
 from quality_control import quality_check
-from learning import record_learning, save_learning_summary, learning_context
+from learning import record_learning, save_learning_summary, learning_context, load_state
+from trends import get_trends
 from youtube_commentary import create_youtube_commentary_video
 
 
@@ -96,35 +97,69 @@ def main():
                 f"created {len(result['videos'])}"
             )
 
-    # YouTube gets its own independent 3-video Top-10 batch.
-    youtube_topics = [
-        "funniest moments caught on camera",
-        "scariest moments caught on camera",
-        "wildest unexpected moments",
-    ]
+    # YouTube is a TREND ENGINE, not an evergreen-topic loop.
+    # Each run starts from fresh live trend signals and turns distinct current
+    # topics into original Top-10 listicles. A small evergreen fallback is used
+    # only when live feeds are unavailable.
     youtube_outputs = []
-
+    youtube_candidates = []
     if run_mode in {"youtube", "both"}:
-        # The YouTube lane can be sharded across three independent GitHub Actions
-        # jobs. YOUTUBE_INDEX selects exactly one topic per job, preventing the
-        # three expensive listicle renders from blocking each other.
-        requested_index = int(os.getenv("YOUTUBE_INDEX", "0") or "0")
-        if requested_index in {1, 2, 3}:
-            selected_topics = [(requested_index, youtube_topics[requested_index - 1])]
-        else:
-            selected_topics = list(enumerate(youtube_topics, 1))
+        try:
+            live = get_trends()
+            state = load_state()
+            history = [str(x.get("topic", "")).lower() for x in state.get("creative_history", [])[-18:]]
+            seen_topics = set()
+            for item in live:
+                topic = str(item.get("trend", "")).strip()
+                if not topic:
+                    continue
+                low = topic.lower()
+                # Keep the YouTube lane out of political topics; current trends in
+                # other categories are still eligible for neutral listicle coverage.
+                if any(w in low for w in ("election", "government", "minister", "president", "parliament", "politics")):
+                    continue
+                if low in history or low in seen_topics:
+                    continue
+                seen_topics.add(low)
+                youtube_candidates.append(item)
+                if len(youtube_candidates) >= 9:
+                    break
+        except Exception as error:
+            print(f"YouTube live trend selection failed: {error}")
 
-        for youtube_index, topic in selected_topics:
+        if not youtube_candidates:
+            youtube_candidates = [
+                {"trend": "funniest moments caught on camera", "source": "fallback",
+                 "summary": "Live trend feeds unavailable.", "hook": "Top 10 funniest moments caught on camera."},
+                {"trend": "scariest moments caught on camera", "source": "fallback",
+                 "summary": "Live trend feeds unavailable.", "hook": "Top 10 scariest moments caught on camera."},
+                {"trend": "wildest unexpected moments", "source": "fallback",
+                 "summary": "Live trend feeds unavailable.", "hook": "Top 10 wildest unexpected moments."},
+            ]
+
+        requested_index = int(os.getenv("YOUTUBE_INDEX", "0") or "0")
+        # Sharded jobs select a different live candidate by rank; they no longer
+        # permanently map job 1/2/3 to the same three videos.
+        if requested_index in {1, 2, 3}:
+            candidate_index = (requested_index - 1) % len(youtube_candidates)
+            selected_topics = [(requested_index, youtube_candidates[candidate_index])]
+        else:
+            selected_topics = list(enumerate(youtube_candidates[:3], 1))
+
+        for youtube_index, item in selected_topics:
+            topic = str(item.get("trend", "")).strip()
             youtube_opportunity = {
                 "trend": topic,
-                "source": "evergreen_listicle",
-                "sources": ["Pexels", "Pixabay", "Wikimedia Commons", "Internet Archive"],
-                "summary": "Evergreen Top-10 concept selected as a resilient YouTube topic.",
+                "source": item.get("source", "live_trend"),
+                "sources": item.get("sources", []),
+                "summary": item.get("summary", ""),
+                "source_url": item.get("source_url", ""),
                 "hook": f"Top 10 {topic}.",
                 "format": "youtube_top10",
                 "platform": "youtube",
-                "confidence": 0.9,
+                "confidence": item.get("confidence", 0.7),
                 "status": "ready",
+                "trend_metrics": item.get("metrics", {}),
             }
             try:
                 youtube_path, youtube_manifest = create_youtube_commentary_video(
