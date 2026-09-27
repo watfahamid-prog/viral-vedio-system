@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 89,
-  "videos": 168,
+  "runs": 90,
+  "videos": 169,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -18,8 +18,8 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 19,
-      "passed": 19
+      "checked": 20,
+      "passed": 20
     }
   },
   "formats": {
@@ -39,78 +39,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 19
+      "created": 20
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-27T19:44:22.402253+00:00",
+  "last_updated": "2026-09-27T22:45:52.414977+00:00",
   "creative_history": [
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
     {
       "trend": "scariest moments caught on camera",
       "hook": "Here is the quick breakdown of scariest moments caught on camera.",
@@ -746,6 +683,69 @@
       "hook": "Here is the quick breakdown of unabomber.",
       "format": "short_explainer",
       "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Direkt – Kriget i Ukraina – Många dödade och skadade i ryskt anfall mot Odessa i natt",
+      "hook": "Here is the quick breakdown of Direkt – Kriget i Ukraina – Många dödade och skadade i ryskt anfall mot Odessa i natt.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Professor: AI-bolagen är själva överraskade",
+      "hook": "Here is the quick breakdown of Professor: AI-bolagen är själva överraskade.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Kontroversiella AI-miljardären köper enorm skog i Sverige",
+      "hook": "Here is the quick breakdown of Kontroversiella AI-miljardären köper enorm skog i Sverige.",
+      "format": "short_explainer",
+      "category": "technology",
       "platform": "shorts"
     }
   ]
