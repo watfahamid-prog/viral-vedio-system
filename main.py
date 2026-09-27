@@ -17,10 +17,13 @@ from youtube_commentary import create_youtube_commentary_video
 
 
 def main():
-    run_self_test()
-    print("Learning context:", learning_context())
-
     run_mode = os.getenv("RUN_MODE", "both").strip().lower()
+    # YouTube shards do not use the trend-opportunity pipeline. Running the
+    # old self-test there incorrectly required 3 normal opportunities and
+    # stopped every YouTube job before it could generate a video.
+    if run_mode != "youtube":
+        run_self_test()
+    print("Learning context:", learning_context())
     if run_mode not in {"youtube", "normal", "both"}:
         raise RuntimeError(f"Invalid RUN_MODE: {run_mode}")
     print(f"RUN_MODE={run_mode}")
