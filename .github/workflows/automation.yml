@@ -235,7 +235,8 @@ jobs:
               echo "Checking $video: dimensions=$dims audio=$audio duration=${duration}s"
               test "$dims" = "1080,1920" || { echo "FAIL: expected 1080x1920"; exit 1; }
               test "$audio" = "aac" || { echo "FAIL: expected AAC audio"; exit 1; }
-              awk "BEGIN { exit !($duration >= 30) }" || { echo "FAIL: YouTube video is shorter than 30s"; exit 1; }
+              expected_min="$(awk "BEGIN {printf \"%.1f\", ${YOUTUBE_CLIPS_PER_VIDEO} * ${YOUTUBE_CLIP_SECONDS} - 0.1}")"
+              awk "BEGIN { exit !($duration >= expected_min) }" || { echo "FAIL: YouTube video is shorter than expected ${expected_min}s"; exit 1; }
             else
               audio="$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "$video")"
               duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$video")"
@@ -247,27 +248,6 @@ jobs:
           echo "Generated outputs:"
           ls -lh output/*.mp4
 
-      - name: Create compact visual inspection previews
-        if: success()
-        run: |
-          set -euo pipefail
-          rm -rf preview_artifact
-          mkdir -p preview_artifact
-          count=0
-          for video in output/*.mp4; do
-            [ -f "$video" ] || continue
-            count=$((count + 1))
-            base="$(basename "$video" .mp4)"
-            ffmpeg -y -loglevel error -i "$video" \
-              -vf "scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2" \
-              -c:v libx264 -preset veryfast -crf 32 -maxrate 350k -bufsize 700k \
-              -pix_fmt yuv420p -c:a aac -b:a 48k -movflags +faststart \
-              "preview_artifact/${base}_preview.mp4"
-          done
-          test "$count" -gt 0
-          echo "Created compact previews:"
-          ls -lh preview_artifact/*.mp4
-          du -sh preview_artifact
       - name: Persist self-learning state
         # Only one YouTube shard writes shared learning state. Otherwise three
         # parallel jobs could race while pushing the same file to main.
@@ -284,11 +264,26 @@ jobs:
             fi
           fi
 
-      - name: Save generated videos and metadata
+      - name: Build single inspection artifact
+        if: always()
+        run: |
+          set -euo pipefail
+          rm -rf artifact_bundle
+          mkdir -p artifact_bundle
+          if [ -d output ]; then
+            find output -maxdepth 1 -type f -name '*.mp4' -exec cp {} artifact_bundle/ \;
+            find output -maxdepth 1 -type f -name 'youtube_commentary_*.json' -exec cp {} artifact_bundle/ \;
+            for meta in output/run_summary.json output/quality_report.json; do
+              [ -f "$meta" ] && cp "$meta" artifact_bundle/
+            done
+          fi
+          ls -lh artifact_bundle/ || true
+
+      - name: Save one inspection artifact per video job
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: viral-videos-visual-inspection-run-${{ github.run_number }}-${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}-${{ matrix.index }}
-          path: output/
+          name: viral-video-run-${{ github.run_number }}-${{ inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal') }}-${{ matrix.index }}
+          path: artifact_bundle/
           if-no-files-found: warn
           retention-days: 7
