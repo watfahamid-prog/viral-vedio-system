@@ -761,14 +761,13 @@ def _gemini_visual_judge(path, theme, source, clip_start=0.0):
                 "\"reason\":\"short rejection/approval reason\"}."
             )
         }];
-        for (const frame of frames) {
+        for frame in frames:
             parts.push({
                 "inline_data": {
                     "mime_type": "image/jpeg",
                     "data": base64.b64encode(frame.read_bytes()).decode("ascii"),
                 }
-            });
-        }
+            })
 
         response = _gemini_post(
             {"contents": [{"parts": parts}],
