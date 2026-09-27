@@ -28,7 +28,6 @@ jobs:
   create-videos:
     # One workflow run contains three independent YouTube jobs. Each job
     # renders exactly one Top-10 listicle, so Video 1/2/3 run in parallel.
-    if: matrix.mode == (inputs.mode || (github.event.schedule == '0 * * * *' && 'youtube' || 'normal'))
     strategy:
       fail-fast: false
       matrix:
@@ -42,9 +41,6 @@ jobs:
           - mode: youtube
             youtube_index: 3
             video_count: 1
-          - mode: normal
-            youtube_index: 0
-            video_count: 3
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
