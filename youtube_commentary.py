@@ -493,8 +493,16 @@ def _strict_source_gate(source, theme):
 
     if theme in {"funniest", "scariest", "wildest"} and not hits:
         return False
-    if theme == "funniest" and event_hits == 0:
-        return False
+    if theme == "funniest":
+        animal_stock = (
+            "animal", "animals", "cat", "kitten", "dog", "puppy", "monkey",
+            "chimp", "chimpanzee", "penguin", "turtle", "bird", "fish",
+            "lion", "tiger", "elephant", "wildlife", "zoo", "safari",
+        )
+        if any(term in text for term in animal_stock):
+            return False
+        if event_hits == 0:
+            return False
     if theme == "wildest" and event_hits == 0:
         return False
     return True
