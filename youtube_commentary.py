@@ -19,7 +19,7 @@ IA_METADATA = "https://archive.org/metadata/{identifier}"
 YOUTUBE_MODE = os.getenv("YOUTUBE_COMMENTARY_MODE", "voice").lower()
 CLIPS_PER_VIDEO = min(10, max(5, int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "10"))))
 # Four-second clips keep the countdown moving; the narration is deliberately shorter too.
-CLIP_SECONDS = max(3, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.6")))
+CLIP_SECONDS = max(2.8, float(os.getenv("YOUTUBE_CLIP_SECONDS", "3.2")))
 DOWNLOAD_TIMEOUT = int(os.getenv("YOUTUBE_CLIP_TIMEOUT", "8"))
 DOWNLOAD_TOTAL_TIMEOUT = int(os.getenv("YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT", "15"))
 MAX_DOWNLOAD_BYTES = int(os.getenv("YOUTUBE_MAX_DOWNLOAD_BYTES", "80000000"))
@@ -516,62 +516,21 @@ def _rank_and_diversify(sources, theme):
         if len(chosen) >= CLIPS_PER_VIDEO * 3:
             break
 
-    if len(chosen) < CLIPS_PER_VIDEO:
-        for item in ranked:
-            if item in chosen or item.get("_match_score", -999) < -20:
-                continue
-            chosen.append(item)
-            if len(chosen) >= CLIPS_PER_VIDEO * 3:
-                break
     return chosen
-def _listicle_commentary(rank, opportunity, source):
-    """Short, punchy commentary designed for fast Shorts pacing."""
+def _listicle_commentary(number, opportunity, source):
+    """Fast, short commentary for one displayed countdown number (#10 -> #1)."""
     trend = opportunity.get("trend", "this topic")
     theme = _listicle_theme(trend)
-    detail = _short_detail(source)
-    number = 11 - rank
-
-    if rank == 1:
-        return f"Top 10 {theme} moments. Here we go!"
-
     reactions = {
-        "funniest": [
-            "No way! I did NOT see that coming!",
-            "Look at that! That is hilarious!",
-            "Wait—watch the reaction!",
-            "Okay, that got me!",
-            "And it gets even better!",
-        ],
-        "scariest": [
-            "Nope! I did NOT expect that!",
-            "Wait—watch the background!",
-            "That changed FAST!",
-            "Okay, that is creepy!",
-            "And now it gets worse!",
-        ],
-        "wildest": [
-            "WHAT?! That happened so fast!",
-            "No way! Watch what happens!",
-            "Wait for it!",
-            "That escalated FAST!",
-            "I did NOT expect that!",
-        ],
-        "most interesting": [
-            "Wait—watch this!",
-            "No way! Look at that!",
-            "That changed FAST!",
-            "I did NOT expect that!",
-            "Watch the next second!",
-        ],
+        "funniest": ["Watch this!", "I did NOT expect that!", "Look at the reaction!", "That was hilarious!", "Wait for it!"],
+        "scariest": ["Watch closely!", "I did NOT expect that!", "Look in the background!", "That got creepy fast!", "Wait for it!"],
+        "wildest": ["Watch this!", "That happened FAST!", "No way!", "Wait for it!", "That escalated FAST!"],
+        "most interesting": ["Watch this!", "Look at that!", "I did NOT expect that!", "Wait for it!", "That changed FAST!"],
     }
     pool = reactions.get(theme, reactions["most interesting"])
-    reaction = pool[(number - 2) % len(pool)]
-
-    # Keep the factual part tiny so the voice does not spend the whole clip
-    # reading a stock-video title.
-    if detail:
-        detail_words = " ".join(detail.split()[:4])
-        return f"Number {number}! {reaction} {detail_words}."
+    reaction = pool[(10 - number) % len(pool)]
+    if number == 1:
+        reaction = "This is number one!"
     return f"Number {number}! {reaction}"
 
 
@@ -600,7 +559,7 @@ def _tts(text, path):
                         "style": 0.48,
                         "use_speaker_boost": True,
                     },
-                    "speed": 1.14,
+                    "speed": 1.24,
                 },
                 timeout=120,
             )
@@ -618,7 +577,7 @@ def _tts(text, path):
             import asyncio
             import edge_tts
             async def make():
-                await edge_tts.Communicate(text, TTS_VOICE, rate="+18%").save(str(path))
+                await edge_tts.Communicate(text, TTS_VOICE, rate="+35%").save(str(path))
             asyncio.run(make())
             print("YouTube TTS: fast edge-tts fallback generated successfully.")
             return str(path)
@@ -715,13 +674,20 @@ def create_youtube_commentary_video(opportunity, index):
         item for item in ranked_all
         if (item.get("source_url") or item.get("url")) not in judged_keys
     ]
-    sources = (judged_pool + replacement_pool)[:max(CLIPS_PER_VIDEO * 2, 20)]
+    eligible_replacements = [
+        item for item in replacement_pool
+        if item.get("_match_score", -999) >= 8
+    ]
+    sources = (judged_pool + eligible_replacements)[:max(CLIPS_PER_VIDEO * 2, 20)]
 
     clips, manifest = [], []
     visual_qc_count = 0
     for clip_index, source in enumerate(sources):
         if len(clips) >= CLIPS_PER_VIDEO:
             break
+        if source.get("_match_score", -999) < 8:
+            print(f"YouTube relevance QC rejected source: {source.get('title','unknown')} (score={source.get('_match_score', -999):.1f})")
+            continue
         raw = root / f"source_{clip_index}_{_safe_name(source['title'])}.mp4"
         segment = root / f"segment_{clip_index}.mp4"
         try:
@@ -788,7 +754,7 @@ def create_youtube_commentary_video(opportunity, index):
         "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(combined)
     ], check=True, timeout=180)
 
-    comments = [_listicle_commentary(rank, opportunity, source) for rank, source in enumerate(manifest, 1)]
+    comments = [_listicle_commentary(CLIPS_PER_VIDEO - i, opportunity, source) for i, source in enumerate(manifest)]
     full_commentary = " ".join(comments)
     audio = root / "commentary.mp3"
     audio_path = _tts(full_commentary, audio)
@@ -837,7 +803,7 @@ def create_youtube_commentary_video(opportunity, index):
             "selection_engine": "local theme ranking -> top-candidate Gemini judge -> visual preflight shortlist",
             "ai_selector": bool(YOUTUBE_AI_SELECTOR_ENABLED and GEMINI_API_KEY),
             "visual_preflight": True, "ai_selector_candidates": AI_SELECTOR_CANDIDATES, "visual_qc_limit": VISUAL_QC_LIMIT,
-            "commentary_style": "fast_reactive",
+            "commentary_style": "fast_reactive", "voice_rate": "edge +35% / ElevenLabs 1.24x",
         },
         "sources": manifest,
         "license_policy": (
