@@ -486,7 +486,7 @@ def _strict_source_gate(source, theme):
         "motorbike", "bike", "driver",
     )
 
-    action_event_terms = ("fail", "accident", "surprise", "chase", "fall", "crash", "prank", "scream", "stunt", "jump", "collision", "racing", "race", "skateboard", "motorcycle", "motorbike", "bike", "instant regret", "mishap", "mistake", "reaction", "awkward")
+    action_event_terms = ("fail", "accident", "surprise", "chase", "fall", "crash", "prank", "scream", "stunt", "jump", "collision", "racing", "race", "skateboard", "motorcycle", "motorbike", "bike", "instant regret", "mishap", "mistake", "reaction", "awkward", "performance", "sports", "sport", "crowd", "street", "caught", "camera", "public")
 
     required = {
         "funniest": (
@@ -514,7 +514,7 @@ def _strict_source_gate(source, theme):
     search_theme_hits = sum(1 for term in required.get(theme, ()) if term in search_text)
 
     if theme in {"funniest", "scariest", "wildest"} and not hits:
-        if not (action_hits > 0 and search_theme_hits > 0 and search_action_hits > 0):
+        if not (search_theme_hits > 0 and (action_hits > 0 or event_hits >= 2 or search_action_hits > 0 or search_event_hits >= 2)):
             return False
     if theme == "funniest":
         animal_stock = (
@@ -871,10 +871,10 @@ def _rank_and_diversify(sources, theme):
         if identity in used_keys:
             return False
         provider = item.get("provider", "unknown")
-        if provider_counts.get(provider, 0) >= 4:
+        if provider_counts.get(provider, 0) >= 8:
             return False
         bucket = _topic_bucket(item)
-        if strict_topics and bucket_counts.get(bucket, 0) >= 2:
+        if strict_topics and bucket_counts.get(bucket, 0) >= 4:
             return False
         chosen.append(item)
         used_keys.add(identity)
