@@ -764,62 +764,98 @@ def _gemini_visual_judge(path, theme, source):
 
 
 def _gemini_generate_commentary(manifest, theme):
-    """Generate one distinct, natural voice line per clip with no countdown wording."""
+    """Generate diverse clip-specific reactions, then run a second AI editor pass."""
     if (
         not YOUTUBE_AI_SELECTOR_ENABLED
         or not GEMINI_API_KEY
         or os.getenv("GEMINI_ENABLED", "true").lower() != "true"
     ):
         return None
+
     candidates = []
     for i, source in enumerate(manifest):
         candidates.append({
             "id": i,
             "title": str(source.get("title", ""))[:180],
             "description": str(source.get("description", ""))[:350],
-            "visual_judgement": str(source.get("_visual_ai_reason", ""))[:160],
+            "visual_judgement": str(source.get("_visual_ai_reason", ""))[:220],
         })
-    prompt = (
-        f"Write 10 short reactions for a fast YouTube Top-10 {theme} Short. "
+
+    base_prompt = (
+        f"Write 10 ORIGINAL, punchy voice reactions for a fast YouTube Top-10 {theme} Short. "
         "Return ONLY a JSON array of exactly 10 strings in clip order. "
-        "You are NOT a storyteller, explainer, narrator, or documentary voice. "
-        "Each line is one standalone reaction to the exact clip. Do not describe a sequence, setup, background, motive, or what happens before/after. "
-        "Do not connect clips. Avoid story words like first, then, next, after, before, meanwhile, eventually, suddenly. "
-        "Use 5-12 spoken words, ideally 6-10. Be punchy, funny, surprised, impressed, or shocked based only on the visible moment. "
-        "Style examples: 'That timing could not have been worse.' 'Bro really committed to that move.' "
-        "'The reaction makes this ten times better.' Never use countdown/rank language or invent facts. "
-        f"Clips: {json.dumps(candidates, ensure_ascii=False)}"
+        "You are a comedian reacting to EACH INDIVIDUAL CLIP, not telling a story. "
+        "Every line must react to the specific visible moment and must sound different from the other nine. "
+        "Do NOT reuse sentence templates, openings, verbs, adjectives, punchlines, or the same joke structure. "
+        "Do not use 'number', 'top 10', countdown language, or rank references. "
+        "Do not use story transitions: first, then, next, after, before, meanwhile, eventually, suddenly. "
+        "Do not explain background, motives, identities, or facts that are not visible. "
+        "Use 5-12 spoken words. Vary the style across clips: deadpan, disbelief, playful roast, "
+        "shock, sarcasm, admiration, awkwardness, absurdity, perfect-timing reaction, quick punchline. "
+        "Avoid generic filler such as 'That was crazy', 'That was funny', 'What a reaction', "
+        "'That timing was perfect', or any sentence that could describe almost any clip. "
+        "If two clips are similar, find a DIFFERENT angle for each. "
+        f"CLIPS: {json.dumps(candidates, ensure_ascii=False)}"
     )
-    try:
-        response = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
-            headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
-            json={"contents": [{"parts": [{"text": prompt}]}],
-                  "generationConfig": {"temperature": 0.8, "maxOutputTokens": 900}},
-            timeout=30,
+
+    def call_gemini(prompt, max_tokens=1000):
+        response = _gemini_post(
+            {"contents": [{"parts": [{"text": prompt}]}],
+             "generationConfig": {"temperature": 0.95, "topP": 0.92, "maxOutputTokens": max_tokens}},
+            timeout=35,
         )
-        response.raise_for_status()
         raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
         match = re.search(r"\[.*\]", raw, re.S)
         if not match:
             raise ValueError("Gemini commentary returned no JSON")
-        lines = json.loads(match.group(0))
+        return json.loads(match.group(0))
+
+    banned = re.compile(
+        r"\b(number|rank|top\\s*10|coming in|at number|countdown|first|then|next|after|before|meanwhile|eventually|suddenly)\b",
+        re.I,
+    )
+
+    def validate(lines):
         if not isinstance(lines, list) or len(lines) != len(manifest):
-            raise ValueError("Gemini commentary returned the wrong number of lines")
-        cleaned = []
-        banned = re.compile(r"\b(number|rank|top\s*10|coming in|at number|countdown|first|then|next|after|before|meanwhile|eventually|suddenly)\b", re.I)
+            return False
+        normalized = []
+        openings = set()
         for line in lines:
             line = re.sub(r"\s+", " ", str(line)).strip()
-            words=re.findall(r"[A-Za-z0-9']+",line)
+            words = re.findall(r"[A-Za-z0-9']+", line.lower())
             if not line or banned.search(line) or not (5 <= len(words) <= 14):
-                raise ValueError("Gemini commentary failed reaction-only validation")
-            cleaned.append(line)
-        print(f"YouTube AI scriptwriter: generated {len(cleaned)} clip-specific lines.")
-        return cleaned
+                return False
+            # Force meaningful variation: identical openings and near-identical lines are rejected.
+            opening = " ".join(words[:2])
+            compact = " ".join(words)
+            if opening in openings:
+                return False
+            if any(compact == old or compact in old or old in compact for old in normalized):
+                return False
+            openings.add(opening)
+            normalized.append(compact)
+        return lines
+
+    try:
+        lines = call_gemini(base_prompt)
+        if not validate(lines):
+            repair_prompt = (
+                "You are the FINAL comedy editor. Rewrite all 10 reactions below. "
+                "Keep the same clip order and react to the same clips, but make every line "
+                "clearly distinct. No repeated opening, no repeated punchline pattern, no generic filler. "
+                "Use 5-12 words, natural spoken English, fast and funny, clip-specific. "
+                "Never use countdown/rank words or story transitions. Return ONLY a JSON array of 10 strings. "
+                f"Original reactions: {json.dumps(lines, ensure_ascii=False)}\n"
+                f"Clip evidence: {json.dumps(candidates, ensure_ascii=False)}"
+            )
+            lines = call_gemini(repair_prompt, 1200)
+        if not validate(lines):
+            raise ValueError("Gemini commentary failed diversity validation")
+        print("YouTube AI scriptwriter: generated 10 distinct reaction lines and passed diversity editor.")
+        return [re.sub(r"\s+", " ", str(x)).strip() for x in lines]
     except Exception as error:
         print(f"YouTube AI scriptwriter unavailable; using local commentary engine: {error}")
         return None
-
 
 def _visual_preflight(path, duration, theme="most interesting"):
     """Reject black/frozen/low-information source videos before final clips."""
