@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 import requests
 
-from config import OUTPUT_DIR, TTS_ENGINE, TTS_VOICE
+from config import (OUTPUT_DIR, TTS_ENGINE, TTS_VOICE, ELEVENLABS_ENABLED, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID_1, ELEVENLABS_VOICE_ID_2, ELEVENLABS_MODEL, ELEVENLABS_TEST_VOICES)
 
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 PEXELS_API = "https://api.pexels.com/v1/videos/search"
@@ -1107,43 +1107,35 @@ def _listicle_commentary(number, opportunity, source):
         ]
     return pick(pool)
 
-def _tts(text, path):
+def _tts(text, path, voice_id=None, label="Voice 1"):
+    """Generate narration with the explicitly selected ElevenLabs voice."""
     if TTS_ENGINE in {"none", "text"}:
         return None
 
-    if ELEVENLABS_ENABLED and ELEVENLABS_API_KEY:
+    selected_voice = (voice_id or ELEVENLABS_VOICE_ID_1).strip()
+    if ELEVENLABS_ENABLED and ELEVENLABS_API_KEY and selected_voice:
         try:
-            endpoint = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
+            endpoint = f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice}"
             response = requests.post(
                 endpoint,
                 params={"output_format": "mp3_44100_128"},
-                headers={
-                    "xi-api-key": ELEVENLABS_API_KEY,
-                    "Content-Type": "application/json",
-                    "Accept": "audio/mpeg",
-                },
-                json={
-                    "text": text,
-                    "model_id": ELEVENLABS_MODEL,
-                    # Slightly faster, more energetic delivery.
-                    "voice_settings": {
-                        "stability": 0.34,
-                        "similarity_boost": 0.78,
-                        "style": 0.48,
-                        "use_speaker_boost": True,
-                    },
-                    "speed": 1.45,
-                },
+                headers={"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+                json={"text": text, "model_id": ELEVENLABS_MODEL, "voice_settings": {"stability": 0.34, "similarity_boost": 0.78, "style": 0.48, "use_speaker_boost": True}, "speed": 1.45},
                 timeout=120,
             )
             response.raise_for_status()
             if not response.content.startswith(b"ID3") and not response.content.startswith(b"\xff\xfb"):
                 raise ValueError("ElevenLabs returned unexpected audio data")
             path.write_bytes(response.content)
-            print("YouTube TTS: ElevenLabs fast/expressive voice generated successfully.")
+            print(f"YouTube TTS: ElevenLabs {label} generated successfully.")
             return str(path)
         except Exception as error:
-            print(f"YouTube TTS: ElevenLabs failed; falling back to edge-tts: {error}")
+            print(f"YouTube TTS: ElevenLabs {label} failed: {error}")
+            if ELEVENLABS_TEST_VOICES:
+                raise RuntimeError(f"ElevenLabs {label} test failed") from error
+
+    if ELEVENLABS_TEST_VOICES and ELEVENLABS_ENABLED:
+        raise RuntimeError(f"ElevenLabs {label} test could not run: voice ID or API key is missing.")
 
     try:
         if TTS_ENGINE in {"auto", "edge", "edge-tts"}:
@@ -1467,8 +1459,16 @@ def create_youtube_commentary_video(opportunity, index):
         print("YouTube narration: AI unavailable; using varied local fallback.")
         comments = [_listicle_commentary(CLIPS_PER_VIDEO - i, opportunity, source) for i, source in enumerate(manifest)]
     full_commentary = " ".join(comments)
+
+    if ELEVENLABS_TEST_VOICES and ELEVENLABS_ENABLED and index == 1:
+        if not ELEVENLABS_VOICE_ID_1 or not ELEVENLABS_VOICE_ID_2:
+            raise RuntimeError("Voice test requires ELEVENLABS_VOICE_ID_1 and ELEVENLABS_VOICE_ID_2.")
+        _tts(full_commentary, root / "voice1_sample.mp3", ELEVENLABS_VOICE_ID_1, "Voice 1")
+        _tts(full_commentary, root / "voice2_sample.mp3", ELEVENLABS_VOICE_ID_2, "Voice 2")
+        print("YouTube TTS: both ElevenLabs voice samples generated for direct comparison.")
+
     audio = root / "commentary.mp3"
-    audio_path = _tts(full_commentary, audio)
+    audio_path = _tts(full_commentary, audio, ELEVENLABS_VOICE_ID_1, "Voice 1")
 
     final = Path(OUTPUT_DIR) / f"youtube_commentary_{index}.mp4"
     if audio_path and YOUTUBE_MODE != "text":
