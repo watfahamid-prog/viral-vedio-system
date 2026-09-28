@@ -1252,7 +1252,10 @@ def create_youtube_commentary_video(opportunity, index):
             print(f"YouTube source search failed for '{search_query}': {error}")
             continue
         for item in candidates:
-            key = item.get("source_url") or item.get("url")
+            # The downloadable asset URL is the strongest identity for duplicate
+            # protection. A single clip can have different page/source URLs while
+            # still pointing at the exact same media file.
+            key = str(item.get("url") or item.get("source_url") or "").strip()
             if not key or key in seen:
                 continue
             seen.add(key)
@@ -1270,7 +1273,10 @@ def create_youtube_commentary_video(opportunity, index):
     fresh_sources = []
     shard_sources = []
     for item in sources:
-        key = str(item.get("source_url") or item.get("url") or "")
+        # Partition by the actual downloadable media URL first. Using only the
+        # page/source URL allowed the same media asset to enter multiple shards
+        # through different wrapper pages.
+        key = str(item.get("url") or item.get("source_url") or "")
         if key and key in history:
             continue
         digest = int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:8], 16) if key else 0
@@ -1321,6 +1327,7 @@ def create_youtube_commentary_video(opportunity, index):
     clips, manifest = [], []
     visual_qc_count = 0
     used_source_keys = set()
+    used_content_hashes = set()
     for clip_index, source in enumerate(sources):
         if len(clips) >= CLIPS_PER_VIDEO:
             break
@@ -1338,8 +1345,12 @@ def create_youtube_commentary_video(opportunity, index):
         if any(term in source_text for term in ("astronomy", "galaxy", "cosmos", "comet", "asteroid", "milky way", "live wallpaper")):
             print(f"YouTube visual semantic QC rejected generic source: {source.get('title','unknown')}")
             continue
-        source_key = source.get("source_url") or source.get("url")
+        # Reject duplicates using BOTH metadata identity and the downloaded
+        # bytes. Metadata URLs are not enough: mirrors can expose the same clip
+        # under different page URLs.
+        source_key = str(source.get("url") or source.get("source_url") or "").strip()
         if source_key in used_source_keys:
+            print(f"YouTube duplicate guard rejected repeated media URL: {source.get('title','unknown')}")
             continue
         used_source_keys.add(source_key)
         raw = root / f"source_{clip_index}_{_safe_name(source['title'])}.mp4"
@@ -1349,6 +1360,14 @@ def create_youtube_commentary_video(opportunity, index):
             duration = _probe_duration(raw)
             if duration < CLIP_SECONDS + 0.5:
                 continue
+            # Exact-byte fingerprint catches duplicate media even when the
+            # provider returned different wrapper/source URLs.
+            with raw.open("rb") as media_file:
+                content_hash = hashlib.sha256(media_file.read()).hexdigest()
+            if content_hash in used_content_hashes:
+                print(f"YouTube duplicate guard rejected identical downloaded media: {source.get('title','unknown')}")
+                continue
+            used_content_hashes.add(content_hash)
             max_start = max(0.0, duration - CLIP_SECONDS)
             starts = [0.03 * duration, 0.16 * duration, 0.30 * duration, 0.44 * duration, 0.58 * duration, 0.72 * duration, 0.84 * duration]
             start = min(starts[clip_index % len(starts)], max_start)
@@ -1381,7 +1400,7 @@ def create_youtube_commentary_video(opportunity, index):
 
     if len(clips) < CLIPS_PER_VIDEO:
         raise RuntimeError(
-            f"YouTube video #{index} produced only {len(clips)} usable clips; need {CLIPS_PER_VIDEO}. "
+            f"YouTube video #{index} produced only {len(clips)} UNIQUE usable clips; need {CLIPS_PER_VIDEO}. "
             f"Searched {len(search_waves)} queries and evaluated {len(sources)} candidates; "
             "the remaining candidates failed duration/download/visual/relevance QC."
         )
