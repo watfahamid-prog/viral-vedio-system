@@ -1278,11 +1278,22 @@ def create_youtube_commentary_video(opportunity, index):
             shard_sources.append(item)
         else:
             fresh_sources.append(item)
-    if len(shard_sources) >= CLIPS_PER_VIDEO * 3:
-        sources = shard_sources
-    else:
-        sources = shard_sources + fresh_sources
-    print(f"YouTube research freshness: {len(history)} historical sources excluded; {len(sources)} fresh candidates remain.")
+    # HARD BATCH ISOLATION: the three YouTube matrix jobs run in parallel.
+    # Never fall back to another shard's candidates, otherwise Video 1/2/3 can
+    # select the exact same source URL. If this shard is short, fail clearly
+    # rather than silently reusing footage.
+    required_candidates = max(CLIPS_PER_VIDEO * 8, 80)
+    sources = shard_sources
+    print(
+        f"YouTube research freshness: {len(history)} historical sources excluded; "
+        f"{len(sources)} candidates belong exclusively to shard {shard_index}."
+    )
+    if len(sources) < required_candidates:
+        raise RuntimeError(
+            f"YouTube shard {shard_index} has only {len(sources)} fresh exclusive candidates; "
+            f"need at least {required_candidates}. Refusing cross-shard fallback to prevent "
+            "Video 1/2/3 from reusing footage. Increase search diversity/providers instead."
+        )
 
     # Fast path: local ranking first, then let Gemini judge only the strongest candidates.
     locally_ranked = _rank_and_diversify(sources, theme)
