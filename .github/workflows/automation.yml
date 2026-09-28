@@ -165,9 +165,11 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
           LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
-          ELEVENLABS_ENABLED: "false"
+          ELEVENLABS_ENABLED: "true"
+          ELEVENLABS_TEST_VOICES: "true"
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-          ELEVENLABS_VOICE_ID: "JBFqnCBsd6RMkjVDRZzb"
+          ELEVENLABS_VOICE_ID_1: ${{ secrets.ELEVENLABS_VOICE_ID_1 }}
+          ELEVENLABS_VOICE_ID_2: ${{ secrets.ELEVENLABS_VOICE_ID_2 }}
           ELEVENLABS_MODEL: "eleven_flash_v2_5"
           YOUTUBE_ENABLED: "true"
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
@@ -284,6 +286,7 @@ jobs:
             find output -maxdepth 1 -type f -name '*.mp4' -exec cp {} artifact_bundle/ \;
             find output -maxdepth 1 -type f -name 'youtube_commentary_*.json' -exec cp {} artifact_bundle/ \;
             [ -f youtube_source_history.json ] && cp youtube_source_history.json artifact_bundle/
+            find output -type f \( -name "voice1_sample.mp3" -o -name "voice2_sample.mp3" \) -exec cp {} artifact_bundle/ \;
             for meta in output/run_summary.json output/quality_report.json; do
               [ -f "$meta" ] && cp "$meta" artifact_bundle/
             done
