@@ -31,3 +31,12 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_AP
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 GEMINI_ALLOW_PAID = os.getenv("GEMINI_ALLOW_PAID", "false").lower() == "true"
 GEMINI_VISUAL_QC_ENABLED = os.getenv("GEMINI_VISUAL_QC_ENABLED", "true").lower() == "true"
+
+# ElevenLabs voice configuration. Voice IDs stay in GitHub Secrets/env vars;
+# never hard-code the actual IDs into the repository.
+ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
+ELEVENLABS_VOICE_ID_1 = os.getenv("ELEVENLABS_VOICE_ID_1", "").strip() or os.getenv("ELEVENLABS_VOICE_ID", "").strip()
+ELEVENLABS_VOICE_ID_2 = os.getenv("ELEVENLABS_VOICE_ID_2", "").strip()
+ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5").strip()
+ELEVENLABS_TEST_VOICES = os.getenv("ELEVENLABS_TEST_VOICES", "false").lower() == "true"
