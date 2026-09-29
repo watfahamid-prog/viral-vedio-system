@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 105,
-  "videos": 184,
+  "runs": 106,
+  "videos": 185,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -18,8 +18,8 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 35,
-      "passed": 35
+      "checked": 36,
+      "passed": 36
     }
   },
   "formats": {
@@ -39,78 +39,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 35
+      "created": 36
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-29T19:47:31.974720+00:00",
+  "last_updated": "2026-09-29T22:46:48.908296+00:00",
   "creative_history": [
-    {
-      "trend": "Svenskarnas AI-användning ökar",
-      "hook": "Here is the quick breakdown of Svenskarnas AI-användning ökar.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Ger upp försök att bilda regering – skyller på V",
-      "hook": "Here is the quick breakdown of Ger upp försök att bilda regering – skyller på V.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "svensk golf",
-      "hook": "Here is the quick breakdown of svensk golf.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
     {
       "trend": "debatt",
       "hook": "Here is the quick breakdown of debatt.",
@@ -746,6 +683,69 @@
       "hook": "Here is the quick breakdown of AI-revolutionen ska bli större än elektriciteten – Anthropics enorma chansning.",
       "format": "short_explainer",
       "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Ukrainas tåg jagas av drönare: ”Tvingas evakuera flera gånger samma resa”",
+      "hook": "Here is the quick breakdown of Ukrainas tåg jagas av drönare: ”Tvingas evakuera flera gånger samma resa”.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "adrian kempe",
+      "hook": "Here is the quick breakdown of adrian kempe.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "nhl",
+      "hook": "Here is the quick breakdown of nhl.",
+      "format": "short_explainer",
+      "category": "general",
       "platform": "shorts"
     }
   ]
