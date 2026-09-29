@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 104,
-  "videos": 183,
+  "runs": 105,
+  "videos": 184,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -18,8 +18,8 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 34,
-      "passed": 34
+      "checked": 35,
+      "passed": 35
     }
   },
   "formats": {
@@ -39,78 +39,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 34
+      "created": 35
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-29T16:50:18.658746+00:00",
+  "last_updated": "2026-09-29T19:47:31.974720+00:00",
   "creative_history": [
-    {
-      "trend": "25 skadade i rysk attack i Charkiv – Senaste nytt om kriget i Ukraina",
-      "hook": "Here is the quick breakdown of 25 skadade i rysk attack i Charkiv – Senaste nytt om kriget i Ukraina.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "DN Direkt – Riksdagsledamöterna röstar om talman",
-      "hook": "Here is the quick breakdown of DN Direkt – Riksdagsledamöterna röstar om talman.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "anders ygeman",
-      "hook": "Here is the quick breakdown of anders ygeman.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
     {
       "trend": "Svenskarnas AI-användning ökar",
       "hook": "Here is the quick breakdown of Svenskarnas AI-användning ökar.",
@@ -744,6 +681,69 @@
     {
       "trend": "Påven kritiserar Nvidias vd efter AI-lansering",
       "hook": "Here is the quick breakdown of Påven kritiserar Nvidias vd efter AI-lansering.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Svenska spelet river ner succé efter succé",
+      "hook": "Here is the quick breakdown of Svenska spelet river ner succé efter succé.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Tigraystrider trappas upp – oro för inbördeskrig",
+      "hook": "Here is the quick breakdown of Tigraystrider trappas upp – oro för inbördeskrig.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "AI-revolutionen ska bli större än elektriciteten – Anthropics enorma chansning",
+      "hook": "Here is the quick breakdown of AI-revolutionen ska bli större än elektriciteten – Anthropics enorma chansning.",
       "format": "short_explainer",
       "category": "technology",
       "platform": "shorts"
