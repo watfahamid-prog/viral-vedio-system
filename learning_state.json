@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 103,
-  "videos": 182,
+  "runs": 104,
+  "videos": 183,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -18,8 +18,8 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 33,
-      "passed": 33
+      "checked": 34,
+      "passed": 34
     }
   },
   "formats": {
@@ -39,78 +39,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 33
+      "created": 34
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-29T13:51:22.969711+00:00",
+  "last_updated": "2026-09-29T16:50:18.658746+00:00",
   "creative_history": [
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Ex-talmannen: ”Man måste våga gå emot sitt eget parti”",
-      "hook": "Here is the quick breakdown of Ex-talmannen: ”Man måste våga gå emot sitt eget parti”.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "riksdagen",
-      "hook": "Here is the quick breakdown of riksdagen.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "DN Direkt – Insatsen på flygbasen i Fairford fortsätter",
-      "hook": "Here is the quick breakdown of DN Direkt – Insatsen på flygbasen i Fairford fortsätter.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "riksdagen",
-      "hook": "Here is the quick breakdown of riksdagen.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "President Trump förutspår att USA och Iran kommer att återuppta förhandlingarna denna vecka.",
-      "hook": "Here is the quick breakdown of President Trump förutspår att USA och Iran kommer att återuppta förhandlingarna denna vecka..",
-      "format": "short_explainer",
-      "category": "politics",
-      "platform": "shorts"
-    },
     {
       "trend": "25 skadade i rysk attack i Charkiv – Senaste nytt om kriget i Ukraina",
       "hook": "Here is the quick breakdown of 25 skadade i rysk attack i Charkiv – Senaste nytt om kriget i Ukraina.",
@@ -746,6 +683,69 @@
       "hook": "Here is the quick breakdown of Unionen kräver högre lön, kortare arbetstid och ökat inflytande inför Avtal 2027.",
       "format": "short_explainer",
       "category": "sports",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "spotify down",
+      "hook": "Here is the quick breakdown of spotify down.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Storbråk mellan Sydkorea och Ukraina: ”Förtroendet allvarligt skadat”",
+      "hook": "Here is the quick breakdown of Storbråk mellan Sydkorea och Ukraina: ”Förtroendet allvarligt skadat”.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Påven kritiserar Nvidias vd efter AI-lansering",
+      "hook": "Here is the quick breakdown of Påven kritiserar Nvidias vd efter AI-lansering.",
+      "format": "short_explainer",
+      "category": "technology",
       "platform": "shorts"
     }
   ]
