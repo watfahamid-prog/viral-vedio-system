@@ -540,6 +540,12 @@ def create_video(opportunity, script, index=1):
         "visual_engine": "viral_v8_zero_cost_editorial_engine",
         "ai_motion_scenes": len(used) if "used" in locals() else 0,
         "source_motion_clips": len(motion_segments),
+        "visual_relevance_gate": True,
+        "visual_source_counts": {
+            "still_assets": len(assets),
+            "source_motion_clips": len(motion_segments),
+            "scene_specific_assets": len(scene_assets),
+        },
         "ai_engines_available": __import__("ai_video").available_engines() if __import__("ai_video").engine_available() else [],
         "scene_changes": target - 1,
         "transition": "crossfade",
