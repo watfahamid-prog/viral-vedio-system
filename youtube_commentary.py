@@ -844,8 +844,7 @@ def _gemini_generate_commentary(manifest, theme):
         })
 
     banned = re.compile(
-        r"\b(number|rank|top\s*10|coming in|at number|countdown|first|then|next|after|before|"
-        r"meanwhile|eventually|suddenly|this clip|in this clip)\b", re.I
+        r"\b(first|then|next|after|before|meanwhile|eventually|suddenly|this clip|in this clip)\b", re.I
     )
     generic = re.compile(
         r"\b(that was (crazy|funny|wild|insane|ridiculous)|that timing was (perfect|"
@@ -880,10 +879,18 @@ def _gemini_generate_commentary(manifest, theme):
         if not isinstance(lines, list) or len(lines) != len(manifest):
             return False
         normalized, openings, trigrams = [], set(), set()
-        for line in lines:
+        for i, line in enumerate(lines):
             line = re.sub(r"\s+", " ", str(line)).strip()
             words = re.findall(r"[A-Za-z0-9']+", line.lower())
-            if not line or banned.search(line) or generic.search(line) or not (5 <= len(words) <= 13):
+            expected_rank = len(manifest) - i
+            rank_pattern = re.compile(rf"^(at\s+)?#?{expected_rank}\b", re.I)
+            if (
+                not line
+                or not rank_pattern.search(line)
+                or banned.search(line)
+                or generic.search(line)
+                or not (7 <= len(words) <= 16)
+            ):
                 return False
             compact = " ".join(words)
             opening = " ".join(words[:3])
@@ -903,25 +910,28 @@ def _gemini_generate_commentary(manifest, theme):
         return True
 
     writer_prompt = (
-        f"Write {len(manifest)} ORIGINAL one-line comedian reactions for a fast YouTube Top-10 {theme} Short. "
-        "Each line maps to exactly one clip in order. React to the VISIBLE ACTION described by the visual judge. "
-        "Do not narrate a story and do not describe what happened before/after. "
-        "Do not mention rankings, numbers, the list, the clip, the video, or background facts. "
-        "Use 5-13 natural spoken words. Make each line genuinely different: vary openings, verbs, rhythm, "
-        "humor angle, and punchline. Use specific details when the visual evidence gives one. "
-        "Prefer clever reactions, playful roasts, disbelief, awkward observations, or sharp one-liners. "
+        f"Write {len(manifest)} ORIGINAL one-line comedian reactions for a fast YouTube Top-{len(manifest)} {theme} countdown. "
+        "This MUST feel like a real ranked listicle, not a facts/explainer video. "
+        "Each line maps to exactly one clip in order, from the lowest rank to #1. "
+        "Every line MUST begin with its exact rank marker: 'At #10,' then 'At #9,' ... ending with 'At #1,' "
+        "(use the actual count and rank for this list). React to the VISIBLE ACTION described by the visual judge. "
+        "The rank marker should make the countdown unmistakable, while the rest of the line gives a funny, clip-specific reason "
+        "the moment belongs at that position. Do not narrate a news story or give background facts. "
+        "Use 7-16 natural spoken words. Make each line genuinely different: vary openings after the rank marker, verbs, rhythm, "
+        "humor angle, and punchline. Prefer clever reactions, playful roasts, disbelief, awkward observations, or sharp one-liners. "
         "Never use generic filler such as 'that was crazy', 'that was funny', 'that timing was perfect', "
         "'what a reaction', 'that went wrong', or 'that escalated'. Return ONLY the JSON array."
         f"\nCLIP EVIDENCE:\n{json.dumps(candidates, ensure_ascii=False)}"
     );
 
     editor_prompt = (
-        f"You are the FINAL comedy editor for a {theme} Top-10 Short. "
-        "Rewrite the draft reactions so every line sounds like a different comedian reacting to a different moment. "
+        f"You are the FINAL comedy editor for a {theme} Top-{len(manifest)} countdown Short. "
+        "Rewrite the draft so it unmistakably feels like a ranked countdown rather than an explainer. "
+        "Preserve the exact rank marker required for each line: 'At #N,'. The first line is the lowest rank and the last line is #1. "
         "The visible-action evidence is authoritative. If a draft does not match the evidence, replace it. "
-        "Keep 5-13 words per line. No story narration, no countdown language, no generic filler, no repeated "
-        "openings, repeated three-word phrases, repeated joke structures, or near-duplicate vocabulary. "
-        "Each line must contain a concrete reaction to something visible. Return ONLY the JSON array."
+        "Keep 7-16 words per line. The part after the rank marker must be a concrete, funny reaction explaining why that moment earns its position. "
+        "No background facts, news narration, generic filler, repeated openings after the rank marker, repeated three-word phrases, "
+        "repeated joke structures, or near-duplicate vocabulary. Return ONLY the JSON array."
         f"\nVISUAL EVIDENCE:\n{json.dumps(candidates, ensure_ascii=False)}"
     );
 
@@ -934,8 +944,10 @@ def _gemini_generate_commentary(manifest, theme):
         if not validate(edited):
             repair_prompt = (
                 "FINAL REPAIR. Rewrite all reactions below. Keep the same order and visible-action meaning. "
-                "Every line must be 5-13 words, clip-specific, funny, spoken naturally, and structurally unique. "
-                "No countdown words, story transitions, generic filler, repeated openings, repeated trigrams, "
+                "Every line must begin with its exact countdown marker ('At #N,') from the lowest rank to #1. "
+                "Every line must be 7-16 words, clip-specific, funny, spoken naturally, and structurally unique. "
+                "The line must feel like a ranked countdown, not a fact or explainer. "
+                "No story transitions, generic filler, repeated openings after the rank marker, repeated trigrams, "
                 "or near-duplicate vocabulary. Return ONLY the JSON array."
                 f"\nEVIDENCE: {json.dumps(candidates, ensure_ascii=False)}"
                 f"\nREACTIONS: {json.dumps(edited, ensure_ascii=False)}"
@@ -1105,7 +1117,7 @@ def _listicle_commentary(number, opportunity, source):
             "One tiny mistake and everything changes instantly.",
             "That is way more chaotic than it needed to be.",
         ]
-    return pick(pool)
+    return f"At #{number}, " + pick(pool).lstrip()
 
 def _tts(text, path, voice_id=None, label="Voice 1"):
     """Generate narration with the explicitly selected ElevenLabs voice."""
