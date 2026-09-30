@@ -16,7 +16,7 @@ TIKTOK_ENABLED = os.getenv("TIKTOK_ENABLED", "false").lower() == "true"
 AI_MODE = os.getenv("AI_MODE", "template").lower()
 VIDEO_ENGINE = os.getenv("VIDEO_ENGINE", "auto").lower()
 COMFYUI_URL = os.getenv("COMFYUI_URL", "").rstrip("/")
-TTS_ENGINE = os.getenv("TTS_ENGINE", "edge").lower()
+TTS_ENGINE = os.getenv("TTS_ENGINE", "elevenlabs").lower()
 TTS_VOICE = os.getenv("TTS_VOICE", "en-US-AriaNeural")
 VIDEO_COUNT = int(os.getenv("VIDEO_COUNT", "3"))
 AI_VIDEO_ENABLED = os.getenv("AI_VIDEO_ENABLED", "true").lower() == "true"
@@ -34,9 +34,9 @@ GEMINI_VISUAL_QC_ENABLED = os.getenv("GEMINI_VISUAL_QC_ENABLED", "true").lower()
 
 # ElevenLabs voice configuration. Voice IDs stay in GitHub Secrets/env vars;
 # never hard-code the actual IDs into the repository.
-ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
+ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "true").lower() == "true"
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
 ELEVENLABS_VOICE_ID_1 = os.getenv("ELEVENLABS_VOICE_ID_1", "").strip() or os.getenv("ELEVENLABS_VOICE_ID", "").strip()
 ELEVENLABS_VOICE_ID_2 = os.getenv("ELEVENLABS_VOICE_ID_2", "").strip()
 ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5").strip()
-ELEVENLABS_TEST_VOICES = os.getenv("ELEVENLABS_TEST_VOICES", "false").lower() == "true"
+ELEVENLABS_TEST_VOICES = os.getenv("ELEVENLABS_TEST_VOICES", "true").lower() == "true"
