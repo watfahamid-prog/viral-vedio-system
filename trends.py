@@ -67,9 +67,36 @@ def get_news_trends():
                     description = item.findtext("description") or ""
                     description = re.sub(r"<[^>]+>", " ", description)
                     description = re.sub(r"\s+", " ", description).strip()
+                    # Google News RSS descriptions can contain a bundle of unrelated
+                    # headlines. Never pass that whole bundle into the script writer.
+                    if source_name == "google_news":
+                        description = value
+                    else:
+                        description = description[:700]
                     link = (item.findtext("link") or "").strip()
-                    _add(trends, value, source_name, max(25.0, 100.0 - rank * 2.0), {"rank": rank + 1},
-                         {"summary": description[:1200], "source_url": link, "publisher": publisher})
+
+                    image_url = ""
+                    for child in list(item):
+                        tag = str(child.tag).lower()
+                        if tag.endswith("}content") or tag.endswith("}thumbnail") or tag.endswith("enclosure"):
+                            image_url = str(child.attrib.get("url") or child.attrib.get("href") or "").strip()
+                            if image_url:
+                                break
+                    if not image_url:
+                        match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', item.findtext("description") or "", re.I)
+                        if match:
+                            image_url = match.group(1)
+
+                    _add(
+                        trends, value, source_name, max(25.0, 100.0 - rank * 2.0),
+                        {"rank": rank + 1},
+                        {
+                            "summary": description,
+                            "source_url": link,
+                            "publisher": publisher,
+                            "image_url": image_url,
+                        },
+                    )
         except Exception as error:
             print(f"{source_name} failed: {error}")
     return trends
