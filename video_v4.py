@@ -141,106 +141,14 @@ def _safe_download(url, path):
     Path(path).unlink(missing_ok=True)
     return False
 
-def _fetch_visual_assets(opportunity, work):
-    """Fetch topic-relevant imagery only; reject generic logos and unrelated search hits."""
-    assets, credits = [], []
-    trend = html.unescape(re.sub(r"^(källor|sources)[:\\s]+", "", str(opportunity.get("trend", "")), flags=re.I)).strip()
-    query = " ".join(trend.split()[:10])
-
-    # Search Wikimedia first. Image title/description must share a meaningful topic token.
-    if query:
-        try:
-            api = requests.get(
-                "https://commons.wikimedia.org/w/api.php",
-                params={
-                    "action": "query", "generator": "search", "gsrsearch": query,
-                    "gsrnamespace": 6, "gsrlimit": 10, "prop": "imageinfo",
-                    "iiprop": "url|extmetadata", "iiurlwidth": 1080, "format": "json"
-                },
-                headers={"User-Agent": "ViralVideoBot/5.0"}, timeout=12
-            )
-            if api.ok:
-                aliases = {
-                    "ambulans": "ambulance", "ambulanss": "ambulance",
-                    "fotboll": "football", "soccer": "football",
-                    "trump": "trump", "iran": "iran", "hipp": "hipp"
-                }
-                terms = []
-                for word in re.findall(r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", query.lower()):
-                    if len(word) >= 4 and word not in {"this", "that", "with", "here", "sources", "källor"}:
-                        terms.append(aliases.get(word, word))
-                repeated_phrase = bool(re.search(r"\\b(\\w+)\\s+\\1\\b", query.lower()))
-                terms = list(dict.fromkeys(terms))
-
-                pages = (api.json().get("query", {}).get("pages", {}) or {}).values()
-                scored = []
-                for page_data in pages:
-                    info = (page_data.get("imageinfo") or [{}])[0]
-                    meta = info.get("extmetadata") or {}
-                    title_text = str(page_data.get("title", ""))
-                    desc_text = " ".join(
-                        str(meta.get(k, {}).get("value", ""))
-                        for k in ("ObjectName", "ImageDescription", "Categories")
-                    )
-                    haystack = html.unescape((title_text + " " + desc_text)).lower()
-                    score = sum(1 for term in terms if term in haystack)
-                    exact_phrase = query.lower() in haystack
-                    if exact_phrase:
-                        score += 5
-                    # Repeated phrases such as "hipp hipp" must match the phrase itself;
-                    # a random file containing only one "hipp" token is not relevant.
-                    if repeated_phrase and not exact_phrase:
-                        continue
-                    # Multi-term topics need more than one weak token match.
-                    required = 1 if len(terms) <= 1 else min(2, len(terms))
-                    if score < required:
-                        continue
-                    url = info.get("thumburl") or info.get("url")
-                    if not url:
-                        continue
-                    scored.append((score, page_data.get("pageid", 0), url, title_text))
-
-                scored.sort(key=lambda x: (-x[0], x[1]))
-                for n, (score, _, url, title_text) in enumerate(scored[:3]):
-                    p = work / f"commons_{n:02d}.jpg"
-                    if _safe_download(url, p):
-                        try:
-                            with Image.open(p) as im:
-                                if min(im.size) < 420:
-                                    p.unlink(missing_ok=True)
-                                    continue
-                        except Exception:
-                            p.unlink(missing_ok=True)
-                            continue
-                        assets.append(str(p))
-                        credits.append(f"Wikimedia Commons: {title_text[:100]}")
-                        time.sleep(1.2)
-        except Exception as error:
-            print(f"Wikimedia visual search unavailable: {error}")
-
-    # Only use a source OG image when it is large enough to be useful. A 300x300
-    # generic site icon is worse than a clean generated editorial fallback.
-    source_url = str(opportunity.get("source_url", "")).strip()
-    if source_url and not assets:
-        try:
-            page = requests.get(source_url, headers={"User-Agent": "Mozilla/5.0 ViralVideoBot/5.0"}, timeout=12)
-            if page.ok:
-                match = re.search(r'<meta[^>]+(?:property|name)=["\']og:image["\'][^>]+content=["\']([^"\']+)', page.text, re.I)
-                if not match:
-                    match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']og:image["\']', page.text, re.I)
-                if match:
-                    p = work / "source_og.jpg"
-                    if _safe_download(match.group(1), p):
-                        with Image.open(p) as im:
-                            if min(im.size) >= 700:
-                                assets.append(str(p))
-                                credits.append("source image")
-                            else:
-                                p.unlink(missing_ok=True)
-        except Exception as error:
-            print(f"Source preview image unavailable: {error}")
-
-    return assets[:6], credits[:6]
+def _fetch_visual_assets(opportunity, work, search_text=None, allow_source=True):
+    """Compatibility wrapper around the relevance-gated multi-source visual search."""
+    from visual_sources import fetch_visual_media
+    images, _, credits = fetch_visual_media(
+        opportunity, work, search_text=search_text,
+        allow_source=allow_source, max_images=6, max_videos=0
+    )
+    return images[:6], credits[:6]
 
 def _photo_frame(path, image_path, title, hook, scene, category, index, total, palette, style):
     """Editorial photo frame with strong hierarchy, varied composition and clean typography."""
