@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "runs": 116,
-  "videos": 195,
+  "runs": 118,
+  "videos": 197,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
     "long_black_section": 3,
     "wrong_youtube_resolution": 2,
-    "visual_relevance_gate_missing": 6,
-    "insufficient_distinct_relevant_visuals": 6
+    "visual_relevance_gate_missing": 8,
+    "insufficient_distinct_relevant_visuals": 8
   },
   "platforms": {
     "youtube": {
@@ -20,7 +20,7 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 46,
+      "checked": 48,
       "passed": 40
     }
   },
@@ -41,120 +41,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 46
+      "created": 48
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-30T16:50:41.785485+00:00",
+  "last_updated": "2026-09-30T19:49:26.466522+00:00",
   "creative_history": [
-    {
-      "trend": "Påven kritiserar Nvidias vd efter AI-lansering",
-      "hook": "Here is the quick breakdown of Påven kritiserar Nvidias vd efter AI-lansering.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Svenska spelet river ner succé efter succé",
-      "hook": "Here is the quick breakdown of Svenska spelet river ner succé efter succé.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Tigraystrider trappas upp – oro för inbördeskrig",
-      "hook": "Here is the quick breakdown of Tigraystrider trappas upp – oro för inbördeskrig.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "AI-revolutionen ska bli större än elektriciteten – Anthropics enorma chansning",
-      "hook": "Here is the quick breakdown of AI-revolutionen ska bli större än elektriciteten – Anthropics enorma chansning.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
     {
       "trend": "scariest moments caught on camera",
       "hook": "Here is the quick breakdown of scariest moments caught on camera.",
@@ -748,6 +643,111 @@
       "hook": "Here is the quick breakdown of Svensk film störtdök på biograferna – få premiärer pekas ut som orsak.",
       "format": "short_explainer",
       "category": "entertainment",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Talmannen avvaktar – behöver mer betänketid",
+      "hook": "Here is the quick breakdown of Talmannen avvaktar – behöver mer betänketid.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Massavhopp i Bonde söker fru i TV4 – brevskrivarna lämnar: ”Akut”",
+      "hook": "Here is the quick breakdown of Massavhopp i Bonde söker fru i TV4 – brevskrivarna lämnar: ”Akut”.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Nyhetsshowen 30 september • Kommunen som förbjudit korta shorts och dålig hygien",
+      "hook": "Here is the quick breakdown of Nyhetsshowen 30 september • Kommunen som förbjudit korta shorts och dålig hygien.",
+      "format": "short_explainer",
+      "category": "entertainment",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "DN Direkt – Netanyahu hyllar indiska piloten: ”En sann hjälte”",
+      "hook": "Here is the quick breakdown of DN Direkt – Netanyahu hyllar indiska piloten: ”En sann hjälte”.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Direkt – Kriget i Ukraina – Zelenskyj hyllar framgångar vid fronten",
+      "hook": "Here is the quick breakdown of Direkt – Kriget i Ukraina – Zelenskyj hyllar framgångar vid fronten.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Prognos: Så många Iphone Duo väntas Apple sälja 2026",
+      "hook": "Here is the quick breakdown of Prognos: Så många Iphone Duo väntas Apple sälja 2026.",
+      "format": "short_explainer",
+      "category": "technology",
       "platform": "shorts"
     }
   ]
