@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "runs": 114,
-  "videos": 193,
+  "runs": 116,
+  "videos": 195,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
     "long_black_section": 3,
     "wrong_youtube_resolution": 2,
-    "visual_relevance_gate_missing": 4,
-    "insufficient_distinct_relevant_visuals": 4
+    "visual_relevance_gate_missing": 6,
+    "insufficient_distinct_relevant_visuals": 6
   },
   "platforms": {
     "youtube": {
@@ -20,7 +20,7 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 44,
+      "checked": 46,
       "passed": 40
     }
   },
@@ -41,120 +41,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 44
+      "created": 46
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-30T16:35:16.905299+00:00",
+  "last_updated": "2026-09-30T16:50:41.785485+00:00",
   "creative_history": [
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "DN Direkt – Magdalena Andersson svarar på Åkessons krav",
-      "hook": "Here is the quick breakdown of DN Direkt – Magdalena Andersson svarar på Åkessons krav.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "tampa bay lightning",
-      "hook": "Here is the quick breakdown of tampa bay lightning.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Unionen kräver högre lön, kortare arbetstid och ökat inflytande inför Avtal 2027",
-      "hook": "Here is the quick breakdown of Unionen kräver högre lön, kortare arbetstid och ökat inflytande inför Avtal 2027.",
-      "format": "short_explainer",
-      "category": "sports",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "spotify down",
-      "hook": "Here is the quick breakdown of spotify down.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Storbråk mellan Sydkorea och Ukraina: ”Förtroendet allvarligt skadat”",
-      "hook": "Here is the quick breakdown of Storbråk mellan Sydkorea och Ukraina: ”Förtroendet allvarligt skadat”.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
     {
       "trend": "Påven kritiserar Nvidias vd efter AI-lansering",
       "hook": "Here is the quick breakdown of Påven kritiserar Nvidias vd efter AI-lansering.",
@@ -748,6 +643,111 @@
       "hook": "Here is the quick breakdown of funniest moments caught on camera.",
       "format": "short_explainer",
       "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "DN Direkt – Åkesson: Dags att gå till omröstning",
+      "hook": "Here is the quick breakdown of DN Direkt – Åkesson: Dags att gå till omröstning.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "häcken mot juventus fc",
+      "hook": "Here is the quick breakdown of häcken mot juventus fc.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "älvsjö",
+      "hook": "Here is the quick breakdown of älvsjö.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "häcken mot juventus fc",
+      "hook": "Here is the quick breakdown of häcken mot juventus fc.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "älvsjö",
+      "hook": "Here is the quick breakdown of älvsjö.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Svensk film störtdök på biograferna – få premiärer pekas ut som orsak",
+      "hook": "Here is the quick breakdown of Svensk film störtdök på biograferna – få premiärer pekas ut som orsak.",
+      "format": "short_explainer",
+      "category": "entertainment",
       "platform": "shorts"
     }
   ]
