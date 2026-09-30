@@ -83,6 +83,15 @@ def check_video(video_path, platform="youtube", item_script=None):
                     errors.append("scene_count_out_of_range")
                 if not data.get("original_content", False):
                     errors.append("originality_flag_missing")
+                if not data.get("visual_relevance_gate", False):
+                    errors.append("visual_relevance_gate_missing")
+                stills = data.get("visual_assets") or []
+                motion = int(data.get("source_motion_clips", 0) or 0)
+                distinct_stills = len(set(map(str, stills)))
+                # Do not allow a successful file-size/render check to hide a
+                # slideshow made from one unrelated asset.
+                if distinct_stills < min(3, shots) and motion < 1:
+                    errors.append("insufficient_distinct_relevant_visuals")
         except Exception:
             warnings.append("manifest_unreadable")
     else:
