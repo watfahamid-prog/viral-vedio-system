@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 107,
-  "videos": 186,
+  "runs": 108,
+  "videos": 187,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -18,8 +18,8 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 37,
-      "passed": 37
+      "checked": 38,
+      "passed": 38
     }
   },
   "formats": {
@@ -39,78 +39,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 37
+      "created": 38
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-30T01:47:32.732242+00:00",
+  "last_updated": "2026-09-30T04:49:23.296076+00:00",
   "creative_history": [
-    {
-      "trend": "hugo fransson",
-      "hook": "Here is the quick breakdown of hugo fransson.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "V-Ida är ensam kvar - C och S tackade nej - Valet 2026 | Livebevakning om valresultatet och regeringsbildningen",
-      "hook": "Here is the quick breakdown of V-Ida är ensam kvar - C och S tackade nej - Valet 2026 | Livebevakning om valresultatet och regeringsbildningen.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "stöld",
-      "hook": "Here is the quick breakdown of stöld.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
     {
       "trend": "lars leijonborg",
       "hook": "Here is the quick breakdown of lars leijonborg.",
@@ -744,6 +681,69 @@
     {
       "trend": "Bro i Strömsund började röra sig – E45 avstängd",
       "hook": "Here is the quick breakdown of Bro i Strömsund började röra sig – E45 avstängd.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Strömsundsbron förflyttad efter olycka",
+      "hook": "Here is the quick breakdown of Strömsundsbron förflyttad efter olycka.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "varg",
+      "hook": "Here is the quick breakdown of varg.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "ida gabrielsson",
+      "hook": "Here is the quick breakdown of ida gabrielsson.",
       "format": "short_explainer",
       "category": "general",
       "platform": "shorts"
