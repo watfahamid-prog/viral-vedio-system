@@ -310,8 +310,23 @@ def create_video(opportunity, script, index=1):
         # Never use the old editorial frame renderer here: it burns template
         # labels, hooks and scene descriptions into the actual video.
         source = ai_keyframes[i] if i < len(ai_keyframes) else (assets[i % len(assets)] if assets else None)
+        if not source and motion_assets:
+            # A real motion result is also a valid keyframe source, so a
+            # video-only search can never force the pipeline into a fake
+            # template fallback.
+            motion_source = motion_assets[i % len(motion_assets)]
+            motion_still = work / f"motion_still_{i:02d}.jpg"
+            try:
+                subprocess.run(
+                    ["ffmpeg","-y","-ss","0.5","-i",motion_source,"-frames:v","1",
+                     "-q:v","2",str(motion_still)],
+                    check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+                )
+                source = str(motion_still)
+            except Exception:
+                source = None
         if not source or not _clean_visual_frame(str(key), source):
-            raise RuntimeError("No clean visual asset available after Wikimedia fallback search.")
+            raise RuntimeError("No relevant visual asset survived the relevance gate.")
         keys.append(str(key))
 
     # Put up to three real topic-matched motion clips into the timeline. These are
