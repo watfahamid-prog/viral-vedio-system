@@ -1156,6 +1156,15 @@ def _tts(text, path, voice_id=None, label="Voice 1"):
 
 
 def create_youtube_commentary_video(opportunity, index):
+    # The YouTube lane is a real countdown listicle, not a generic explainer.
+    # Vary the promised list size across the three shards: Top 5, Top 6, Top 10.
+    # This value is shared by the clip search, ranking, title, narration and manifest.
+    global CLIPS_PER_VIDEO
+    requested_count = int(os.getenv("YOUTUBE_CLIPS_PER_VIDEO", "0") or "0")
+    if requested_count in {5, 6, 10}:
+        CLIPS_PER_VIDEO = requested_count
+    else:
+        CLIPS_PER_VIDEO = {1: 5, 2: 6, 3: 10}.get(int(index), 10)
     root = Path(OUTPUT_DIR) / f"youtube_{index}"
     root.mkdir(parents=True, exist_ok=True)
     query = opportunity.get("trend") or "funniest moments caught on camera"
