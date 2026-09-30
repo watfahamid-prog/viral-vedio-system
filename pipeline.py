@@ -70,6 +70,7 @@ def build_opportunities(trends):
             "metrics": item.get("metrics", {}) if isinstance(item, dict) else {},
             "summary": item.get("context", {}).get("summary", "") if isinstance(item, dict) else "",
             "source_url": item.get("context", {}).get("source_url", "") if isinstance(item, dict) else "",
+            "image_url": item.get("context", {}).get("image_url", "") if isinstance(item, dict) else "",
             "publisher": item.get("context", {}).get("publisher", "") if isinstance(item, dict) else "",
             "category": category,
             "hook": hooks[format_name].format(trend=trend),
