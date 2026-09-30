@@ -110,7 +110,7 @@ jobs:
           else
             echo "Stock video APIs are reachable."
           fi
-          echo "ElevenLabs is optional; edge-tts is the fallback."
+          echo "ElevenLabs is the primary narration engine; the code will fail over only if its API call cannot run."
 
       - name: Report video-engine availability
         env:
@@ -160,7 +160,7 @@ jobs:
           POLLINATIONS_MAX_IMAGES_PER_VIDEO: "6"
           POLLINATIONS_MAX_MOTION_CLIPS_PER_VIDEO: "2"
           POLLINATIONS_VIDEO_SECONDS: "4"
-          TTS_ENGINE: "edge-tts"
+          TTS_ENGINE: "elevenlabs"
           TTS_VOICE: "en-US-ChristopherNeural"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
@@ -174,7 +174,7 @@ jobs:
           YOUTUBE_ENABLED: "true"
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           YOUTUBE_COMMENTARY_MODE: "voice"
-          YOUTUBE_CLIPS_PER_VIDEO: "10"
+          YOUTUBE_CLIPS_PER_VIDEO: "0"
           YOUTUBE_CLIP_SECONDS: "3.0"
           YOUTUBE_CLIP_TIMEOUT: "8"
           YOUTUBE_DOWNLOAD_TOTAL_TIMEOUT: "15"
