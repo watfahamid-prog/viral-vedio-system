@@ -223,75 +223,68 @@ def create_video(opportunity, script, index=1):
     transition = min(0.16, max(0.10, (duration / target) * 0.075))
     scene_time = (duration + transition * (target - 1)) / target
 
-    assets, credits = v4._fetch_visual_assets(opportunity, work)
-
-    # Build a scene-specific visual pool even when the broad trend search succeeds.
-    # This is important for quality: otherwise one small set of trend images can be
-    # recycled across every scene, creating a slideshow instead of a story.
-    scene_assets = []
-    scene_asset_seen = set()
+    # Relevance-gated media search. The broad query uses the actual topic and source
+    # image first; scene searches use the topic + narration nouns, never the generic
+    # camera/production prompt, so words like "book", "library" or "technology"
+    # cannot accidentally become the subject of the footage.
+    from visual_sources import fetch_visual_media
+    assets, motion_assets, credits = fetch_visual_media(
+        opportunity, work, search_text=raw_trend if 'raw_trend' in locals() else opportunity.get("trend", ""),
+        allow_source=True, max_images=6, max_videos=3
+    )
 
     raw_trend = str(opportunity.get("trend", "")).strip()
-    if not assets:
-        retry_opportunity = dict(opportunity)
-        words = [w for w in re.findall(r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", raw_trend) if len(w) >= 4]
-        retry_opportunity["trend"] = " ".join(words[:5])
-        if retry_opportunity["trend"] and retry_opportunity["trend"] != raw_trend:
-            assets, retry_credits = v4._fetch_visual_assets(retry_opportunity, work / "trend_retry")
-            credits.extend(retry_credits)
-
-    # Search scene topics one-by-one in zero-cost mode. Keep unique source files so
-    # different scenes can actually show different subjects/locations/objects.
-    scene_terms = []
-    stop = {
-        "about","after","again","also","because","before","being","could","from",
-        "have","into","more","most","over","that","their","there","these","this",
-        "through","under","what","when","where","which","while","with","would",
-        "scene","show","shows","shot","camera","video","vertical","original",
-        "realistic","natural","cinematic","footage","image","images","maintain",
-        "continuity","dynamic","close","wide","medium","slow","gentle","shot",
+    scene_assets = []
+    scene_seen = set()
+    scene_stop = {
+        "latest","source","describes","says","said","according","confirmed","information",
+        "detail","context","reaction","story","update","available","important","part",
+        "watch","attention","happening","shows","show","actually","really","people",
+        "this","that","with","from","about","then","next","here","what","why","will",
     }
-    for scene in scenes:
+    # Only search a small number of distinct scene queries to stay within free API
+    # limits while still creating a genuinely varied visual pool.
+    for n, scene in enumerate(scenes[:4]):
         words = [
             w.lower() for w in re.findall(
-                r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", scene
+                r"[A-Za-zÅÄÖåäö0-9][A-Za-zÅÄÖåäö0-9'’\-]+", str(scene)
             )
-            if len(w) >= 5 and w.lower() not in stop
+            if len(w) >= 5 and w.lower() not in scene_stop
         ]
-        query_words = list(dict.fromkeys(words))[:6]
-        query = " ".join(query_words)
-        if query and query not in scene_terms:
-            scene_terms.append(query)
-
-    for n, query in enumerate(scene_terms[:target]):
+        query_tail = " ".join(list(dict.fromkeys(words))[:3])
+        search_text = (raw_trend + " " + query_tail).strip()
         scene_work = work / f"scene_search_{n:02d}"
         scene_work.mkdir(parents=True, exist_ok=True)
-        scene_opportunity = dict(opportunity)
-        scene_opportunity["trend"] = query
-        found, found_credits = v4._fetch_visual_assets(scene_opportunity, scene_work)
+        found, _, found_credits = fetch_visual_media(
+            opportunity, scene_work, search_text=search_text,
+            allow_source=False, max_images=2, max_videos=0
+        )
         credits.extend(found_credits)
         for src in found:
             try:
-                source_key = str(Path(src).resolve())
+                digest = __import__("hashlib").sha256(Path(src).read_bytes()).hexdigest()
             except Exception:
-                source_key = str(src)
-            if source_key in scene_asset_seen:
+                digest = str(src)
+            if digest in scene_seen:
                 continue
             dst = work / f"scene_asset_{len(scene_assets):02d}.jpg"
             try:
                 shutil.copyfile(src, dst)
                 scene_assets.append(str(dst))
-                scene_asset_seen.add(source_key)
+                scene_seen.add(digest)
             except Exception:
                 pass
 
-    # Prefer scene-specific assets; broad trend assets remain a fallback. This
-    # prevents repetitive faces/covers from occupying the entire timeline.
     if scene_assets:
         assets = scene_assets + [a for a in assets if a not in scene_assets]
-    print(f"Zero-cost visual search: {len(scene_assets)} scene-specific + {len(assets)} total usable assets.")
-    # Prefer original AI keyframes when the legitimate low-cost media key is configured.
-    # The router is bounded per video, so a run cannot silently explode media spend.
+
+    print(
+        f"Relevance-gated visual search: {len(scene_assets)} scene assets + "
+        f"{len(assets)} stills + {len(motion_assets)} real motion clips."
+    )
+
+    # AI-generated keyframes are optional enhancement only. They never replace the
+    # relevance-gated source pool when an appropriate real source exists.
     ai_keyframes = []
     try:
         if os.getenv("ZERO_COST_MODE", "false").lower() == "true":
@@ -299,14 +292,15 @@ def create_video(opportunity, script, index=1):
         from media_engine import generate_image, MAX_IMAGES_PER_VIDEO
         for i in range(min(target, MAX_IMAGES_PER_VIDEO)):
             prompt = (
-                "Vertical 9:16 cinematic editorial still for a short-form video. "
-                + visuals[i] + " Photorealistic, coherent subject and environment, natural lighting, "
-                "strong depth, realistic anatomy, no readable text, no logos, no watermark."
+                "Vertical 9:16 cinematic editorial still about the exact topic "
+                + raw_trend + ". " + visuals[i]
+                + " Photorealistic, coherent subject and environment, natural lighting, "
+                "strong depth, no readable text, no logos, no watermark."
             )
             generated = generate_image(prompt, str(work / f"ai_key_{i:02d}.jpg"), index=i)
             if generated:
                 ai_keyframes.append(generated)
-        print(f"Pollinations AI keyframes used: {len(ai_keyframes)}")
+        print(f"Optional AI keyframes used: {len(ai_keyframes)}")
     except Exception as error:
         print(f"AI keyframe generation skipped: {error}")
 
@@ -316,18 +310,41 @@ def create_video(opportunity, script, index=1):
         # Never use the old editorial frame renderer here: it burns template
         # labels, hooks and scene descriptions into the actual video.
         source = ai_keyframes[i] if i < len(ai_keyframes) else (assets[i % len(assets)] if assets else None)
-        if not source:
-            # Keep the pipeline alive without ever falling back to instruction text.
-            # A single licensed asset can safely supply multiple clean cinematic crops.
-            if assets:
-                source = assets[i % len(assets)]
         if not source or not _clean_visual_frame(str(key), source):
             raise RuntimeError("No clean visual asset available after Wikimedia fallback search.")
         keys.append(str(key))
 
+    # Put up to three real topic-matched motion clips into the timeline. These are
+    # searched from Pexels using the exact topic, so the chain is now topic -> relevant
+    # footage -> different relevant footage instead of topic -> generic image.
+    motion_segments = {}
+    for mi, motion in enumerate(motion_assets[:3]):
+        scene_index = [1, max(1, target // 2), max(1, target - 2)][mi]
+        scene_index = min(target - 1, scene_index)
+        normalized = work / f"source_motion_{scene_index:02d}.mp4"
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg","-y","-i",motion,
+                    "-vf",
+                    f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,"
+                    f"crop={WIDTH}:{HEIGHT},fps={FPS},format=yuv420p",
+                    "-an","-t",f"{scene_time:.3f}",
+                    "-c:v","libx264","-preset","veryfast","-crf","19",
+                    "-movflags","+faststart",str(normalized)
+                ],
+                check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+            )
+            motion_segments[scene_index] = str(normalized)
+        except Exception as error:
+            print(f"Source motion clip skipped: {error}")
+
     segments = []
     for i, key in enumerate(keys):
         segment = work / f"seg_{i:02d}.mp4"
+        if i in motion_segments:
+            segments.append(motion_segments[i])
+            continue
         _build_segment_v5(
             key, str(segment), scene_time,
             direction=1 if (i + style) % 2 == 0 else -1,
@@ -522,6 +539,7 @@ def create_video(opportunity, script, index=1):
         "original_content": True,
         "visual_engine": "viral_v8_zero_cost_editorial_engine",
         "ai_motion_scenes": len(used) if "used" in locals() else 0,
+        "source_motion_clips": len(motion_segments),
         "ai_engines_available": __import__("ai_video").available_engines() if __import__("ai_video").engine_available() else [],
         "scene_changes": target - 1,
         "transition": "crossfade",
