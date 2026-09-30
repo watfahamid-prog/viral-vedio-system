@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "runs": 109,
-  "videos": 188,
+  "runs": 110,
+  "videos": 189,
   "qc_failures": {
     "missing_audio": 6,
     "shot_count_out_of_range": 6,
@@ -18,8 +18,8 @@
       "passed": 47
     },
     "shorts": {
-      "checked": 39,
-      "passed": 39
+      "checked": 40,
+      "passed": 40
     }
   },
   "formats": {
@@ -39,78 +39,15 @@
       "created": 4
     },
     "short_explainer": {
-      "created": 39
+      "created": 40
     }
   },
   "lessons": [
     "Always keep a verified audio stream before notification.",
     "Keep every short-form video between 4 and 11 distinct shots."
   ],
-  "last_updated": "2026-09-30T07:51:22.500317+00:00",
+  "last_updated": "2026-09-30T10:50:37.846566+00:00",
   "creative_history": [
-    {
-      "trend": "nations league matcher",
-      "hook": "Here is the quick breakdown of nations league matcher.",
-      "format": "short_explainer",
-      "category": "sports",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "Example technology trend",
-      "hook": "Here is the quick breakdown of Example technology trend.",
-      "format": "short_explainer",
-      "category": "technology",
-      "platform": "shorts"
-    },
-    {
-      "trend": "funniest moments caught on camera",
-      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "scariest moments caught on camera",
-      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "HANS STIGSSON: Norlén förtjänt av den o(v)äntade segern i talmansvalet",
-      "hook": "Here is the quick breakdown of HANS STIGSSON: Norlén förtjänt av den o(v)äntade segern i talmansvalet.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
-    {
-      "trend": "turkiet",
-      "hook": "Here is the quick breakdown of turkiet.",
-      "format": "short_explainer",
-      "category": "general",
-      "platform": "shorts"
-    },
     {
       "trend": "Man allvarligt skadad efter arbetsplatsolycka i Piteå – ska ha fått frätande vätska på sig",
       "hook": "Here is the quick breakdown of Man allvarligt skadad efter arbetsplatsolycka i Piteå – ska ha fått frätande vätska på sig.",
@@ -744,6 +681,69 @@
     {
       "trend": "Ryska attacker mot Ukraina – minst en död",
       "hook": "Here is the quick breakdown of Ryska attacker mot Ukraina – minst en död.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Example technology trend",
+      "hook": "Here is the quick breakdown of Example technology trend.",
+      "format": "short_explainer",
+      "category": "technology",
+      "platform": "shorts"
+    },
+    {
+      "trend": "funniest moments caught on camera",
+      "hook": "Here is the quick breakdown of funniest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "scariest moments caught on camera",
+      "hook": "Here is the quick breakdown of scariest moments caught on camera.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Kaptenen och lotsen döms efter Tjörnolyckan",
+      "hook": "Here is the quick breakdown of Kaptenen och lotsen döms efter Tjörnolyckan.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "boeing",
+      "hook": "Here is the quick breakdown of boeing.",
+      "format": "short_explainer",
+      "category": "general",
+      "platform": "shorts"
+    },
+    {
+      "trend": "Right Livelihood-pristagare varnar: ”AI-företagen det verkliga hotet mot mänskligheten”",
+      "hook": "Here is the quick breakdown of Right Livelihood-pristagare varnar: ”AI-företagen det verkliga hotet mot mänskligheten”.",
       "format": "short_explainer",
       "category": "technology",
       "platform": "shorts"
