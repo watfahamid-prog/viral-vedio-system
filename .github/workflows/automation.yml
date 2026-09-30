@@ -1,6 +1,8 @@
 name: Viral Video Automation v5 free-engine stack # final visual-engine validation
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       mode:
