@@ -46,7 +46,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 ELEVENLABS_ENABLED = os.getenv("ELEVENLABS_ENABLED", "false").lower() == "true"
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb").strip()
+ELEVENLABS_VOICE_ID = ELEVENLABS_VOICE_ID_1
 ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5").strip()
 
 
@@ -1117,7 +1117,7 @@ def _tts(text, path, voice_id=None, label="Voice 1"):
         return None
 
     selected_voice = (voice_id or ELEVENLABS_VOICE_ID_1).strip()
-    if ELEVENLABS_ENABLED and ELEVENLABS_API_KEY and selected_voice:
+    if ELEVENLABS_API_KEY and selected_voice:
         try:
             endpoint = f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice}"
             response = requests.post(
