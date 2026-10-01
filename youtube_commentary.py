@@ -1586,7 +1586,7 @@ def create_youtube_commentary_video(opportunity, index):
         mode = "text"
 
     metadata = {
-        "platform": "youtube", "mode": mode, "format": "top_10_listicle",
+        "platform": "youtube", "mode": mode, "format": f"top_{CLIPS_PER_VIDEO}_listicle",
         "trend": opportunity.get("trend", ""), "commentary": comments,
         "editing": {
             "clips": CLIPS_PER_VIDEO, "clip_seconds": CLIP_SECONDS,
