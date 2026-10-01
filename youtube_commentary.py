@@ -544,11 +544,22 @@ def _strict_source_gate(source, theme):
             return False
     if theme == "funniest":
         animal_stock = (
-            "animal", "animals", "cat", "kitten", "dog", "puppy", "monkey",
-            "chimp", "chimpanzee", "penguin", "turtle", "bird", "fish",
-            "lion", "tiger", "elephant", "wildlife", "zoo", "safari",
+            "lion", "tiger", "elephant", "giraffe", "bear", "wolf", "wildlife",
+            "zoo", "safari", "jungle", "savanna", "nature documentary",
+        )
+        pet_terms = (
+            "cat", "kitten", "dog", "puppy", "pet", "pets", "parrot", "bird",
+            "hamster", "rabbit", "bunny", "goat", "horse",
         )
         if any(term in text for term in animal_stock):
+            return False
+        # Pets are valid funny-listicle subjects when the search itself is clearly
+        # asking for a pet/funny event; generic wildlife remains blocked.
+        explicit_pet_search = any(term in search_text for term in pet_terms)
+        explicit_pet_text = any(term in text for term in pet_terms)
+        if explicit_pet_text and not explicit_pet_search and not any(
+            term in text for term in ("funny", "funniest", "hilarious", "fail", "reaction", "prank")
+        ):
             return False
         # Stock providers often return weak metadata. If the search is explicitly funny/action-based,
         # let the downloaded clip reach visual QC instead of rejecting it here.
@@ -1188,6 +1199,10 @@ def create_youtube_commentary_video(opportunity, index):
             "people falling harmless funny fail",
             "awkward human moment caught camera",
             "funny sports fail human reaction",
+            "funny cats caught on camera",
+            "funny dogs caught on camera",
+            "funny pets unexpected reaction",
+            "funny animals at home fail",
         ]
     elif theme == "scariest":
         queries = [
@@ -1230,7 +1245,7 @@ def create_youtube_commentary_video(opportunity, index):
             "human funny fail", "people funny accident", "instant regret human",
             "funny reaction people", "harmless public fail", "awkward human moment",
             "unexpected human reaction", "funny sports fail", "people comedy mishap",
-            "perfect timing fail",
+            "perfect timing fail", "funny cats", "funny dogs", "funny pets",
         ],
         "scariest": [
             "scary moments people", "creepy moments caught camera", "people scared reaction",
@@ -1472,8 +1487,26 @@ def create_youtube_commentary_video(opportunity, index):
         title_text = f"TOP {CLIPS_PER_VIDEO} WILDEST MOMENTS"
     else:
         title_text = f"TOP {CLIPS_PER_VIDEO} MOMENTS"
-    # The first real clip stays the hook; the title is shown briefly over it.
-    combined_clips = clips
+    # The first real clip stays the hook, but the promised Top-N title must
+    # actually appear in the video (not just metadata). It is a short overlay so
+    # viewers immediately understand the format without sacrificing the hook.
+    combined_clips = list(clips)
+    first_with_title = root / "ranked_segment_with_title.mp4"
+    title_filter = (
+        f"drawtext=text='{title_text.replace(chr(92), chr(92)+chr(92)).replace(':', chr(92)+':').replace(chr(39), chr(92)+chr(39))}':"
+        "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        "fontsize=58:fontcolor=white:x=(w-text_w)/2:y=92:"
+        "box=1:boxcolor=black@0.68:boxborderw=22:"
+        "enable='between(t,0,1.25)'"
+    )
+    subprocess.run([
+        "ffmpeg", "-y", "-i", str(combined_clips[0]),
+        "-vf", title_filter,
+        "-an", "-c:v", "libx264", "-preset", "veryfast",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+        str(first_with_title)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=45)
+    combined_clips[0] = first_with_title
     combined = root / "combined.mp4"
     inputs, filter_parts = [], []
     for i, item in enumerate(combined_clips):
